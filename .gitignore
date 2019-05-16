@@ -1,0 +1,43 @@
+# Created by .ignore support plugin (hsz.mobi)
+
+### Python template
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+### PyCharm
+
+/.idea/
+
+# results
+/results/**
+# just for creating folders.
+!/results/features
+!/results/features/.gitignore
+!/results/datasets
+!/results/datasets/.gitignore
+!/results/models
+!/results/models/.gitignore
+!/results/analyses
+!/results/analyses/.gitignore
+!/results/plots
+!/results/plots/.gitignore
+
+# private data
+/private_data/**
+!/private_data/.gitignore
+
+# debug data from older repos
+/debug_data/**
+!/debug_data/.gitignore
+
+# trash (mostly log files)
+/trash/**
+!/trash/.gitignore
+
+# jupyter
+.ipynb_checkpoints/
+
+# fp16
+/apex_fp16_utils/
