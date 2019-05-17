@@ -43,3 +43,17 @@ On May 16, 2019 (Eastern Time), I ran this on my MacBook Pro (steps 1-3), and
 ### CNBC cluster
 
 TBD
+
+## download some data set
+
+run `. ./setup_private_data.sh` OUTSIDE the container.
+
+
+## reproduce results
+
+unless otherwise mentioned, scripts should be run in the container,
+after `. $ROOT/setup_env_variables.sh` has been run.
+
+### preprocess raw data
+
+in the container, run `python $ROOT/preprocessing/raw_data.py`
