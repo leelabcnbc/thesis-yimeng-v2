@@ -1,6 +1,6 @@
 from os.path import join
 from functools import partial
-from typing import Dict, Callable, Union
+from typing import Dict, Callable, Union, Optional
 import numpy as np
 import h5py
 
@@ -102,3 +102,15 @@ def _load_data_one(data: Union[h5py.Group, h5py.Dataset]) -> _type_data:
         for k, v in data.items():
             data_ret[k] = _load_data_one(v)
         return data_ret
+
+
+def load_data_lazy_helper(key: str,
+                          func: Optional[Callable[[], _type_data]],
+                          *, fname: str, read_only=True):
+    # read only is for safety. only on-the-fly generation when you mean it.
+    with h5py.File(fname, 'r' if read_only else 'a') as f:
+        if key not in f:
+            assert not read_only
+            assert func is not None
+            _save_data_one(f, key, func())
+        return _load_data_one(f[key])

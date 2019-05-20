@@ -4,6 +4,7 @@ from skimage.io import imread
 from . import dir_dict, join, register_data
 
 _data_root = join(dir_dict['private_data'], 'yuanyuan_8k')
+_meta_root = join(dir_dict['private_data'], 'yuanyuan_8k_preprocessing')
 _img_root = join(dir_dict['private_data'], 'yuanyuan_8k_raw_images', 'rp_252')
 
 
@@ -17,7 +18,7 @@ def save_img(group):
         'c': 'Record_paras_May072018_RP16001To24000.mat',
     }[group]
 
-    record = loadmat(join(_data_root, recordfile),
+    record = loadmat(join(_meta_root, recordfile),
                      variable_names=('Record_paras',))['Record_paras']
 
     # get image names.

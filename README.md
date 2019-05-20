@@ -56,4 +56,8 @@ after `. $ROOT/setup_env_variables.sh` has been run.
 
 ### preprocess raw data
 
-in the container, run `python $ROOT/preprocessing/raw_data.py`
+in the container, run `python $ROOT/scripts/preprocessing/raw_data.py`
+
+### preprocess prepared data
+
+in the container, run `python $ROOT/scripts/preprocessing/prepared_data.py`

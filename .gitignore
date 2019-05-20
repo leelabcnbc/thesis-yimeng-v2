@@ -27,6 +27,7 @@ __pycache__/
 # private data
 /private_data/**
 !/private_data/.gitignore
+!/private_data/yuanyuan_8k_idx.mat
 
 # debug data from older repos
 /debug_data/**
