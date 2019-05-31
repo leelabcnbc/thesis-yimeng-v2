@@ -17,22 +17,24 @@ cd "${DIR}/private_data/crcns_pvc-8"
 md5sum -c checksums.md5
 cd "${PWD_PREV}"
 
-if [[ "$(hostname)" == "psych-o.hpc1.cs.cmu.edu" ]]; then
-    # 8k
-    ln -s /data2/leelab/cnn-model-leelab-8000/data/processed/leelab_8000 "${DIR}/private_data/yuanyuan_8k"
-    ln -s /data2/leelab/yuanyuan/data/leelab_8000 "${DIR}/private_data/yuanyuan_8k_raw"
-    ln -s /data2/leelab/cnn-model-leelab-8000/data_processing/leelab_8000 "${DIR}/private_data/yuanyuan_8k_preprocessing"
-else
+#if [[ "$(hostname)" == "psych-o.hpc1.cs.cmu.edu" ]]; then
+#    # 8k
+#    ln -s /data2/leelab/cnn-model-leelab-8000/data/processed/leelab_8000 "${DIR}/private_data/yuanyuan_8k"
+#    ln -s /data2/leelab/yuanyuan/data/leelab_8000 "${DIR}/private_data/yuanyuan_8k_raw"
+#    ln -s /data2/leelab/cnn-model-leelab-8000/data_processing/leelab_8000 "${DIR}/private_data/yuanyuan_8k_preprocessing"
+#else
     # rsync 8k stuffs.
-    mkdir -p "${DIR}/private_data/yuanyuan_8k"
-    rsync -avP yimengzh@psych-o.hpc1.cs.cmu.edu:/data2/leelab/cnn-model-leelab-8000/data/processed/leelab_8000/ "${DIR}/private_data/yuanyuan_8k/"
 
-    mkdir -p "${DIR}/private_data/yuanyuan_8k_raw"
-    rsync -avP yimengzh@psych-o.hpc1.cs.cmu.edu:/data2/leelab/yuanyuan/data/leelab_8000/ "${DIR}/private_data/yuanyuan_8k_raw/"
+# since I use container, softlink won't work. so just copy.
+mkdir -p "${DIR}/private_data/yuanyuan_8k"
+rsync -avP yimengzh@psych-o.hpc1.cs.cmu.edu:/data2/leelab/cnn-model-leelab-8000/data/processed/leelab_8000/ "${DIR}/private_data/yuanyuan_8k/"
 
-    mkdir -p "${DIR}/private_data/yuanyuan_8k_preprocessing"
-    rsync -avP yimengzh@psych-o.hpc1.cs.cmu.edu:/data2/leelab/cnn-model-leelab-8000/data_processing/leelab_8000/ "${DIR}/private_data/yuanyuan_8k_preprocessing/"
-fi
+mkdir -p "${DIR}/private_data/yuanyuan_8k_raw"
+rsync -avP yimengzh@psych-o.hpc1.cs.cmu.edu:/data2/leelab/yuanyuan/data/leelab_8000/ "${DIR}/private_data/yuanyuan_8k_raw/"
+
+mkdir -p "${DIR}/private_data/yuanyuan_8k_preprocessing"
+rsync -avP yimengzh@psych-o.hpc1.cs.cmu.edu:/data2/leelab/cnn-model-leelab-8000/data_processing/leelab_8000/ "${DIR}/private_data/yuanyuan_8k_preprocessing/"
+#fi
 
 # this is for decompressing thoese imagenet raw images for yuanyuan 8k
 mkdir -p "${DIR}/private_data/yuanyuan_8k_raw_images"

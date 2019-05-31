@@ -42,17 +42,20 @@ On May 16, 2019 (Eastern Time), I ran this on my MacBook Pro (steps 1-3), and
 
 ### CNBC cluster
 
-TBD
+```
+singularity shell --nv -B /data2/yimengzh:/my_data -B /scratch:/my_data_2 ~/toolchain/yimeng-thesis-v2_34da8d5eac5297d9fafa5e8be3c635f0.simg
+```
 
 ## download some data set
 
-run `. ./setup_private_data.sh` OUTSIDE the container.
+run `./setup_private_data.sh` OUTSIDE the container.
 
 
 ## reproduce results
 
 unless otherwise mentioned, scripts should be run in the container,
-after `. $ROOT/setup_env_variables.sh` has been run.
+after `. $ROOT/setup_env_variables.sh` (notice the leading dot, which
+is equivalent to `source` in `bash`) has been run.
 
 ### preprocess raw data
 

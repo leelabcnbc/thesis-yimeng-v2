@@ -38,7 +38,7 @@ data_maps = {
     },
 }
 
-idx_set = loadmat(join(dir_dict['private_data'], 'yuanyuan_8k_idx.mat'))
+idx_set = loadmat(join(dir_dict['private_data_supp'], 'yuanyuan_8k_idx.mat'))
 
 for key, mapping in data_maps.items():
     print(f'{key} begin')
