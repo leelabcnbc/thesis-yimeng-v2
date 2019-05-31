@@ -32,6 +32,9 @@ dir_dict['plots'] = abspath(join(dir_dict['results'],
 dir_dict['private_data'] = abspath(join(dir_dict['root'],
                                         'private_data'))
 
+dir_dict['private_data_supp'] = abspath(join(dir_dict['root'],
+                                             'private_data_supp'))
+
 dir_dict['debug_data'] = abspath(join(dir_dict['root'],
                                       'debug_data'))
 

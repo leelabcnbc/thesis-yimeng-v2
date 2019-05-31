@@ -115,7 +115,7 @@ def get_indices(group, seed):
     if seed == 'legacy':
         # split data according to Yuanyuan's way
         idx_set = loadmat(
-            join(dir_dict['private_data'], 'yuanyuan_8k_idx.mat'))
+            join(dir_dict['private_data_supp'], 'yuanyuan_8k_idx.mat'))
         indices = tuple(
             np.flatnonzero(idx_set[k].ravel().astype(np.bool_)) for k in (
                 'I_train', 'I_valid', 'I_test'
