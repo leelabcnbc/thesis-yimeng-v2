@@ -53,14 +53,24 @@ run `./setup_private_data.sh` OUTSIDE the container.
 
 ## reproduce results
 
-unless otherwise mentioned, scripts should be run in the container,
+unless otherwise mentioned, scripts should be run in the container
+(check **run toolchain** above), and
 after `. $ROOT/setup_env_variables.sh` (notice the leading dot, which
 is equivalent to `source` in `bash`) has been run.
 
-### preprocess raw data
+### preprocess image and neural data
 
-in the container, run `python $ROOT/scripts/preprocessing/raw_data.py`
+#### preprocess raw data
 
-### preprocess prepared data
+`python $ROOT/scripts/preprocessing/raw_data.py`
 
-in the container, run `python $ROOT/scripts/preprocessing/prepared_data.py`
+#### preprocess prepared data
+
+`python $ROOT/scripts/preprocessing/prepared_data.py`
+
+### CNN feature extraction
+
+#### 8k (a) data set, VGG networks
+
+`python $ROOT/scripts/feature_extraction/yuanyuan_8k_a/vgg.py`
+
