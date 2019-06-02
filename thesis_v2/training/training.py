@@ -475,7 +475,7 @@ def eval_wrapper(model: nn.Module, dataset: DataLoader,
         # things out
         # this is OK as our data sets are going to be small.
         # for ImageNet, we will use another training wrapper anyway.
-        stats_additional = eval_fn(outputs_all, labels_all)
+        stats_additional = eval_fn(yhat_all=outputs_all, y_all=labels_all)
     else:
         stats_additional = {}
 

@@ -27,9 +27,17 @@ def _check_dataset_shape(X: np.ndarray, y: Union[np.ndarray, tuple]):
         assert X.dtype == np.float32
         # noinspection PyUnresolvedReferences
         x_ret = torch.from_numpy(X)
-        assert y.dtype == np.float32
-        # noinspection PyUnresolvedReferences
-        y_ret = torch.from_numpy(y)
+        # assert y.dtype == np.float32
+        #   actually, most of the time y has type np.float64
+        #   this is in theory better, as this float64 stuff might be used
+        #   to compute mean response (in float64 mode) and initialize model
+        #   bias parameters.
+        #   overall, passing in a higher than float32 precision y,
+        #   while not useful for pytorch dataloader,
+        #   the higher precision one can be used elsewhere,
+        #   making use of precision as much as possible.
+        # noinspection PyUnresolvedReferences, PyCallingNonCallable
+        y_ret = torch.tensor(y, dtype=torch.float32)
         # noinspection PyCallingNonCallable
         return (
             x_ret,

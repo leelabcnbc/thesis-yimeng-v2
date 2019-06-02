@@ -81,4 +81,4 @@ def init_bias(model: JSONNet, mean_response: np.ndarray):
 
 def initialize_model(model: JSONNet, extras):
     resp_train = get_resp_train(extras['datasets'])
-    init_bias(model, resp_train)
+    init_bias(model, resp_train.mean(axis=0))

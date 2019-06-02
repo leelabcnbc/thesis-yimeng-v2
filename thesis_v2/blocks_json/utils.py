@@ -5,7 +5,7 @@ def update_module_dict(old_dict, new_dict):
     assert type(old_dict) is OrderedDict
     assert type(new_dict) is OrderedDict
     assert old_dict.keys() & new_dict.keys() == set()
-    old_dict.update(old_dict)
+    old_dict.update(new_dict)
 
 
 def generate_param_dict(*,
