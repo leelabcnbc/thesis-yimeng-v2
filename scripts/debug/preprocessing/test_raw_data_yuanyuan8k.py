@@ -5,6 +5,7 @@ import numpy as np
 from scipy.io import loadmat
 from thesis_v2 import dir_dict, join
 from thesis_v2.data.raw import load_data
+# noinspection PyProtectedMember
 from thesis_v2.data.raw.yuanyuan_8k import _neural_data_dates
 
 
