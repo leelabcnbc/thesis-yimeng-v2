@@ -1,0 +1,1 @@
+singularity exec --nv -B {REPO_PATH}:/my_data -B /scratch:/my_data_2 /home/yimengzh/toolchain/yimeng-thesis-v2_34da8d5eac5297d9fafa5e8be3c635f0.simg bash

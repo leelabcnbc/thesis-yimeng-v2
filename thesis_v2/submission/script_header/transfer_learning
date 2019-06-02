@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+#SBATCH --comment="typical slurm header for SGD transfer learning with multiple neurons on one card"
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=6
+#SBATCH --time=48:00:00
+#SBATCH --mem=60G
+#SBATCH --gres=gpu:1
+#SBATCH --partition=CLUSTER,barbq
+
+# partition to access barbq as well.
