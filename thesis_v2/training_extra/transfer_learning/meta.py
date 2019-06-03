@@ -4,10 +4,15 @@ import json
 import h5py
 
 
-def fetch_meta(name: str, obj: h5py.Dataset):
+def fetch_meta(obj: h5py.Dataset, name_debug=None):
+    name = obj.name
+    assert name.startswith('/')
+    name = name[1:]
+    if name_debug is not None:
+        assert name == name_debug
     splitted_name = name.split('/')
     assert len(splitted_name) == 4
-    dataset = splitted_name[0] == 'a'
+    dataset = splitted_name[0]
     network = splitted_name[1]
     layer_idx, layer_unroll = splitted_name[3].split('.')
     layer_idx = int(layer_idx)

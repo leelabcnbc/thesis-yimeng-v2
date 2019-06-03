@@ -4,7 +4,8 @@ from itertools import product
 import h5py
 
 from thesis_v2 import dir_dict, join
-from thesis_v2.submission import utils, transfer_learing
+from thesis_v2.submission import utils
+from thesis_v2.training_extra.transfer_learning.meta import fetch_meta
 
 from key_utils import script_keygen
 
@@ -39,7 +40,7 @@ model_seed_list = (0,)
 # right, not state of the art performance.
 sparse_list = ('0.1', '0.01', '0.001', '0.0001', '0.00001')
 act_fn_list = ('softplus',)
-loss_type_list = ('poisson',)
+loss_type_list = ('poisson', 'mse')
 
 layers_to_check = {
     'vgg16': {'pool1',
@@ -60,28 +61,28 @@ layers_to_check = {
                  },
 }
 
+feature_file_name = join(
+    dir_dict['features'],
+    'cnn_feature_extraction',
+    'yuanyuan_8k_a',
+    'vgg.hdf5'
+)
+
 
 # open that file, and iterate to get all cases to process.
 def get_all_suffix():
-    file_to_save_feature = join(
-        dir_dict['features'],
-        'cnn_feature_extraction',
-        'yuanyuan_8k_a',
-        'vgg.hdf5'
-    )
-
     all_cases = []
 
     def callback(name, obj):
         if isinstance(obj, h5py.Dataset):
-            meta = transfer_learing.fetch_meta(name, obj)
+            meta = fetch_meta(obj, name)
 
             if meta['setting'] == 'quarter':
                 if meta['layer_name'] in layers_to_check.get(meta['network'],
                                                              set()):
                     all_cases.append('/'.join(meta['splitted_name'][1:]))
 
-    with h5py.File(file_to_save_feature, 'r') as f_feature:
+    with h5py.File(feature_file_name, 'r') as f_feature:
         f_feature.visititems(callback)
 
     assert len(set(all_cases)) == len(all_cases)
@@ -91,10 +92,11 @@ def get_all_suffix():
 
 def param_iterator(*, include_sparse=True):
     if include_sparse:
-        for suffix, split_seed, model_seed, sparse, act_fn, loss_type in product(
-                get_all_suffix(), split_seed_list,
-                model_seed_list, sparse_list, act_fn_list,
-                loss_type_list
+        for (suffix, split_seed, model_seed,
+             sparse, act_fn, loss_type) in product(
+            get_all_suffix(), split_seed_list,
+            model_seed_list, sparse_list, act_fn_list,
+            loss_type_list
         ):
             yield {
                 'suffix': suffix,
@@ -105,10 +107,11 @@ def param_iterator(*, include_sparse=True):
                 'loss_type': loss_type,
             }
     else:
-        for suffix, split_seed, model_seed, act_fn, loss_type in product(
-                get_all_suffix(), split_seed_list,
-                model_seed_list, act_fn_list,
-                loss_type_list
+        for (suffix, split_seed, model_seed,
+             act_fn, loss_type) in product(
+            get_all_suffix(), split_seed_list,
+            model_seed_list, act_fn_list,
+            loss_type_list
         ):
             yield {
                 'suffix': suffix,
