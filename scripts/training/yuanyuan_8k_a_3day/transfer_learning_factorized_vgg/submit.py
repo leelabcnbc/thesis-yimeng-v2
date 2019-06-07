@@ -77,10 +77,10 @@ def get_all_suffix():
         if isinstance(obj, h5py.Dataset):
             meta = fetch_meta(obj, name)
 
-            if meta['setting'] == 'quarter':
-                if meta['layer_name'] in layers_to_check.get(meta['network'],
-                                                             set()):
-                    all_cases.append('/'.join(meta['splitted_name'][1:]))
+            # if meta['setting'] == 'half':
+            if meta['layer_name'] in layers_to_check.get(meta['network'],
+                                                         set()):
+                all_cases.append('/'.join(meta['splitted_name'][1:]))
 
     with h5py.File(feature_file_name, 'r') as f_feature:
         f_feature.visititems(callback)
