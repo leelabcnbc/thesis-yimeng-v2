@@ -8,7 +8,7 @@ good.
 
 from sys import argv, version_info
 from os import walk
-from os.path import isabs, split
+from os.path import isabs, split, join
 from shlex import quote
 from collections import defaultdict
 
@@ -22,7 +22,7 @@ files_to_check_gpu = {'stats_best.json',
 
 
 def main():
-    parent_dict = defaultdict(set)
+    parent_dict = defaultdict(lambda: (set(), set()))
 
     (root_dir, num_neuron) = argv[1:]
     num_neuron = int(num_neuron)
@@ -42,23 +42,26 @@ def main():
         if not (files_to_check - set(files)):
             # this is a finished one.
             assert neural_idx_this in ref_set
-            parent_dict[parent].add(neural_idx_this)
+            # first is the good one.
+            parent_dict[parent][0].add(neural_idx_this)
         else:
-            # create the set
-            parent_dict[parent] = set()
+            # this is a bad one.
+            parent_dict[parent][1].add(neural_idx_this)
 
         del parent
         del neural_idx_this
 
-    good = bad = 0
+    good = bad = bad_detailed = 0
     for x, s in parent_dict.items():
-        if s != ref_set:
+        if s[0] != ref_set:
             bad += 1
-            print(f'rm -r {quote(x)}')
+            for subfolder in sorted(s[1]):
+                print(f'rm -r {quote(join(x, subfolder))}')
+                bad_detailed += 1
         else:
             good += 1
 
-    print('good', good, 'bad', bad)
+    print('good', good, 'bad', bad, 'bad_detailed', bad_detailed)
 
 
 if __name__ == '__main__':
