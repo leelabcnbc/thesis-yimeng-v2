@@ -129,7 +129,11 @@ def master(*,
 
             # 6 jobs matches slurm submission file in terms of # of CPUs.
             results = Parallel(
-                n_jobs=6,
+                # 6 was used in most cases (all `quarter` and most `half`).
+                # n_jobs=6,
+                # MODIFY this to 4 for some large `half` cases (lower layers)
+                # fuck CNBC cluster for the memory calculation issue.
+                n_jobs=4,
                 verbose=3,
                 # if you use this, then memory from x_all in the main process
                 # will count as in shared memory as well.
