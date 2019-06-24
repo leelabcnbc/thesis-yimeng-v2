@@ -74,3 +74,23 @@ is equivalent to `source` in `bash`) has been run.
 
 `python $ROOT/scripts/feature_extraction/yuanyuan_8k_a/vgg.py`
 
+### CNN training
+
+these code has been mostly has been designed to work on CNBC cluster, via Slurm job scheduler.
+To work on a standard machine, you need do the following steps.
+
+1. `ctrl+c` when the program prompts `press enter to optionally sbatch all scripts`.
+2. run all shell scripts indicated by the (partially finished) program one by one.
+    * use some script like <https://github.com/leelabcnbc/thesis-yimeng-v1/blob/master/gen_single_machine_batch_script.py>
+      to generate some wrapper scripts, one for each GPU on the machine.
+
+
+#### CNN 8k (a) dataset transfer learning, VGG networks.
+
+`python $ROOT/scripts/training/yuanyuan_8k_a_3day/transfer_learning_factorized_vgg/submit.py`
+
+##### analysis
+
+check <https://github.com/leelabcnbc/thesis-yimeng-v2/blob/master/results_processed/yuanyuan_8k_a_3day/transfer_learning_factorized_vgg/vgg.ipynb>;
+basically, the results matched those in <https://github.com/leelabcnbc/cnn-model-leelab-8000/blob/master/slides/20190107_Wei_ConvolutionalNeuralNetwork_2019a.pdf> (model 3, 3 day data);
+the key to make performance match is using 2x downsampled images rather than 4x. Check some notes [here](https://github.com/leelabcnbc/thesis-yimeng-v1/issues/28#issuecomment-500072420) as well.
