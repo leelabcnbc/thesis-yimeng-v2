@@ -3,6 +3,11 @@ good parts of thesis-yimeng-v1, better refactoring.
 
 `$ROOT` refers to repo root.
 
+## dependencies
+
+you also need those dependencies specified in `$ROOT/setup_env_variables.sh`. Those packages
+are mostly available in lab GitHub.
+
 ## set up toolchain (only once)
 
 On May 16, 2019 (Eastern Time), I ran this on my MacBook Pro (steps 1-3), and
@@ -53,7 +58,7 @@ run `./setup_private_data.sh` OUTSIDE the container.
 
 ## reproduce results
 
-unless otherwise mentioned, scripts should be run in the container
+unless otherwise mentioned, scripts should be run **IN** the container
 (check **run toolchain** above), and
 after `. $ROOT/setup_env_variables.sh` (notice the leading dot, which
 is equivalent to `source` in `bash`) has been run.
@@ -85,7 +90,15 @@ To work on a standard machine, you need do the following steps.
       to generate some wrapper scripts, one for each GPU on the machine.
 
 
+Unless otherwise indicated, the training scripts (those `submit.py` files) should be run **OUTSIDE** the container, in an
+environment with 1) `h5py` and 2) `python 3.6+`. However, you still need to run `. $ROOT/setup_env_variables.sh` before
+running these `submit.py` files. The reason for running OUTSIDE is because these training scripts interact
+with Slurm on the host.
+
+
 #### CNN 8k (a) dataset transfer learning, VGG networks.
+
+
 
 `python $ROOT/scripts/training/yuanyuan_8k_a_3day/transfer_learning_factorized_vgg/submit.py`
 
