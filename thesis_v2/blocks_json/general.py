@@ -9,6 +9,14 @@ def bn(*,
        momentum: float = 0.1,
        do_init: bool = True,
        ):
+    # should be better named bn2d
+    assert type(name) is str
+    assert type(num_features) is int
+    assert type(affine) is bool
+    assert type(eps) is float
+    assert type(momentum) is float
+    assert type(do_init) is bool
+
     module_dict = OrderedDict()
     module_dict[name] = {
         'name': 'torch.nn.batchnorm2d',
@@ -26,6 +34,8 @@ def act(*,
         name,
         act_fn,
         ):
+    assert type(act_fn) is str
+
     assert act_fn in {'softplus', 'relu', 'exp'}
     module_dict = OrderedDict()
     module_dict[name] = {
@@ -35,4 +45,3 @@ def act(*,
     }
 
     return module_dict
-

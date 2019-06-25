@@ -59,13 +59,13 @@ def train_one_wrapper(*,
                       get_loss_fn,
                       datasets,
                       key,
-                      show_every=100,
-                      model_seed=0, train_seed=0,
-                      max_epoch=20000,
-                      early_stopping_field='loss_no_reg',
-                      device='cuda',
-                      val_test_every=50,
-                      return_model=True):
+                      show_every,
+                      model_seed, train_seed,
+                      max_epoch,
+                      early_stopping_field,
+                      device,
+                      val_test_every,
+                      return_model):
     assert device is not None
     if model_seed is not None:
         torch.manual_seed(model_seed)

@@ -1,7 +1,6 @@
 from functools import partial
 
 import numpy as np
-import torch
 
 from torchnetjson.net import JSONNet
 
@@ -27,9 +26,6 @@ def train_one(*,
               device='cuda',
               val_test_every=50,
               return_model=True):
-    if model_seed is not None:
-        torch.manual_seed(model_seed)
-        torch.cuda.manual_seed_all(model_seed)
     # initialize
     # arch_json_partial is a function with two args.
     # first being input shape

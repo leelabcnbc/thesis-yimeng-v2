@@ -1,5 +1,5 @@
 """custom (C)NN modules"""
-from typing import Union, Tuple, Optional
+from typing import Union, List, Optional
 
 import torch
 from torch import nn
@@ -16,7 +16,7 @@ class FactoredLinear2D(nn.Module):
     """
 
     def __init__(self, in_channels: int,
-                 map_size: Union[int, Tuple[int, int]],
+                 map_size: Union[int, List[int]],
                  out_features: int, bias: bool = True,
                  weight_feature_constraint: Optional[str] = None,
                  weight_spatial_constraint: Optional[str] = None) -> None:
@@ -24,7 +24,7 @@ class FactoredLinear2D(nn.Module):
         assert isinstance(in_channels, int) and in_channels > 0
         self.in_channels = in_channels
 
-        self.map_size = check_input_size(map_size)
+        self.map_size = tuple(check_input_size(map_size, strict=True, sequence_type='list'))
 
         assert isinstance(out_features, int) and out_features > 0
         self.out_features = out_features

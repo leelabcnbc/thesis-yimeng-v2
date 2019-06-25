@@ -1,7 +1,8 @@
 """a modification of
 https://github.com/leelabcnbc/thesis-yimeng-v1/blob/master/scripts/debug/transfer_learning/transfer_learning_factorized.ipynb
 
-this should be run with thesis-v1 code.
+this should be run with thesis-v1 code (as well as the preprocessed data using v1 code); ./setup_env_variables.sh
+for v1 should be used.
 """  # noqa: E501
 
 from tempfile import TemporaryDirectory
