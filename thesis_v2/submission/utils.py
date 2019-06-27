@@ -164,16 +164,16 @@ class ParamIterator:
             'late_call': late_call,
         }
 
-    def generate(self, predicate=None):
-        if predicate is None:
-            def predicate(_):
+    def generate(self, key_predicate=None, ret_predicate=None):
+        if key_predicate is None:
+            def key_predicate(_):
                 return True
 
         keys_to_check = []
         values_to_check = []
 
         for k, v in self.data.items():
-            if predicate(k):
+            if key_predicate(k):
                 values_to_check.append(v['values']() if v['late_call'] else v['values'])
                 keys_to_check.append(k)
 
@@ -192,5 +192,7 @@ class ParamIterator:
                 assert len(key_this) == len(value_this)
                 for kk, vv in zip(key_this, value_this):
                     ret_obj[kk] = vv
+
+            # TODO use `ret_predicate` to filter some ret_obj
 
             yield ret_obj
