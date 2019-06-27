@@ -42,7 +42,8 @@ param_iterator_obj = utils.ParamIterator()
 
 param_iterator_obj.add_pair(
     'split_seed',
-    ('legacy',),
+    # also try some other splits, with each class represented equally.
+    ('legacy', 0, 1),
 )
 
 param_iterator_obj.add_pair(
@@ -53,12 +54,12 @@ param_iterator_obj.add_pair(
 param_iterator_obj.add_pair(
     'act_fn',
     # should try relu later
-    ('softplus',),
+    ('softplus', 'relu'),
 )
 
 param_iterator_obj.add_pair(
     'loss_type',
-    ('poisson',)  # should try mse later
+    ('poisson', 'mse')  # should try mse later
 )
 
 param_iterator_obj.add_pair(
@@ -93,12 +94,12 @@ param_iterator_obj.add_pair(
 
 param_iterator_obj.add_pair(
     'bn_before_act',
-    (True,)  # should try False later
+    (True, False)  # should try False later
 )
 
 param_iterator_obj.add_pair(
     'bn_after_fc',
-    (False,)  # should try True later
+    (False, True)  # should try True later
 )
 
 param_iterator_obj.add_pair(
@@ -106,6 +107,8 @@ param_iterator_obj.add_pair(
     lambda: {
         # key is the name, value is the actual value to be passed in as is.
         '0.01': '0.01',
+        '0.001': '0.001',
+        '0.1': '0.1',
     }.items(),
     late_call=True,
 )
@@ -113,7 +116,10 @@ param_iterator_obj.add_pair(
 param_iterator_obj.add_pair(
     ('smoothness_name', 'smoothness'),
     lambda: {
+        '0.000005': '0.000005',
         '0.00005': '0.00005',
+        '0.0005': '0.0005',
+        '0.005': '0.005',
     }.items(),
     late_call=True,
 )
