@@ -38,7 +38,7 @@ model_seed_list = (0,)
 # this is enough. I'm more concerned with getting the order of magnitude
 # right, not state of the art performance.
 sparse_list = ('0.1', '0.01', '0.001', '0.0001', '0.00001')
-act_fn_list = ('softplus',)
+act_fn_list = ('softplus', 'relu')
 loss_type_list = ('poisson', 'mse')
 
 layers_to_check = {
