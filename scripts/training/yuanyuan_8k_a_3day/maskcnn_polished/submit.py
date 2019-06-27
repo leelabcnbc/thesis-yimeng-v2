@@ -48,7 +48,8 @@ param_iterator_obj.add_pair(
 
 param_iterator_obj.add_pair(
     'model_seed',
-    range(5),
+    # range(5),
+    range(1),  # otherwise too long.
 )
 
 param_iterator_obj.add_pair(
