@@ -35,6 +35,9 @@ for group in ('a', 'b', 'c'):
     yuanyuan_8k.images(group, 256, 128, read_only=False)
     # in practice I should try smaller window size, and more downsampling.
 
+    # 2x downsampling one.
+    yuanyuan_8k.images(group, 200, 100, read_only=False)
+
     # all 4x downsampling.
     # yuanyuan_8k.images(group, 256, 64, read_only=False)
     # only this was used.

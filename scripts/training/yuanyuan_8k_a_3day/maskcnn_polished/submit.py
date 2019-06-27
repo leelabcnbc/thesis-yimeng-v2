@@ -63,7 +63,7 @@ param_iterator_obj.add_pair(
 
 param_iterator_obj.add_pair(
     'input_size',
-    (50,)  # should also try 100 later
+    (50, 100)  # should also try 100 later
 )
 
 param_iterator_obj.add_pair(
