@@ -3,6 +3,9 @@ from shlex import quote
 from os.path import join, exists, relpath
 from os import chmod, makedirs
 from subprocess import run
+from itertools import product
+from collections import OrderedDict
+from typing import Union, Tuple
 # this is the only dependency, which will check for Py 3.6 only.
 # will not import any fancy package.
 from .. import dir_dict
@@ -136,3 +139,58 @@ def call_script_formatter(
         else:
             new_dict[k] = repr(v)
     return call_script.format(**new_dict)
+
+
+class ParamIterator:
+    def __init__(self):
+        self.data = OrderedDict()
+
+    def add_pair(self, key: Union[str, Tuple[str, ...]], values, late_call: bool = False):
+        # late call is used to handle expensive calls
+        # so values() provides the actual result.
+        # also, if a generator is passed in, we should wrap it as a lambda,
+        # so that it can be reiterated over and over.
+        assert key not in self.data
+        if type(key) is str:
+            pass
+        elif type(key) is tuple:
+            # multi key
+            for k in key:
+                assert type(k) is str
+        else:
+            raise NotImplementedError
+        self.data[key] = {
+            'values': values,
+            'late_call': late_call,
+        }
+
+    def generate(self, predicate=None):
+        if predicate is None:
+            def predicate(_):
+                return True
+
+        keys_to_check = []
+        values_to_check = []
+
+        for k, v in self.data.items():
+            if predicate(k):
+                values_to_check.append(v['values']() if v['late_call'] else v['values'])
+                keys_to_check.append(k)
+
+        for vs in product(*values_to_check):
+            # this 1-liner cannot handle complicate cases.
+            # yield OrderedDict(zip(self.data.keys(), vs))
+            # construct the new obj
+            assert len(keys_to_check) == len(vs)
+            ret_obj = OrderedDict()
+            for key_this, value_this in zip(keys_to_check, vs):
+                if type(key_this) is str:
+                    # convert to singular tuple
+                    key_this = (key_this,)
+                    value_this = (value_this,)
+
+                assert len(key_this) == len(value_this)
+                for kk, vv in zip(key_this, value_this):
+                    ret_obj[kk] = vv
+
+            yield ret_obj

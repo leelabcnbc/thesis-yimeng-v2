@@ -1,5 +1,4 @@
 from os.path import dirname, relpath, realpath
-from itertools import product
 
 import h5py
 
@@ -90,36 +89,38 @@ def get_all_suffix():
     return all_cases
 
 
+param_iterator_obj = utils.ParamIterator()
+
+param_iterator_obj.add_pair(
+    'suffix', get_all_suffix, late_call=True,
+)
+
+param_iterator_obj.add_pair(
+    'split_seed', split_seed_list
+)
+
+param_iterator_obj.add_pair(
+    'sparse', sparse_list,
+)
+
+param_iterator_obj.add_pair(
+    'model_seed', model_seed_list,
+)
+
+param_iterator_obj.add_pair(
+    'act_fn', act_fn_list,
+)
+
+param_iterator_obj.add_pair(
+    'loss_type', loss_type_list,
+)
+
+
 def param_iterator(*, include_sparse=True):
     if include_sparse:
-        for (suffix, split_seed, model_seed,
-             sparse, act_fn, loss_type) in product(
-            get_all_suffix(), split_seed_list,
-            model_seed_list, sparse_list, act_fn_list,
-            loss_type_list
-        ):
-            yield {
-                'suffix': suffix,
-                'split_seed': split_seed,
-                'sparse': sparse,
-                'model_seed': model_seed,
-                'act_fn': act_fn,
-                'loss_type': loss_type,
-            }
+        return param_iterator_obj.generate()
     else:
-        for (suffix, split_seed, model_seed,
-             act_fn, loss_type) in product(
-            get_all_suffix(), split_seed_list,
-            model_seed_list, act_fn_list,
-            loss_type_list
-        ):
-            yield {
-                'suffix': suffix,
-                'split_seed': split_seed,
-                'model_seed': model_seed,
-                'act_fn': act_fn,
-                'loss_type': loss_type,
-            }
+        return param_iterator_obj.generate(lambda x: x != 'sparse')
 
 
 def main():
