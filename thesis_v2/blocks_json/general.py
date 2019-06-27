@@ -8,6 +8,7 @@ def bn(*,
        eps: float = 0.001,
        momentum: float = 0.1,
        do_init: bool = True,
+       ndim: int = 2,
        ):
     # should be better named bn2d
     assert type(name) is str
@@ -16,10 +17,11 @@ def bn(*,
     assert type(eps) is float
     assert type(momentum) is float
     assert type(do_init) is bool
+    assert type(ndim) is int
 
     module_dict = OrderedDict()
     module_dict[name] = {
-        'name': 'torch.nn.batchnorm2d',
+        'name': {1: 'torch.nn.batchnorm1d', 2: 'torch.nn.batchnorm2d'}[ndim],
         # simply normalize everything.
         'params': {'num_features': num_features,
                    'eps': eps, 'momentum': momentum,

@@ -106,6 +106,7 @@ def gen_maskcnn_polished(input_size, num_neuron, out_channel=48,
                 num_features=num_neuron,
                 do_init=do_init,
                 affine=True,
+                ndim=1,
             )
         )
     # I cannot put bn after act,
