@@ -26,7 +26,8 @@ def get_output_loss(*,
 # this is for evaluation
 def eval_fn_wrapper(*,
                     yhat_all, y_all, loss_type,
-                    return_corr=False,
+                    # setting return_corr to True can make tracking training performance a lot easier.
+                    return_corr=True,
                     legacy_corr=True):
     # yhat_all and y_all
     # are batches of results as a list.

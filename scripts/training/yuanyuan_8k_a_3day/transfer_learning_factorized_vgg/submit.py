@@ -6,8 +6,6 @@ from thesis_v2 import dir_dict, join
 from thesis_v2.submission import utils
 from thesis_v2.training_extra.transfer_learning.meta import fetch_meta
 
-from key_utils import script_keygen
-
 # this is used to find master.py
 # you can't drop relpath; this file runs in host, but call_script runs in
 # singularity.
@@ -124,6 +122,8 @@ def param_iterator(*, include_sparse=True):
 
 
 def main():
+    from key_utils import script_keygen
+
     script_dict = dict()
     for param_dict in param_iterator():
         key_this = script_keygen(**param_dict)
