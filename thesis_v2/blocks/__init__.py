@@ -17,7 +17,7 @@ _store = dict()
 
 def load_modules(mods: List[str]):
     # load all modules
-    from . import maskcnn
+    from . import maskcnn, localpcn_purdue
 
     for mod in mods:
         mod_info = _store[mod]
