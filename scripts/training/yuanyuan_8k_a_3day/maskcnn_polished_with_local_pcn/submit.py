@@ -55,7 +55,7 @@ param_iterator_obj.add_pair(
 param_iterator_obj.add_pair(
     'model_seed',
     # range(5),
-    range(1),  # otherwise too long.
+    range(3),  # otherwise too long.
 )
 
 param_iterator_obj.add_pair(
@@ -134,45 +134,45 @@ param_iterator_obj.add_pair(
 # pcn_bn={pcn_bn}
 param_iterator_obj.add_pair(
     'pcn_bn',
-    (True,),
+    (True, False,),
 )
 
 
 # pcn_bn_post={pcn_bn_post},
 param_iterator_obj.add_pair(
     'pcn_bn_post',
-    (False,),
+    (False, True,),
 )
 
 # pcn_bypass={pcn_bypass},
 param_iterator_obj.add_pair(
     'pcn_bypass',
-    (False,),
+    (False, True,),
 )
 
 # pcn_cls={pcn_cls},
 param_iterator_obj.add_pair(
     'pcn_cls',
-    range(1),
+    range(6),
 )
 
 # pcn_final_act={pcn_final_act},
 param_iterator_obj.add_pair(
     'pcn_final_act',
-    (True,)
+    (True, False,)
 )
 # pcn_no_act={pcn_no_act},
 
 param_iterator_obj.add_pair(
     'pcn_no_act',
-    (True,)
+    (True, False,)
 )
 
 # pcn_bias={pcn_bias},
 
 param_iterator_obj.add_pair(
     'pcn_bias',
-    (False,)
+    (False, True,)
 )
 
 
