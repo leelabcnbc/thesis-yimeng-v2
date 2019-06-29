@@ -73,6 +73,12 @@ def submit(script_dict,
         # add -s so that .local in $HOME won't interfere with python
         # in singularity.
         for log_inner, script_inner in this_chunk:
+            # https://stackoverflow.com/questions/6571435/limit-on-file-name-length-in-bash
+            # log_inner cannot be too long.
+            # just to play safe. I know there is difference between byte and str.
+            # but just some hack.
+            assert len(log_inner) < 200, f'length is {len(log_inner)}'
+
             script_for_this = f"""
 OUTPUT_THIS=$(python -s -c {quote(
                 gen_inner_loc_location(dirname_logs_inner_rel, log_inner))})
