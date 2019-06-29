@@ -18,11 +18,16 @@ class PcConvBp(PredBlockBase):
         super().__init__(cls)
         self.FFconv = nn.Conv2d(inchan, outchan, kernel_size, stride, padding,
                                 bias=bias)
-        self.FBconv = nn.ConvTranspose2d(outchan, inchan, kernel_size, stride,
-                                         padding, bias=bias)
-        # noinspection PyUnresolvedReferences
-        self.b0 = nn.Parameter(torch.ones(1, outchan, 1, 1)*b0_init)
         self.cls = cls
+        if self.cls > 0:
+            self.FBconv = nn.ConvTranspose2d(outchan, inchan, kernel_size, stride,
+                                         padding, bias=bias)
+            # noinspection PyUnresolvedReferences
+            self.b0 = nn.Parameter(torch.ones(1, outchan, 1, 1) * b0_init)
+        else:
+            self.FBconv = None
+            self.b0 = None
+
         if bypass:
             self.bypass = nn.Conv2d(inchan, outchan, kernel_size=1,
                                     stride=1,

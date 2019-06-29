@@ -30,6 +30,7 @@ def gen_maskcnn_polished_with_local_pcn(
         pcn_bn_post: bool,
         pcn_final_act: bool,
         pcn_bn: bool,
+        pcn_bias: bool,
 
 
         bn_locations_legacy=False,
@@ -91,6 +92,7 @@ def gen_maskcnn_polished_with_local_pcn(
                                      localpcn_no_act=pcn_no_act,
                                      bn=pcn_bn,
                                      bn_locations_legacy=bn_locations_legacy,
+                                     localpcn_bias=pcn_bias,
                                  ))
 
     # print(input_size)

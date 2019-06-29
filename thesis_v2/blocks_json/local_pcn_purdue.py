@@ -28,6 +28,7 @@ def conv2d_baseline(
         localpcn_b0_init: float,
         localpcn_no_act: bool,
         localpcn_cls: int,
+        localpcn_bias: bool,
 
         state_dict: dict,
 
@@ -66,7 +67,7 @@ def conv2d_baseline(
                 'outchan': out_channel,
                 'kernel_size': kernel_size,
                 'padding': padding,
-                'bias': True,
+                'bias': localpcn_bias,
                 'cls': localpcn_cls,
                 'act_fn': None if localpcn_no_act else act_fn,
                 'bypass': localpcn_bypass,

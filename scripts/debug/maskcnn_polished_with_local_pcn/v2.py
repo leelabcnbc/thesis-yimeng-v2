@@ -49,6 +49,7 @@ def gen_cnn_partial(input_size, n):
                                                pcn_b0_init=1.0,
                                                pcn_tied=False,
                                                bn_locations_legacy=True,
+                                               pcn_bias=True,
                                                )
 
 
