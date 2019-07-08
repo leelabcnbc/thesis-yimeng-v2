@@ -83,7 +83,9 @@ def get_all_suffix():
     def callback(name, obj):
         if isinstance(obj, h5py.Dataset):
             meta = fetch_meta(obj, name)
-            if meta['dataset'] == 'large':
+            if meta['dataset'] == 'large' and meta['setting'] in {
+                'half',
+            }:
                 if meta['layer_name'] in layers_to_check.get(meta['network'],
                                                              set()):
                     all_cases.append('/'.join(meta['splitted_name'][1:]))
@@ -148,7 +150,7 @@ def main():
         )
 
     utils.submit(
-        script_dict, 'transfer_learning', 'standard', True,
+        script_dict, 'transfer_learning_small_ram', 'standard', True,
         dirname_relative='scripts+crcns_pvc8_large+transfer_learning_factorized_vgg'  # noqa: E501
     )
 
