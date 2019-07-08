@@ -14,6 +14,26 @@ from ..raw import load_data
 from .. import load_data_lazy_helper
 
 
+def natural_data_neural(*, window_size, read_only=True, scale=None):
+    fname_y = join(dir_root, 'crcns_pvc-8_neural.hdf5')
+    key_y = f'{window_size}/center/natural'
+    func_y = partial(process_crcns_pvc8_neural_data,
+                     window_size=window_size,
+                     natural_only=True,
+                     centered=True
+                     )
+
+    y = load_data_lazy_helper(key_y, func_y, fname=fname_y,
+                              read_only=read_only)
+
+    # for changing scales (for data-driven CNN, etc.)
+
+    if scale is not None:
+        y = y * scale
+
+    return y
+
+
 def natural_data(window_size, px_kept, downscale_ratio,
                  seed, scale=None, trans_x=None,
                  read_only=True, shuffle_type='legacy'):
@@ -35,24 +55,10 @@ def natural_data(window_size, px_kept, downscale_ratio,
     x_all = load_data_lazy_helper(key_x, func_x, fname=fname_x,
                                   read_only=read_only)
 
-    fname_y = join(dir_root, 'crcns_pvc-8_neural.hdf5')
-    key_y = f'{window_size}/center/natural'
-    func_y = partial(process_crcns_pvc8_neural_data,
-                     window_size=window_size,
-                     natural_only=True,
-                     centered=True
-                     )
-
-    y = load_data_lazy_helper(key_y, func_y, fname=fname_y,
-                              read_only=read_only)
+    y = natural_data_neural(window_size=window_size, read_only=read_only, scale=scale)
 
     # then you can apply some custom transformer to adapt the data
     # for different settings.
-    #
-    # such as for glmnet (swap val and test)
-    # for changing scales (for data-driven CNN, etc.)
-    if scale is not None:
-        y = y * scale
 
     if trans_x is not None:
         trans_x_mu, trans_x_std = trans_x
