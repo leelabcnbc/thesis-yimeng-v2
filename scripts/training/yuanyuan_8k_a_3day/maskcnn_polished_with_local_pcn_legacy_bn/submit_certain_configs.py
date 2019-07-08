@@ -101,7 +101,7 @@ param_iterator_obj.add_pair(
 
 param_iterator_obj.add_pair(
     'bn_before_act',
-    (True,)  # should try False later
+    (True, False, )  # should try False later
 )
 
 param_iterator_obj.add_pair(
