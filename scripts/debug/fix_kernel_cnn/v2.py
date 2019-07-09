@@ -12,7 +12,7 @@ from thesis_v2.training_extra.maskcnn_like.opt import get_maskcnn_v1_opt_config
 from thesis_v2.training_extra.maskcnn_like.training import (train_one,
                                                             partial)
 
-from thesis_v2.models.maskcnn_polished.builder import (gen_maskcnn_polished, load_modules)
+from thesis_v2.models.fix_kernel_cnn.builder import (gen_fkcnn, load_modules)
 
 load_modules()
 
@@ -28,24 +28,30 @@ datasets_raw = {
     'y_test': datasets_raw[5],
 }
 
+weight = np.load('filters.npy')
+#manually select 24 out of total 79 kernels
+weight = weight[[0,3,5,8,9,11,14,17,18,20,23,25,27,32,36,37,40,44,53,57,58,64,65,74],:,:]
+weight = weight.reshape(24,1,9,9)
 
 def gen_cnn_partial(input_size, n):
-    return gen_maskcnn_polished(input_size=input_size,
-                                num_neuron=n,
-                                out_channel=16,  # (try, 8, 16, 32, 48)
-                                kernel_size_l1=9,  # (try 5,9,13)
-                                kernel_size_l23=3,
-                                act_fn='softplus',
-                                pooling_ksize=3,  # (try, 1,3,5,7)
-                                pooling_type='avg',  # try (avg, max)  # looks that max works well here?
-                                num_layer=2,
-                                )
+    return gen_fkcnn(input_size=input_size,
+                         num_neuron=n,
+                         kernel_size_l1=9, out_channel_l1=24, kernel_size_l23=5, out_channel_l23=24,
+                         factored_constraint=None,
+                         act_fn='relu',
+                         do_init=True,
+                         pooling_type='max',
+                         pooling_ksize=2,
+                         num_layer=3,
+                         bn_before_act=True,
+                         bn_after_fc=False
+                         )
 
 
 def do_something(note):
     opt_config_partial = partial(get_maskcnn_v1_opt_config,
-                                 scale=0.01,
-                                 smoothness=0.00005,
+                                 scale=0.1,
+                                 smoothness=0.000005,
                                  group=0.0,
                                  first_layer_no_learning=True)
 
@@ -54,9 +60,10 @@ def do_something(note):
         results.append(train_one(arch_json_partial=gen_cnn_partial,
                                  opt_config_partial=opt_config_partial,
                                  datasets=datasets_raw,
-                                 key=f'debug/maskcnn_polished/v2_code/{note}/{seed}',
+                                 key=f'debug/FKCNN/v2_code/{note}/{seed}',
                                  show_every=1000,
                                  model_seed=seed,
+                                 use_fkcnn=True,
                                  return_model=False)
                        )
 
