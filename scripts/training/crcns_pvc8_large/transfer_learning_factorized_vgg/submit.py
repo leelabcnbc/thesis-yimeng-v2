@@ -32,8 +32,11 @@ suffix={suffix},
 )
 """.strip()
 
-shuffle_type_list = ('legacy', 'paired')
-split_seed_list = range(3)
+shuffle_type_list = (
+    # 'legacy',
+    'paired',
+)
+split_seed_list = range(1)
 model_seed_list = (0,)
 # this is enough. I'm more concerned with getting the order of magnitude
 # right, not state of the art performance.
