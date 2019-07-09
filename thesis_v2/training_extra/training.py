@@ -1,6 +1,8 @@
 from functools import partial
 
 import torch
+from torch import nn
+import numpy as np
 
 from torchnetjson.builder import build_net
 
@@ -48,8 +50,20 @@ def train_one_inner(*,
                             config_extra=config_extra,
                             config=config,
                             eval_fn=eval_fn,
-                            key=key, return_model=return_model,
+                            key=key, 
+                            return_model=return_model,
                             legacy_random_seed=True)
+
+#def init_first_layer(*,
+                   # model,
+                    #weight):
+
+def init_first_layer_fn(model, init_first_layer):
+    assert type(init_first_layer) == np.ndarray
+    t = torch.from_numpy(init_first_layer)
+    t = t.type(torch.FloatTensor)
+    t = nn.Parameter(t)
+    model.moduledict['conv0'].weight = t
 
 
 def train_one_wrapper(*,
@@ -59,12 +73,14 @@ def train_one_wrapper(*,
                       get_loss_fn,
                       datasets,
                       key,
+                      init_first_layer,
                       show_every,
                       model_seed, train_seed,
                       max_epoch,
                       early_stopping_field,
                       device,
                       val_test_every,
+                      use_fkcnn,
                       return_model):
     assert device is not None
     if model_seed is not None:
@@ -82,10 +98,13 @@ def train_one_wrapper(*,
     # initialize the model
     model = build_net(model_json)
     initialize_model_fn(model, {'datasets': datasets})
+    if init_first_layer is not None:
+        init_first_layer_fn(model, init_first_layer)
     print('num_param', count_params(model))
+    
     model = model.to(device)
     model = model.train()
-
+    
     loss_fn = get_loss_fn(opt_config=opt_config)
     optimizer = get_optimizer_fn(model, opt_config['optimizer'])
 

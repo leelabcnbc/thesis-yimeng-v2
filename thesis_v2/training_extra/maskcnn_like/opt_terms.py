@@ -31,16 +31,16 @@ def sanity_check_one_optimizer_opt_config(config):
     optimizer_type = config['optimizer_type']
     if optimizer_type == 'sgd':
         assert type_check_wrapper(config, _type_checker, {'optimizer_type',
-                                                          'lr', 'momentum'})
+                                                          'lr', 'momentum','first_layer_no_learning'})
     elif optimizer_type == 'adam':
         assert type_check_wrapper(config, _type_checker, {'optimizer_type',
-                                                          'lr'})
+                                                          'lr', 'first_layer_no_learning'})
     else:
         raise NotImplementedError
     return True
 
 
-def generate_one_optimizer_config(optimizer_type, lr=None):
+def generate_one_optimizer_config(optimizer_type, lr=None,first_layer_no_learning=False):
     config = {'optimizer_type': optimizer_type}
     if optimizer_type == 'sgd':
         config['lr'] = 0.01 if lr is None else lr
@@ -49,7 +49,7 @@ def generate_one_optimizer_config(optimizer_type, lr=None):
         config['lr'] = 0.001 if lr is None else lr
     else:
         raise NotImplementedError
-
+    config['first_layer_no_learning']=first_layer_no_learning
     assert sanity_check_one_optimizer_opt_config(config)
     return config
 
@@ -100,4 +100,5 @@ _type_checker = {
     'lr': float,
     'momentum': float,
     'legacy': bool,
+    'first_layer_no_learning': bool
 }

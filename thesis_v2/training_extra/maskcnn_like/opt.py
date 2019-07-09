@@ -20,7 +20,7 @@ from .opt_terms import (
 
 def get_maskcnn_v1_opt_config(*, model_json: dict,
                               group=0.05, smoothness=0.03, scale=0.02,
-                              legacy=False, loss_type='poisson'):
+                              legacy=False, loss_type='poisson', first_layer_no_learning=False):
     layer = len(model_json['comments']['conv_layers'])
 
     # about `first_conv`:
@@ -39,7 +39,7 @@ def get_maskcnn_v1_opt_config(*, model_json: dict,
         configs,
         generate_one_fc_layer_opt_config(scale),
         loss_type,
-        generate_one_optimizer_config('adam'),
+        generate_one_optimizer_config('adam', first_layer_no_learning=first_layer_no_learning),
         legacy=legacy
     )
 
@@ -53,9 +53,18 @@ def get_optimizer(model: JSONNet, optimizer_config: dict):
     special_lr_config = param_dict['comments'].get(
         'special_lr_config', None
     )
-
     if special_lr_config is None:
-        params_to_learn = model.parameters()
+        if not optimizer_config['first_layer_no_learning']:
+            params_to_learn = model.parameters()
+        else:
+            params_learning = []
+            params_no_learning = [] 
+            for x, y in model.named_parameters():
+                if x in {'moduledict.conv0.weight'}:
+                    params_no_learning.append(y)
+                else:
+                    params_learning.append(y)
+            params_to_learn = [{'params': params_learning}, {'params': params_no_learning, 'lr': 0}]
     else:
         raise NotImplementedError
 

@@ -30,7 +30,6 @@ def images(group, px_kept, final_size, read_only=True):
                      px_kept=px_kept,
                      final_size=final_size
                      )
-
     x_all = load_data_lazy_helper(key_x, func_x, fname=fname_x,
                                   read_only=read_only)
     return x_all

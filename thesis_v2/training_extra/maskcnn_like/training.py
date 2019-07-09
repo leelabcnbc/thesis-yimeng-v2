@@ -20,12 +20,14 @@ from ..training import train_one_wrapper
 def train_one(*,
               arch_json_partial, opt_config_partial, datasets,
               key,
+              init_first_layer=None,
               show_every=1000,
               model_seed=0, train_seed=0,
               max_epoch=20000,
               early_stopping_field='loss_no_reg',
               device='cuda',
               val_test_every=50,
+              use_fkcnn=False,
               return_model=True):
     if model_seed is not None:
         torch.manual_seed(model_seed)
@@ -48,12 +50,14 @@ def train_one(*,
         get_loss_fn=partial(get_loss, device=device),
         datasets=datasets,
         key=key,
+        init_first_layer=init_first_layer,
         show_every=show_every,
         model_seed=model_seed, train_seed=train_seed,
         max_epoch=max_epoch,
         early_stopping_field=early_stopping_field,
         device=device,
         val_test_every=val_test_every,
+        use_fkcnn=use_fkcnn,
         return_model=return_model
     )
 
