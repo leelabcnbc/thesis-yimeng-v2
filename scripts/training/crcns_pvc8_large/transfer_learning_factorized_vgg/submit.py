@@ -33,7 +33,7 @@ suffix={suffix},
 """.strip()
 
 shuffle_type_list = (
-    # 'legacy',
+    'legacy',
     'paired',
 )
 split_seed_list = range(1)
