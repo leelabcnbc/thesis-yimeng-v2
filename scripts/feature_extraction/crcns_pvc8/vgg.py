@@ -54,6 +54,10 @@ settings_dict = {
     'two_third': {'scale': 2 / 3, 'rf_size': 32},
     'five_sixth': {'scale': 5 / 6, 'rf_size': 40},
     'one': {'scale': 1.0, 'rf_size': 48},
+
+    # matching amount of info in the data-driven version.
+    'half_full': {'scale': 1 / 2, 'rf_size': 72},
+    'quarter_full': {'scale': 1 / 4, 'rf_size': 36},
 }
 
 bg_dict_per_dataset = {
