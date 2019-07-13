@@ -22,8 +22,11 @@ def load_image_dataset(image_dataset_key):
     assert image_dataset_key in {'large', 'medium'}
     image_data = load_data('crcns_pvc-8_images', image_dataset_key)[:540]
     assert image_data.shape == (540, 320, 320)
-    # normalize data
-    image_data = skimage.img_as_float(image_data)
+
+    assert image_data.dtype == np.uint8
+    # otherwise, images will not be normalized correctly.
+    image_data = skimage.img_as_float(image_data)  # normalize data
+    assert np.all(image_data >= 0.0) and np.all(image_data <= 1.0)
     assert image_data.ndim == 3
     return image_data
 

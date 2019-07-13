@@ -21,9 +21,13 @@ def load_image_dataset(image_dataset_key):
     assert image_dataset_key in {'a/images'}
     image_data = load_data('yuanyuan_8k_images', image_dataset_key)
     assert image_data.shape == (8000, 400, 400)
-    # normalize data
-    image_data = skimage.img_as_float(image_data)
+
+    assert image_data.dtype == np.uint8
+    # otherwise, images will not be normalized correctly.
+    image_data = skimage.img_as_float(image_data)  # normalize data
+    assert np.all(image_data >= 0.0) and np.all(image_data <= 1.0)
     assert image_data.ndim == 3
+    # print('called')
     return image_data
 
 

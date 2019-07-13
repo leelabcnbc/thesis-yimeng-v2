@@ -41,8 +41,14 @@ model_seed_list = (0,)
 # this is enough. I'm more concerned with getting the order of magnitude
 # right, not state of the art performance.
 sparse_list = ('0.1', '0.01', '0.001', '0.0001', '0.00001')
-act_fn_list = ('softplus', 'relu')
-loss_type_list = ('poisson', 'mse')
+act_fn_list = (
+    'softplus',
+    'relu',
+)
+loss_type_list = (
+    'poisson',
+    'mse',
+)
 
 layers_to_check = {
     'vgg16': {
@@ -87,7 +93,7 @@ def get_all_suffix():
         if isinstance(obj, h5py.Dataset):
             meta = fetch_meta(obj, name)
             if meta['dataset'] == 'large' and meta['setting'] in {
-                'half',
+                'half_full', 'quarter_full', 'half',
             }:
                 if meta['layer_name'] in layers_to_check.get(meta['network'],
                                                              set()):

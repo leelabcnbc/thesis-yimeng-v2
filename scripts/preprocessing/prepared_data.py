@@ -28,6 +28,17 @@ crcns_pvc8.natural_data('large', 144, 4, None, read_only=False)
 # print(a[1].mean())  # this should be different every time as seed=None
 crcns_pvc8.natural_data('medium', 144, 4, None, read_only=False)
 
+# some additional configure, to investigate why using 144 portions don't work for transfer learning.
+
+crcns_pvc8.natural_data('large', 48, 4, None, read_only=False)
+crcns_pvc8.natural_data('large', 48, 2, None, read_only=False)
+
+# for large, vgg11's pool2 (in half config) performed best.
+# they actually covered not only the central 24 pixels (48 in original),
+# but actually 30 pixels. that's 60 in original space.
+crcns_pvc8.natural_data('large', 60, 4, None, read_only=False)
+crcns_pvc8.natural_data('large', 60, 2, None, read_only=False)
+
 # 8k data
 for group in ('a', 'b', 'c'):
     # this is similar to yuanyuan's own processing.
