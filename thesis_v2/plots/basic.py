@@ -10,7 +10,9 @@ def scatter(
         xlabel: str,
         ylabel: str,
         *,
-        scatter_s=1
+        scatter_s=1,
+        xlim=(0,1),
+        ylim=(0,1),
 ):
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
@@ -20,6 +22,6 @@ def scatter(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.axis('equal')
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    ax.set_xlim(*xlim)
+    ax.set_ylim(*ylim)
     ax.plot([0, 1], [0, 1], linestyle='--')
