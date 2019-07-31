@@ -4,6 +4,32 @@ from ... import dir_dict, join
 
 result_root_dir = join(dir_dict['datasets'], 'spike_data_processing', 'yuanyuan_8k')
 
+para_file_mapping_dict = {
+    '042318': (1, 2, 3, 4, 5, 6),
+    '043018': (1, 2, 3, 4, 5, 6),
+    '050718': (1, 2, 3, 5, 6),
+    '050918': (1, 2, 3, 4, 5, 6, 7),
+    '051018': (1, 2, 3, 4, 5, 6),
+    '051118': (1, 2, 3, 4, 5, 6, 7),
+}
+
+imageset_mapping_dict = {
+    '042318': '8000a',
+    '043018': '8000a',
+    '050718': '8000b',
+    '050918': '8000c',
+    '051018': '8000a',
+    '051118': '8000b',
+}
+
+# number of frames per image
+frame_per_image = 16
+# this will be used in splitting movies into frames.
+duration_per_frame = 1 / 85 * 4 * 1000
+# 121-201 (included) in MATLAB, 120 to 201 (excluded) here.
+time_delays_to_try = range(120, 201)
+
+
 def get_file_names(*, flat: bool):
     data_dict = {
         '042318': range(1, 7),

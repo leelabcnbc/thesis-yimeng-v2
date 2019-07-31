@@ -5,7 +5,7 @@ import numpy as np
 def cdttable_to_spike_count(*,
                             cdttable, neurons_to_extract: list,
                             start_time, end_time,
-num_condition_debug,
+                            num_condition_debug,
                             ):
     # cdttable is a numpy array with at least field names
     # {
