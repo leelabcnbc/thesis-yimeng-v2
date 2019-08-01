@@ -29,6 +29,10 @@ def extract_response(
 
     the order of neurons is based on neuron_list.
     """
+    assert type(time_delay) is int
+    assert type(num_frame) is int
+    assert type(extraction_length) is int
+    assert type(frame_time) is float
 
     n_neuron, n_movie, n_timebin = spike_count.shape
 
