@@ -22,12 +22,21 @@ imageset_mapping_dict = {
     '051118': '8000b',
 }
 
+record_paras_file_mapping_dict = {
+    '8000a': 'Record_paras_Mar072018_RP.mat',
+    '8000b': 'Record_paras_May072018_RP8001To16000.mat',
+    '8000c': 'Record_paras_May072018_RP16001To24000.mat',
+}
+
 # number of frames per image
 frame_per_image = 16
 # this will be used in splitting movies into frames.
 duration_per_frame = 1 / 85 * 4 * 1000
 # 121-201 (included) in MATLAB, 120 to 201 (excluded) here.
 time_delays_to_try = range(120, 201)
+
+extration_length_for_finding_time_delay = 48
+extration_length_for_response_computation = 61
 
 
 def get_file_names(*, flat: bool):
