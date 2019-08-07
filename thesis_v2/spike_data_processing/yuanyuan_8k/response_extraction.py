@@ -68,3 +68,59 @@ def extract_response(
     assert result.shape == (len(neuron_list), n_movie * num_frame)
 
     return result
+
+
+def extract_response_given_time_delay(
+        *,
+        time_delays,
+        spike_count_list,
+        param_id_list,
+        mapping_record_paras,
+        frame_per_image,
+        duration_per_frame,
+        normaliztion_config=None,
+        extraction_length,
+):
+    # as long as > 0 is fine, not necessarily > 1 as in time delay computation.
+    assert len(spike_count_list) == len(param_id_list) > 0
+    num_neuron, num_condition = spike_count_list[0].shape[:2]
+    assert time_delays.shape == (num_neuron,)
+
+    response_all = []
+
+    for spike_count, param_id in zip(spike_count_list, param_id_list):
+        assert spike_count.ndim == 3
+        assert spike_count.shape[:2] == (num_neuron, num_condition,)
+        # get the shuffle idx
+
+        sort_idx = mapping_record_paras[param_id, 0][0, 1].ravel()
+        assert sort_idx.shape == (num_condition * frame_per_image,)
+        sort_idx = np.argsort(sort_idx)
+
+        response_this = []
+
+        for neuron_idx, time_delay_this in enumerate(time_delays):
+            response_this.append(
+                extract_response(
+                    spike_count=spike_count,
+                    sort_index=sort_idx,
+                    # convert to int, so that round() method does not get overloaded (producing a float)
+                    time_delay=int(time_delay_this),
+                    num_frame=frame_per_image,
+                    # althougth yuanyuan's code writes 60, it's effectively 61
+                    extraction_length=extraction_length,
+                    frame_time=duration_per_frame,
+                    neuron_list=[neuron_idx, ],
+                    normaliztion_config=normaliztion_config,
+                )
+            )
+        response_this = np.concatenate(response_this, axis=0)
+        response_all.append(response_this)
+    response_all = np.asarray(response_all)
+    # first dim is trial.
+    response_mean = response_all.mean(axis=0)
+
+    return {
+        'response_all': response_all,
+        'response_mean': response_mean,
+    }
