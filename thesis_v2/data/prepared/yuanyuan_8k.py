@@ -8,11 +8,13 @@ from functools import partial
 import numpy as np
 from skimage.transform import downscale_local_mean
 from scipy.io import loadmat
+import h5py
 
 from . import (join, dir_root, one_shuffle_general)
 from ..raw import load_data
 from ... import dir_dict
 from .. import load_data_lazy_helper
+from ...spike_data_processing.yuanyuan_8k import config_8k
 
 
 def images(group, px_kept, final_size, read_only=True):
@@ -109,6 +111,24 @@ def get_neural_data(date_list, scale=None):
         y = y * scale
 
     return y
+
+
+def get_neural_data_per_trial(date_list, scale=None, transpose_idx=(1, 0, 2)):
+    response_all = []
+    with h5py.File(join(config_8k.result_root_dir, 'responses.hdf5'), 'r') as f:
+        for d in date_list:
+            response_all.append(f[d]['response_all'][()])
+    response_all = np.concatenate(response_all, axis=1)
+    if scale is not None:
+        response_all = response_all * scale
+
+    # num_trial x num_neuron x num_image.
+    # response_all.transpose((1, 0, 2)) to get num_neuron x num_trial x num_image
+    # this is for cc_max computation.
+
+    response_all = response_all.transpose(transpose_idx)
+
+    return response_all
 
 
 def get_indices(group, seed):
