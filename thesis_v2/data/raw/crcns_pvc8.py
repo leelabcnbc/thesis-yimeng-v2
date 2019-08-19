@@ -62,15 +62,16 @@ def ld_neural(section: int):
 
     # more type assertion.
     # this is now num_im x num_neuron
-    resp_train = resp_train.sum(axis=1, dtype=np.int64)
-    assert resp_train.shape == (num_im, num_neuron)
-    assert resp_train.dtype == np.int64
+    resp_train_mean = resp_train.sum(axis=1, dtype=np.int64)
+    assert resp_train_mean.shape == (num_im, num_neuron)
+    assert resp_train_mean.dtype == np.int64
     assert resp_train_raw.dtype == np.uint8
 
     return {
-        'mean': resp_train,  # this is shifted, for everyday use,
-                             # with 50 latency (actually is sum)
+        'mean': resp_train_mean,  # this is shifted, for everyday use,
+                                  # with 50 latency (actually is sum)
         'all': resp_train_raw,  # this is unshifted.
+        'all_shifted': resp_train,  # this is for computing cc_max.
         'attrs': {
             'INDCENT': centered_neuron_idx,
             'P_HOMOG': homo,

@@ -104,7 +104,7 @@ def process_crcns_pvc8_image(window_size, px_kept, downscale_ratio,
     return x_all
 
 
-def process_crcns_pvc8_neural_data(window_size, natural_only, centered):
+def process_crcns_pvc8_neural_data(window_size, natural_only, centered, mean=True):
     # load y.
     if window_size == 'large':
         sections = range(1, 8)
@@ -119,21 +119,30 @@ def process_crcns_pvc8_neural_data(window_size, natural_only, centered):
         raise NotImplementedError
 
     y_all = []
+
+    if mean:
+        field = 'mean'
+    else:
+        field = 'all_shifted'
+
     # then load data from all sizes
     for section in sections:
         y_this = load_data('crcns_pvc-8_neural',
-                           '{:02d}/mean'.format(section))
+                           '{:02d}/{}'.format(section, field))
 
         if centered:
             good_idx_this = load_data('crcns_pvc-8_neural',
                                       '{:02d}/attrs/INDCENT'.format(section))
         else:
             raise NotImplementedError
-        y_this = y_this[image_idx_slice, good_idx_this]
+        if mean:
+            y_this = y_this[image_idx_slice, good_idx_this]
+        else:
+            y_this = y_this[image_idx_slice, :, good_idx_this]
         y_all.append(y_this)
         # print('section', section, y_this.shape)
 
-    y_all = np.concatenate(y_all, axis=1)
+    y_all = np.concatenate(y_all, axis=-1)
     return y_all
 
 
