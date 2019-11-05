@@ -31,6 +31,11 @@ class PredBlockBase(nn.Module, ABC):
         raise NotImplementedError
 
     def forward(self, input_lower):
+        # for num_cycle = T
+
+        # we have T+2 lambda_out
+        # and T lambda_pred
+
         # input_lower can be a Tensor or a list/tuple of Tensors.
         higher = self.lambda_out(self.forward_init(input_lower))
 
