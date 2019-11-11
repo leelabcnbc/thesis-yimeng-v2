@@ -6,8 +6,10 @@ class PredBlockBase(nn.Module, ABC):
     def __init__(self, num_cycle):
         super().__init__()
         self.num_cycle = num_cycle
+        # _in captures every blob with same shape as input
+        # _out captures every blob with same shape as output
+        self.lambda_in = LambdaSingle()
         self.lambda_out = LambdaSingle()
-        self.lambda_pred = LambdaSingle()
 
     @abstractmethod
     def forward_update(self, input_higher, input_lower, prediction):
@@ -35,6 +37,7 @@ class PredBlockBase(nn.Module, ABC):
 
         # we have T+2 lambda_out
         # and T lambda_pred
+        input_lower = self.lambda_in(input_lower)
 
         # input_lower can be a Tensor or a list/tuple of Tensors.
         higher = self.lambda_out(self.forward_init(input_lower))
@@ -42,7 +45,7 @@ class PredBlockBase(nn.Module, ABC):
         # update
 
         for _ in range(self.num_cycle):
-            prediction = self.lambda_pred(self.forward_fb(higher))
+            prediction = self.lambda_in(self.forward_fb(higher))
             higher = self.lambda_out(self.forward_update(higher, input_lower, prediction))
 
         higher = self.lambda_out(self.forward_post(higher, input_lower))
