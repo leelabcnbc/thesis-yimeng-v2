@@ -10,19 +10,19 @@ def get_config(*,
     phase1_dict = {
         'max_epoch': max_epoch,
         'lr_config': None,
-        'early_stopping_config': {'patience': 10},
+        'early_stopping_config': {'patience': 10} if (early_stopping_field is not None) else None,
     }
 
     phase2_dict = {
         'max_epoch': max_epoch,
         'lr_config': {'type': 'reduce_by_factor', 'factor': 1 / 3},
-        'early_stopping_config': {'patience': 10},
+        'early_stopping_config': {'patience': 10} if (early_stopping_field is not None) else None,
     }
 
     phase3_dict = {
         'max_epoch': max_epoch,
         'lr_config': {'type': 'reduce_by_factor', 'factor': 1 / 3},
-        'early_stopping_config': {'patience': 10},
+        'early_stopping_config': {'patience': 10} if (early_stopping_field is not None) else None,
     }
 
     phase_config_dict_list = [phase1_dict, phase2_dict, phase3_dict]

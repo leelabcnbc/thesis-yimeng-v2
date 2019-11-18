@@ -7,7 +7,8 @@ from ..training.training_aux import infinite_n_batch_loader
 
 
 # noinspection PyPep8Naming
-def _check_dataset_shape(X: np.ndarray, y: Union[np.ndarray, tuple]):
+def _check_dataset_shape(X: np.ndarray, y: Union[np.ndarray, tuple],
+                         x_dim=4, y_dim=2):
     if not (X is None and y is None):
         if not isinstance(y, np.ndarray):
             assert isinstance(y, tuple)
@@ -16,7 +17,7 @@ def _check_dataset_shape(X: np.ndarray, y: Union[np.ndarray, tuple]):
         else:
             y_additional = ()
         assert isinstance(X, np.ndarray) and isinstance(y, np.ndarray)
-        assert X.ndim == 4 and y.ndim == 2
+        assert X.ndim == x_dim and y.ndim == y_dim
         # print(X.shape, y.shape)
         assert X.shape[0] == y.shape[0] and X.shape[0] > 0
 
@@ -56,10 +57,11 @@ def generate_datasets(*,
                       y_test: Union[np.ndarray, tuple] = None,
                       batch_size=256, per_epoch_train=True,
                       shuffle_train=True,
+                      y_dim=2,
                       ):
-    X_train, y_train = _check_dataset_shape(X_train, y_train)
-    X_test, y_test = _check_dataset_shape(X_test, y_test)
-    X_val, y_val = _check_dataset_shape(X_val, y_val)
+    X_train, y_train = _check_dataset_shape(X_train, y_train, y_dim=y_dim,)
+    X_test, y_test = _check_dataset_shape(X_test, y_test, y_dim=y_dim,)
+    X_val, y_val = _check_dataset_shape(X_val, y_val, y_dim=y_dim,)
 
     if per_epoch_train:
         assert X_train.size()[0] >= batch_size

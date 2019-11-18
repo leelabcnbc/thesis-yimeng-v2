@@ -23,6 +23,7 @@ def train_one_inner(*,
                     eval_fn,
                     return_model,
                     shuffle_train=True,
+                    extra_params=None,
                     ):
     # does three things.
     # 1. seed
@@ -33,10 +34,14 @@ def train_one_inner(*,
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
+    if extra_params is None:
+        extra_params = dict()
+
     assert isinstance(datasets, dict)
     datasets_done = generate_datasets(
         **datasets,
         per_epoch_train=True, shuffle_train=shuffle_train,
+        **extra_params.get('datasets', {}),
     )
 
     return training_wrapper(model,
@@ -65,7 +70,9 @@ def train_one_wrapper(*,
                       early_stopping_field,
                       device,
                       val_test_every,
-                      return_model):
+                      return_model,
+                      extra_params=None,
+                      ):
     assert device is not None
     if model_seed is not None:
         torch.manual_seed(model_seed)
@@ -111,4 +118,5 @@ def train_one_wrapper(*,
         config=config,
         loss_fn=loss_fn,
         optimizer=optimizer,
+        extra_params=extra_params,
     )
