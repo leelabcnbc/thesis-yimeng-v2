@@ -1,4 +1,3 @@
-from sys import path
 from os.path import join, dirname
 from os import makedirs
 # from collections import OrderedDict
@@ -14,10 +13,11 @@ from thesis_v2.data.prepared.yuanyuan_8k import get_data
 from thesis_v2.feature_extraction.extraction import extract_features
 from thesis_v2.models.maskcnn_polished_with_local_pcn.builder import load_modules
 
-folder_to_check = 'scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_local_pcn'
-path.insert(0, join(dir_dict['root'], folder_to_check))
-from submit_certain_configs import param_iterator_obj
-from key_utils import keygen, script_keygen
+from thesis_v2.configs.model.maskcnn_polished_with_local_pcn import (
+    explored_models_summer_2019_certain,
+    script_keygen,
+    keygen
+)
 
 load_modules()
 
@@ -46,7 +46,7 @@ def good_model_param(param):
 
 def get_all_model_params():
     all_params_dict = dict()
-    for idx, param in enumerate(param_iterator_obj.generate()):
+    for idx, param in enumerate(explored_models_summer_2019_certain().generate()):
         # let's use a fully recurrent one for debugging.
         if not good_model_param(param):
             continue
