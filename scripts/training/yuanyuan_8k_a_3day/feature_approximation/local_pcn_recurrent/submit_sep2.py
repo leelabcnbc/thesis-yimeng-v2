@@ -43,9 +43,7 @@ def good_model_param(param):
     return param['pcn_cls'] == 5 and param['input_size'] == 50
 
 
-def main():
-    script_dict = dict()
-
+def param_iterator():
     for key_script, basemodel_param_dict in model_params_local_pcn_recurrent_summer_2019_certain(
             good_model_param
     ).items():
@@ -60,23 +58,39 @@ def main():
                 }
             }
 
-            key_this = script_keygen(**{
+            key_this, key_this_original = script_keygen(
+                return_original_key=True,
+                **{
                 **param_dict_actual,
                 # add model_prefix
                 **{
-                    'model_prefix': consts['local_pcn_recurrent_sep2_model_prefix']
-                }
+                    'model_prefix': consts['local_pcn_recurrent_sep2_model_prefix'],
+                },
             })
 
-            script_dict[key_this] = utils.call_script_formatter(
-                call_script, set(),
-                current_dir=current_dir,
-                **param_dict_actual,
-            )
+            yield {
+                'param_dict_actual': param_dict_actual,
+                'key_this': key_this,
+                'key_this_original': key_this_original,
+            }
+
+
+def main():
+    script_dict = dict()
+
+    for data in param_iterator():
+        key_this = data['key_this']
+        param_dict_actual = data['param_dict_actual']
+
+        script_dict[key_this] = utils.call_script_formatter(
+            call_script, set(),
+            current_dir=current_dir,
+            **param_dict_actual,
+        )
 
     utils.submit(
         # the transfer learning one is fine.
-        script_dict, 'maskcnn_like', 'standard', False,
+        script_dict, 'maskcnn_like', 'standard', True,
         dirname_relative='scripts+yuanyuan_8k_a_3day+feature_approximation_lpcn_recurrent_sep2'  # noqa: E501
     )
 

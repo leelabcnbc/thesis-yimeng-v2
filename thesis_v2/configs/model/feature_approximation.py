@@ -92,9 +92,13 @@ def keygen(*,
     return f'{dataset_prefix}/{model_prefix}/baseidx{basemodel_idx}/act{act_fn}/loss{loss_type}/k{kernel_size}/bn_pre{bn_pre}/model_seed{model_seed}'  # noqa: E501
 
 
-def script_keygen(**kwargs):
+def script_keygen(*, return_original_key=False, **kwargs):
     del kwargs['basemodel_key_script']
     key = keygen(**kwargs)
 
     # remove dataset_prefix/model_prefix part
-    return '+'.join(key.split('/')[2:])
+    ret = '+'.join(key.split('/')[2:])
+    if return_original_key:
+        return ret, key
+    else:
+        return ret
