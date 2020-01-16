@@ -50,6 +50,9 @@ class FactoredLinear2D(nn.Module):
             # noinspection PyTypeChecker
             self.register_parameter('bias', None)
         self.reset_parameters()
+        # hack for ONNX2Keras
+        self.weight = None
+        self.flat_size = self.in_channels * self.map_size[0] * self.map_size[1]
         # print('changed impl')
 
     def reset_parameters(self) -> None:
@@ -64,9 +67,12 @@ class FactoredLinear2D(nn.Module):
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
 
-    def forward(self, input_x: torch.Tensor):
-        # I assume that input has shape (N, in_channels, map_size[0],
-        # map_size[1]
+
+    def set_weight_for_eval(self):
+        with torch.no_grad():
+            self.weight = self.get_weight()
+
+    def get_weight(self):
         # first get the weights.
 
         weight_spatial_view = self.weight_spatial
@@ -104,10 +110,22 @@ class FactoredLinear2D(nn.Module):
                                                 self.in_channels,
                                                 self.map_size[0],
                                                 self.map_size[1])
-        weight = weight.view(self.out_features,
-                             self.in_channels * self.map_size[0] *
-                             self.map_size[1])
-        return functional.linear(input_x.view(input_x.size(0), -1),
+        weight = weight.view(self.out_features, self.flat_size)
+
+        return weight
+
+    def forward(self, input_x: torch.Tensor):
+        # I assume that input has shape (N, in_channels, map_size[0],
+        # map_size[1]
+
+        if self.weight is not None:
+            weight = self.weight
+        else:
+            weight = self.get_weight()
+
+        # having -1 in the batch dim is very important. otherwise onnx2keras will fail to infer the correct shape.
+        # previously I used input_x.view(input_x.size(0), -1)
+        return functional.linear(input_x.view(-1, self.flat_size),
                                  weight, self.bias)
 
 

@@ -56,8 +56,7 @@ singularity shell --nv -B /data2/yimengzh:/my_data -B /scratch:/my_data_2 ~/tool
 This is a new toolchain image with PyTorch 1.3.1 and TensorFlow 1.14.0. Check  `$ROOT/toolchain/20200106`.
 At late night January 6, 2020 (Pacific Time), I generated both the Docker image and the Singularity image on `yimengzh2080ti.cnbc.cmu.edu`
 
-* The Docker image tar has MD5 `b72ebbd5efb5bc2983d460ffca56ee02`
-* The Singularity image name `yimeng-thesis-v2-20200106_726ed91c60c6f4ac02c87379f32d80e0.simg`
+* The Singularity image name `yimeng-thesis-v2-20200106_2c0c603d8a871cd40d99848371ad443a.simg`
 
 ## download some data set
 

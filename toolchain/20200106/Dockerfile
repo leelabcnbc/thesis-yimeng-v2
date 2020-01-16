@@ -19,9 +19,14 @@ RUN conda create -n leelab -c conda-forge -y python==3.7.6 \
     # additional pytorch deps and extra packages.
     scikit-image==0.16.2 scikit-learn==0.22 joblib==0.14.1 \
     # tf. 1.15 does not work, giving core dump for keras-vis and sometimes keras.
+    # tf 2.0 does not work with keras-vis
     tensorflow-gpu==1.14.0 \
     # psutil for <https://github.com/leelabcnbc/thesis-yimeng-v1/issues/20>
     psutil==5.6.7 \
+    # for torchvision bug https://github.com/pytorch/vision/issues/1712
+    pillow==6.2.1 \
+    # onnx https://github.com/onnx/onnx/issues/2434
+    onnx==1.6.0 protobuf=3.9.2 \
     && conda clean --all
 
 # pytorch
