@@ -102,6 +102,9 @@ def do_one(param):
                       output_names=['output'],
                       # for https://github.com/pytorch/pytorch/issues/30289
                       keep_initializers_as_inputs=True,
+                      # this part should really be added, but for our purpose,
+                      # it's not necessary, since onnx2keras does not care about it.
+                      # dynamic_axes={'input': [0, ], 'output': [0, ]}
                       )
 
 
