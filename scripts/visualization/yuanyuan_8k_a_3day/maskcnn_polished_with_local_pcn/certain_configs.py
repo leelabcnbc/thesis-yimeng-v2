@@ -179,12 +179,12 @@ def show_diff_every_key(dict_ret, dict_per_ret, neurons_to_check_this_one_dict_r
 def get_candidates_to_visualize():
     # in these cases, the differences look big enough.
     candidates_to_visualize = [
-        #     # 0.062192652728396414 0.03907294184369914 0.5513841263769397 0.5123111845332405
-        #     (('loss_type', 'poisson'), ('input_size', 50), ('pcn_bn', False), ('pcn_final_act', True), ('pcn_bn_post', False), ('act_fn', 'relu'), ('bn_before_act', True)),
-        #     # 0.0629323663988261 0.016065903548365235 0.5353156029314999 0.5192496993831347
-        #     (('pcn_final_act', False), ('input_size', 50), ('pcn_bn', False), ('loss_type', 'mse'), ('pcn_bn_post', False), ('bn_before_act', True), ('act_fn', 'softplus')),
-        #     # 0.04289359964839312 0.017826213557316284 0.581971909255969 0.5641456956986527
-        #     (('loss_type', 'poisson'), ('pcn_final_act', False), ('input_size', 50), ('pcn_bn', False), ('pcn_bn_post', False), ('bn_before_act', True), ('act_fn', 'softplus')),
+            # 0.062192652728396414 0.03907294184369914 0.5513841263769397 0.5123111845332405
+            (('loss_type', 'poisson'), ('input_size', 50), ('pcn_bn', False), ('pcn_final_act', True), ('pcn_bn_post', False), ('act_fn', 'relu'), ('bn_before_act', True)),
+            # 0.0629323663988261 0.016065903548365235 0.5353156029314999 0.5192496993831347
+            (('pcn_final_act', False), ('input_size', 50), ('pcn_bn', False), ('loss_type', 'mse'), ('pcn_bn_post', False), ('bn_before_act', True), ('act_fn', 'softplus')),
+            # 0.04289359964839312 0.017826213557316284 0.581971909255969 0.5641456956986527
+            (('loss_type', 'poisson'), ('pcn_final_act', False), ('input_size', 50), ('pcn_bn', False), ('pcn_bn_post', False), ('bn_before_act', True), ('act_fn', 'softplus')),
         # 0.026568696278369885 0.034808706083833796 0.6656576629735268 0.630848956889693
         (('loss_type', 'poisson'), ('pcn_bn', False), ('pcn_final_act', True), ('input_size', 100),
          ('bn_before_act', True),
