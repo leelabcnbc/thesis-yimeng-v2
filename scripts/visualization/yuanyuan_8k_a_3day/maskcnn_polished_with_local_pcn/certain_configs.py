@@ -328,6 +328,8 @@ def visualize_all_cases(*,
 
 
 def main():
+    # while I set a seed using `seed_str`, somehow keras-vis won't give identical results across runs,
+    # probably due to some undeterminism in tensorflow.
     tv_weight_str, lp_norm_weight_str, seed_str = argv[1:]
 
     data_pkl = join(dir_dict['visualization'],
