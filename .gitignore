@@ -41,3 +41,6 @@ __pycache__/
 
 # fp16
 /apex_fp16_utils/
+
+# bl_ecoset.h5
+/scripts/debug/rcnn_basic_kriegeskorte/bl_ecoset.h5
