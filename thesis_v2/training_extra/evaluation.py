@@ -28,12 +28,20 @@ def eval_fn_wrapper(*,
                     yhat_all, y_all, loss_type,
                     # setting return_corr to True can make tracking training performance a lot easier.
                     return_corr=True,
-                    legacy_corr=True):
+                    legacy_corr=True,
+                    yhat_reduce_axis=0,
+                    ):
     # yhat_all and y_all
     # are batches of results as a list.
     # models always return list (even with only 1 element)
-    yhat_all_neural = np.concatenate([x[0] for x in yhat_all], axis=0)
+    yhat_all_neural = np.concatenate([x[0] for x in yhat_all], axis=yhat_reduce_axis)
     y_all_neural = np.concatenate([x[0] for x in y_all], axis=0)
+
+    if yhat_all_neural.shape != y_all_neural.shape:
+        assert yhat_all_neural.ndim == 3
+        # if it's 3 dim, then first dim is timestep.
+        # pick the last timestep.
+        yhat_all_neural = yhat_all_neural[-1]
 
     assert yhat_all_neural.shape == y_all_neural.shape
     assert y_all_neural.ndim == 2

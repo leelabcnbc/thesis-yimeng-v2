@@ -131,3 +131,25 @@ class BLConvLayerStack(nn.Module):
 
         # return a list of Tensors, of length `self.n_timesteps`.
         return output_list
+
+
+class RecurrentAccumulator(nn.Module):
+    def __init__(self, mode: str):
+        super().__init__()
+        assert mode in {'instant', 'cummean'}
+        self.mode = mode
+
+    def forward(self, input_tensor_tuple):
+        assert isinstance(input_tensor_tuple, tuple)
+        ret = []
+        if self.mode == 'instant':
+            # instant readout mode.
+            return input_tensor_tuple
+        elif self.mode == 'cummean':
+            # this is the cumulative mode in the original paper.
+            # https://discuss.pytorch.org/t/get-the-mean-from-a-list-of-tensors/31989/3
+            for i in range(len(input_tensor_tuple)):
+                ret.append(torch.mean(torch.stack(input_tensor_tuple[:i + 1]), 0))
+            return tuple(ret)
+        else:
+            raise ValueError

@@ -12,6 +12,7 @@ def generate_param_dict(*,
                         module_dict,
                         op_params=None,
                         comments=None,
+                        output_list=True,
                         ):
     if op_params is None:
         # simplest one
@@ -67,6 +68,10 @@ def generate_param_dict(*,
             'op_list': op_list,
             'out': [z['out'] for z in op_params if z['keep_out']],
         }
+
+    if not output_list:
+        assert len(param_dict['out']) == 1
+        param_dict['out'] = param_dict['out'][0]
 
     if comments is not None:
         param_dict['comments'] = comments

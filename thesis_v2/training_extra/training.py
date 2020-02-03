@@ -22,8 +22,8 @@ def train_one_inner(*,
                     config,
                     eval_fn,
                     return_model,
+                    extra_params,
                     shuffle_train=True,
-                    extra_params=None,
                     ):
     # does three things.
     # 1. seed
@@ -33,9 +33,6 @@ def train_one_inner(*,
     if seed is not None:
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-
-    if extra_params is None:
-        extra_params = dict()
 
     assert isinstance(datasets, dict)
     datasets_done = generate_datasets(
@@ -71,8 +68,11 @@ def train_one_wrapper(*,
                       device,
                       val_test_every,
                       return_model,
-                      extra_params=None,
+                      extra_params=None
                       ):
+    if extra_params is None:
+        extra_params = dict()
+
     assert device is not None
     if model_seed is not None:
         torch.manual_seed(model_seed)
@@ -89,12 +89,20 @@ def train_one_wrapper(*,
     # initialize the model
     model = build_net(model_json)
     initialize_model_fn(model, {'datasets': datasets})
+
     print('num_param', count_params(model))
     model = model.to(device)
     model = model.train()
 
     loss_fn = get_loss_fn(opt_config=opt_config)
     optimizer = get_optimizer_fn(model, opt_config['optimizer'])
+
+    # these two can be found in `init.pth` of a trained model.
+    if 'init_model_state_dict' in extra_params:
+        model.load_state_dict(extra_params['init_model_state_dict'])
+
+    if 'init_optimizer_state_dict' in extra_params:
+        optimizer.load_state_dict(extra_params['init_optimizer_state_dict'])
 
     config = get_config(
         device=device,
@@ -104,7 +112,7 @@ def train_one_wrapper(*,
         show_every=show_every,
     )
 
-    eval_fn = partial(eval_fn_wrapper, loss_type=opt_config['loss'])
+    eval_fn = partial(eval_fn_wrapper, loss_type=opt_config['loss'], **extra_params.get('eval_fn', {}))
 
     return train_one_inner(
         model=model,

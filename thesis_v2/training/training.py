@@ -170,7 +170,7 @@ def _load_state(f_best, model, optimizer):
     optimizer.load_state_dict(checkpoint['optimizer'])
 
 
-def _save_state(f_best, model, optimizer):
+def save_state(f_best, model, optimizer):
     torch.save({
         'model': model.state_dict(),
         'optimizer': optimizer.state_dict(),
@@ -390,7 +390,7 @@ def train_one_phase(model, loss_func, dataset_train,
                 }
 
                 # save state
-                _save_state(f_best, model, optimizer)
+                save_state(f_best, model, optimizer)
             else:
                 conf_es['early_stopping_wait'] += 1
                 # print(f'patience {early_stopping_wait}')
@@ -426,7 +426,7 @@ def train_one_phase(model, loss_func, dataset_train,
             _load_state(f_best, model, optimizer)
         else:
             # just save last one.
-            _save_state(f_best, model, optimizer)
+            save_state(f_best, model, optimizer)
             stats_best = {
                 'best_phase': phase_idx,
                 'best_epoch': conf['max_epoch'] - 1,

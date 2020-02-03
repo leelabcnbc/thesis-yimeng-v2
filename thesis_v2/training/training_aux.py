@@ -14,7 +14,7 @@ from torch import nn, load, optim, Tensor
 from torch.utils.data import DataLoader
 
 from .. import dir_dict, join
-from .training import train, fill_in_config
+from .training import train, fill_in_config, save_state
 
 json_mapping = {
     'stats_best': 'stats_best.json',
@@ -175,6 +175,9 @@ def training_wrapper(model: nn.Module, *,
                       'w', encoding='utf-8') as f_json_config:
                 json.dump(v_config, f_json_config)
 
+        # store init model and optimizer parameter
+        save_state(join(store_dir, 'init.pth'), model, optimizer)
+
         with TemporaryDirectory(
                 dir=os.environ.get('THESIS_TEMP_FOLDER', None)
         ) as temp_dir:
@@ -203,6 +206,7 @@ def training_wrapper(model: nn.Module, *,
             f_ts_done.write(ts_done)
     else:
         # check everything exists.
+        # TODO: should have 'init.pth' for a recently trained model.
         for fname in list(json_mapping.values()) + ['best.pth', ]:
             assert exists(join(store_dir, fname)), 'broken training result!'
 
