@@ -3,6 +3,8 @@ from typing import List
 import torch
 from torch import nn
 
+from .. import register_module, standard_init, bn_init_passthrough
+
 
 class BLConvLayer(nn.Module):
     def __init__(self,
@@ -62,6 +64,7 @@ class BLConvLayerStack(nn.Module):
                  bias: bool = False,
                  act_fn: str = 'relu',
                  bn_eps=1e-5,
+                 pool_ksize=2,
                  ):
         # channel_list should be of length 1+number of layers.
         # channel_list[0] being the number of channels for input
@@ -96,7 +99,13 @@ class BLConvLayerStack(nn.Module):
         else:
             raise NotImplementedError
 
-        self.pool = nn.MaxPool2d(kernel_size=2)
+        self.pool_ksize = pool_ksize
+        assert self.pool_ksize >= 1
+
+        if self.pool_ksize > 1:
+            self.pool = nn.MaxPool2d(kernel_size=pool_ksize, ceil_mode=True)
+        else:
+            self.pool = nn.Identity()
 
     def forward(self, b_input):
         # main loop
@@ -129,8 +138,8 @@ class BLConvLayerStack(nn.Module):
 
             output_list.append(last_out[self.n_layer - 1])
 
-        # return a list of Tensors, of length `self.n_timesteps`.
-        return output_list
+        # return a tuple of Tensors, of length `self.n_timesteps`.
+        return tuple(output_list)
 
 
 class RecurrentAccumulator(nn.Module):
@@ -153,3 +162,50 @@ class RecurrentAccumulator(nn.Module):
             return tuple(ret)
         else:
             raise ValueError
+
+
+# pcn local init
+def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
+    n_time = mod.n_timesteps
+    n_layer = mod.n_layer
+
+    attrs_to_init = [
+                        f'layer_list.{x}.b_conv.weight' for x in range(n_layer)
+                    ] + [
+                        f'layer_list.{x}.l_conv.weight' for x in range(n_layer)
+                    ]
+    attrs_to_init_zero_optional = [
+                                      f'layer_list.{x}.b_conv.bias' for x in range(n_layer)
+                                  ] + [
+                                      f'layer_list.{x}.l_conv.bias' for x in range(n_layer)
+                                  ]
+    left_out_attrs = [
+                         f'bn_layer_list.{x}.weight' for x in range(n_time * n_layer)
+                     ] + [
+                         f'bn_layer_list.{x}.bias' for x in range(n_time * n_layer)
+                     ] + [
+                         f'bn_layer_list.{x}.num_batches_tracked' for x in range(n_time * n_layer)
+                     ] + [
+                         f'bn_layer_list.{x}.running_var' for x in range(n_time * n_layer)
+                     ]+ [
+                         f'bn_layer_list.{x}.running_mean' for x in range(n_time * n_layer)
+                     ]
+
+
+    # all bns
+    for i in range(n_time * n_layer):
+        bn_init_passthrough(
+            mod.bn_layer_list[i], dict()
+        )
+
+    # all ff convs
+    # all lateral convs
+    standard_init(
+        mod, init, attrs_to_init=tuple(attrs_to_init),
+        attrs_to_init_zero_optional=tuple(attrs_to_init_zero_optional),
+        left_out_attrs=tuple(left_out_attrs)
+    )
+
+
+register_module('rcnn_kriegeskorte.blstack', BLConvLayerStack, blconvlayerstack_init)
+register_module('rcnn_kriegeskorte.accumulator', RecurrentAccumulator)
