@@ -68,6 +68,15 @@ def generate_param_dict(*,
                     'in': op_param_dict['in'],
                     'out': op_param_dict['out'],
                 })
+            elif op_param_dict['type'] == 'stack':
+                assert op_param_dict['param'].keys() <= {'dim'}
+                op_list.append({
+                    'name': 'stack',
+                    'args': [],
+                    'kwargs': {'dim': op_param_dict['param'].get('dim', 0)},
+                    'in': op_param_dict['in'],
+                    'out': op_param_dict['out'],
+                })
             else:
                 raise NotImplementedError
 

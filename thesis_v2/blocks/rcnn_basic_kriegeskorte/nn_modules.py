@@ -63,7 +63,9 @@ class BLConvLayerStack(nn.Module):
                  ksize_list: List[int],
                  bias: bool = False,
                  act_fn: str = 'relu',
-                 bn_eps=1e-5,
+                 # these two values match those set in `thesis_v2/blocks_json/general.py`
+                 bn_eps=0.001,
+                 bn_momentum=0.1,
                  pool_ksize=2,
                  ):
         # channel_list should be of length 1+number of layers.
@@ -87,7 +89,7 @@ class BLConvLayerStack(nn.Module):
         for t in range(n_timesteps):
             # https://discuss.pytorch.org/t/convering-a-batch-normalization-layer-from-tf-to-pytorch/20407/2
             self.bn_layer_list.extend([nn.BatchNorm2d(num_features=channel_list[i + 1],
-                                                      eps=bn_eps) for i in range(n_layer)])
+                                                      eps=bn_eps, momentum=bn_momentum) for i in range(n_layer)])
         self.bn_layer_list = nn.ModuleList(
             self.bn_layer_list
         )
@@ -96,6 +98,8 @@ class BLConvLayerStack(nn.Module):
             self.act_fn = nn.ReLU(inplace=True)
         elif act_fn == 'softplus':
             self.act_fn = nn.Softplus()
+        elif act_fn is None:
+            self.act_fn = nn.Identity()
         else:
             raise NotImplementedError
 
