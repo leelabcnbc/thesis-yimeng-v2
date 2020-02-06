@@ -47,8 +47,16 @@ def generate_param_dict(*,
             if op_param_dict['type'] == 'sequential':
                 # this is only one supported
                 # op_param_dict['param'] is a function
+                if callable(op_param_dict['param']):
+                    predicate = op_param_dict['param']
+                    seq_op_args = dict()
+                else:
+                    # it should be an iterable with 2 elements
+                    predicate, seq_op_args = op_param_dict['param']
+                assert seq_op_args.keys() <= {'module_op_name'}
+                module_op_name = seq_op_args.get('module_op_name', 'module')
                 op_spec_list = [{
-                    'name': 'module',
+                    'name': module_op_name,
                     'args': [x],
                     'kwargs': {},
                 } for idx, x in enumerate(module_dict.keys()) if op_param_dict['param'](idx, x)
