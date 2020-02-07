@@ -25,7 +25,7 @@ def blstack(
 
     map_size = input_size
 
-    for layer_idx, k in kernel_size_list:
+    for layer_idx, k in enumerate(kernel_size_list):
         assert type(k) is int
         assert k > 0 and k % 2 == 1
         # pooling for layer_idx > 0

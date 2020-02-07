@@ -8,7 +8,7 @@ from ...blocks import load_modules as load_modules_global
 from ...blocks_json import general, utils, maskcnn, pooling, rcnn_kriegeskorte
 
 
-def gen_rcnn_kriegeskorte_bl(
+def gen_maskcnn_polished_with_rcnn_k_bl(
         input_size, num_neuron, *,
         out_channel=48,
         kernel_size_l1=13, kernel_size_l23=3,
@@ -18,18 +18,21 @@ def gen_rcnn_kriegeskorte_bl(
         pooling_type='max',
         pooling_ksize=2,
         num_layer=3,
-        bn_before_act=True,
         bn_after_fc=False,
         # 1 means feedforward
         n_timesteps=1,
         blstack_pool_ksize=1,
         acc_mode='cummean',
+        debug_args=None,
 ):
     assert num_layer >= 1
     assert kernel_size_l1 % 2 == 1
     assert kernel_size_l23 % 2 == 1
 
     input_size = utils.check_input_size(input_size)
+
+    if debug_args is None:
+        debug_args = dict()
 
     module_dict = OrderedDict()
 
@@ -60,7 +63,7 @@ def gen_rcnn_kriegeskorte_bl(
     utils.update_module_dict(module_dict,
                              rcnn_kriegeskorte.accumulator(
                                  name='accumulator',
-                                 mode='acc_mode',
+                                 mode=acc_mode,
                              )
                              )
 
@@ -118,15 +121,21 @@ def gen_rcnn_kriegeskorte_bl(
         general.act(name='final_act',
                     act_fn=act_fn)
     )
+    conv_stage_modules = {'bn_input', 'bl_stack', 'accumulator'}
+    if debug_args.get('only_fc', False):
+        fc_stage_modules = {'fc'}
+    else:
+        # this is for debugging. note that please set pooling_ksize to 1 to facilitate debugging.
+        fc_stage_modules = {'pooling', 'fc', 'bn_output', 'final_act'}
+    print(fc_stage_modules)
 
-    fc_stage_modules = {'pooling', 'fc', 'bn_output', 'final_act'}
-
+    use_stack = debug_args.get('stack', True)
     param_dict = utils.generate_param_dict(
         module_dict=module_dict,
         op_params=[
             {
                 'type': 'sequential',
-                'param': ((lambda idx, x: x not in fc_stage_modules), {'kwargs': {'unpack': False}}),
+                'param': ((lambda idx, x: x in conv_stage_modules), {'module_op_kwargs': {'unpack': False}}),
                 'in': 'input0',
                 'out': 'feature_map',
                 'keep_out': False,
@@ -136,9 +145,11 @@ def gen_rcnn_kriegeskorte_bl(
                 'param': ((lambda idx, x: x in fc_stage_modules), {'module_op_name': 'module_repeat'}),
                 'in': 'feature_map',
                 'out': 'out_neural_separate',
-                'keep_out': False,
+                'keep_out': not use_stack,
             },
             # finally combine them together.
+
+        ] + ([
             {
                 'type': 'stack',
                 'param': {'dim': 0},
@@ -146,10 +157,11 @@ def gen_rcnn_kriegeskorte_bl(
                 'out': 'out_neural',
                 'keep_out': True,
             }
-        ],
+        ] if use_stack else []),
         comments={
             'conv_layers': [f'stack.layer_list.{x}.b_conv' for x in range(num_layer)]
-        }
+        },
+        output_list=use_stack
     )
     return param_dict
 
@@ -158,5 +170,6 @@ def gen_rcnn_kriegeskorte_bl(
 def load_modules():
     load_modules_global([
         'maskcnn.factoredfc',
-        'localpcn_purdue.baseline',
+        'rcnn_kriegeskorte.blstack',
+        'rcnn_kriegeskorte.accumulator',
     ])

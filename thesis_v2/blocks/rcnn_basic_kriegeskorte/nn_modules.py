@@ -12,6 +12,7 @@ class BLConvLayer(nn.Module):
                  outchan: int,
                  ksize: int,
                  bias: bool,
+                 generate_lateral: bool,
                  ):
         super().__init__()
         assert ksize % 2 == 1
@@ -29,7 +30,7 @@ class BLConvLayer(nn.Module):
             kernel_size=ksize,
             padding=ksize // 2,
             bias=bias,
-        )
+        ) if generate_lateral else None
 
     def forward(self, b_input, l_input, bias_output=None):
         b_output = None
@@ -81,7 +82,8 @@ class BLConvLayerStack(nn.Module):
             [BLConvLayer(inchan=channel_list[i],
                          outchan=channel_list[i + 1],
                          ksize=ksize_list[i],
-                         bias=bias) for i in range(n_layer)]
+                         bias=bias,
+                         generate_lateral=(n_timesteps > 1)) for i in range(n_layer)]
         )
 
         # BN layers.
@@ -175,14 +177,14 @@ def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
 
     attrs_to_init = [
                         f'layer_list.{x}.b_conv.weight' for x in range(n_layer)
-                    ] + [
+                    ] + ([
                         f'layer_list.{x}.l_conv.weight' for x in range(n_layer)
-                    ]
+                    ] if n_time > 1 else [])
     attrs_to_init_zero_optional = [
                                       f'layer_list.{x}.b_conv.bias' for x in range(n_layer)
-                                  ] + [
+                                  ] + ([
                                       f'layer_list.{x}.l_conv.bias' for x in range(n_layer)
-                                  ]
+                                  ] if n_time > 1 else [])
     left_out_attrs = [
                          f'bn_layer_list.{x}.weight' for x in range(n_time * n_layer)
                      ] + [

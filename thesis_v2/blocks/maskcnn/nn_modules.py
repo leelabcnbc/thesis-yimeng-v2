@@ -125,7 +125,12 @@ class FactoredLinear2D(nn.Module):
 
         # having -1 in the batch dim is very important. otherwise onnx2keras will fail to infer the correct shape.
         # previously I used input_x.view(input_x.size(0), -1)
-        return functional.linear(input_x.view(-1, self.flat_size),
+        #
+        # using -1 in the first arg of .view can be dangerous, as you may actually passed in
+        # some data of in correct shape.
+        input_x_correct_shape = input_x.view(-1, self.flat_size)
+        assert input_x_correct_shape.size(0) == input_x.size(0)
+        return functional.linear(input_x_correct_shape,
                                  weight, self.bias)
 
 

@@ -53,13 +53,14 @@ def generate_param_dict(*,
                 else:
                     # it should be an iterable with 2 elements
                     predicate, seq_op_args = op_param_dict['param']
-                assert seq_op_args.keys() <= {'module_op_name'}
+                assert seq_op_args.keys() <= {'module_op_name', 'module_op_kwargs'}
                 module_op_name = seq_op_args.get('module_op_name', 'module')
+                module_op_kwargs = seq_op_args.get('module_op_kwargs', {})
                 op_spec_list = [{
                     'name': module_op_name,
                     'args': [x],
-                    'kwargs': {},
-                } for idx, x in enumerate(module_dict.keys()) if op_param_dict['param'](idx, x)
+                    'kwargs': module_op_kwargs,
+                } for idx, x in enumerate(module_dict.keys()) if predicate(idx, x)
                 ]
                 op_list.append({
                     'name': 'sequential',
@@ -87,6 +88,7 @@ def generate_param_dict(*,
         }
 
     if not output_list:
+        print(param_dict['out'])
         assert len(param_dict['out']) == 1
         param_dict['out'] = param_dict['out'][0]
 
