@@ -10,19 +10,33 @@ from ...blocks_json import general, utils, maskcnn, pooling, rcnn_kriegeskorte
 
 def gen_maskcnn_polished_with_rcnn_k_bl(
         input_size, num_neuron, *,
-        out_channel=48,
-        kernel_size_l1=13, kernel_size_l23=3,
-        factored_constraint=None,
-        act_fn='softplus',
+        # = 48
+        out_channel,
+        # = 13
+        kernel_size_l1,
+        # = 3
+        kernel_size_l23,
+        # = None,
+        factored_constraint,
+        # = 'softplus'
+        act_fn,
+        # ='max'
+        pooling_type,
+        # =2
+        pooling_ksize,
+        # =3,
+        num_layer,
+        # =1 means feedforward
+        n_timesteps,
+        # =1,
+        blstack_pool_ksize,
+        # =None,
+        blstack_pool_type,
+        # ='cummean',
+        acc_mode,
+        # =False,
+        bn_after_fc,
         do_init=True,
-        pooling_type='max',
-        pooling_ksize=2,
-        num_layer=3,
-        bn_after_fc=False,
-        # 1 means feedforward
-        n_timesteps=1,
-        blstack_pool_ksize=1,
-        acc_mode='cummean',
         debug_args=None,
 ):
     assert num_layer >= 1
@@ -55,6 +69,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                  channel_list=[1, ] + [out_channel, ] * num_layer,
                                  kernel_size_list=[kernel_size_l1, ] + [kernel_size_l23, ] * (num_layer - 1),
                                  pool_ksize=blstack_pool_ksize,
+                                 pool_type=blstack_pool_type,
                                  act_fn=act_fn,
                                  do_init=do_init,
                                  state_dict=input_size_dict,

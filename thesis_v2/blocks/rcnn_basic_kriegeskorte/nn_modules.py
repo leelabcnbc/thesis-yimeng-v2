@@ -62,16 +62,21 @@ class BLConvLayerStack(nn.Module):
                  n_timesteps: int,
                  channel_list: List[int],
                  ksize_list: List[int],
-                 bias: bool = False,
-                 act_fn: str = 'relu',
+                 # = 'relu'
+                 act_fn: str,
                  # these two values match those set in `thesis_v2/blocks_json/general.py`
                  bn_eps=0.001,
                  bn_momentum=0.1,
-                 pool_ksize=2,
+                 # =2,
+                 pool_ksize,
+                 # ='max'
+                 pool_type,
+                 bias: bool = False,
                  ):
         # channel_list should be of length 1+number of layers.
         # channel_list[0] being the number of channels for input
         super().__init__()
+        assert not bias
         self.n_timesteps = n_timesteps
 
         n_layer = len(ksize_list)
@@ -107,10 +112,17 @@ class BLConvLayerStack(nn.Module):
 
         self.pool_ksize = pool_ksize
         assert self.pool_ksize >= 1
+        self.pool_type = pool_type
 
         if self.pool_ksize > 1:
-            self.pool = nn.MaxPool2d(kernel_size=pool_ksize, ceil_mode=True)
+            if self.pool_type == 'max':
+                self.pool = nn.MaxPool2d(kernel_size=pool_ksize, ceil_mode=True)
+            elif self.pool_type == 'avg':
+                self.pool = nn.AvgPool2d(kernel_size=pool_ksize, ceil_mode=True)
+            else:
+                raise ValueError
         else:
+            assert self.pool_type is None
             self.pool = nn.Identity()
 
     def forward(self, b_input):
@@ -196,7 +208,6 @@ def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
                      ]+ [
                          f'bn_layer_list.{x}.running_mean' for x in range(n_time * n_layer)
                      ]
-
 
     # all bns
     for i in range(n_time * n_layer):

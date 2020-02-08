@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from .utils import check_input_size, new_map_size
 
 
@@ -11,6 +11,7 @@ def blstack(
         channel_list: List[int],
         kernel_size_list: List[int],
         pool_ksize: int,
+        pool_type: Optional[str],
         act_fn: str,
         init_std: float = 0.01,
         do_init: bool = True,
@@ -50,6 +51,7 @@ def blstack(
             'channel_list': channel_list,
             'ksize_list': kernel_size_list,
             'pool_ksize': pool_ksize,
+            'pool_type': pool_type,
             'act_fn': act_fn,
         },
         'init': {
