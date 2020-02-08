@@ -93,6 +93,7 @@ def init_bias(model: JSONNet, mean_response: np.ndarray):
 def add_conv_layers(model: JSONNet):
     param_dict = model.get_param_dict()
     conv_layer_names = param_dict['comments']['conv_layers']
+    print(conv_layer_names)
     conv_layer_names_set = set(conv_layer_names)
     assert len(conv_layer_names) == len(conv_layer_names_set)
     conv_layers_dict = dict()

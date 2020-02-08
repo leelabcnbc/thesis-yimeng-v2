@@ -11,6 +11,11 @@ def get_output_loss(*,
                     ):
     assert not legacy
     # assert legacy
+    if yhat.size() != y.size():
+        assert yhat.size()[1:] == y.size()
+        # broadcasting.
+        y = y.view(1, *y.size()).expand(yhat.size())
+
     if loss_type == 'mse':
         # return mse_loss(yhat, y)
         return mse_loss(yhat, y, reduction='mean')

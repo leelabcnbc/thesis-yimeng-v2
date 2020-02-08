@@ -159,7 +159,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
             }
         ] if use_stack else []),
         comments={
-            'conv_layers': [f'stack.layer_list.{x}.b_conv' for x in range(num_layer)]
+            'conv_layers': [f'bl_stack.layer_list.{x}.b_conv' for x in range(num_layer)]
         },
         output_list=use_stack
     )
