@@ -21,8 +21,14 @@ def process_one_case_wrapper_imagenet(*,
                                       deterministic=True,
                                       dataset_grp_name=None,
                                       input_size=(224, 224),
+                                      preprocess=True,
                                       ):
     assert setting_this.keys() == {'scale', 'rf_size', 'bg_color'}
+
+    if not preprocess:
+        assert setting_this['scale'] is None
+        assert setting_this['bg_color'] is None
+
     # this works for generic imagenet networks trained in PyTorch convention.
     augment_config = get_one_network_meta_fn(
         net_name_this, setting_this['rf_size'])
@@ -36,17 +42,21 @@ def process_one_case_wrapper_imagenet(*,
     makedirs(dirname(file_to_save_feature), exist_ok=True)
     makedirs(dirname(file_to_save_input), exist_ok=True)
 
-    with h5py.File(file_to_save_feature) as f_feature:
+    with h5py.File(file_to_save_feature, 'a') as f_feature:
         if grp_name not in f_feature:
             # then preproces dataset
-            with h5py.File(file_to_save_input) as f_input:
+            with h5py.File(file_to_save_input, 'a') as f_input:
                 if dataset_grp_name not in f_input:
-                    dataset_np = preprocess_dataset_imagenet(
-                        images=dataset_np_this,
-                        bgcolor=setting_this['bg_color'],
-                        input_size=input_size,
-                        rescale_ratio=setting_this['scale'],
-                    )
+                    if preprocess:
+                        dataset_np = preprocess_dataset_imagenet(
+                            images=dataset_np_this,
+                            bgcolor=setting_this['bg_color'],
+                            input_size=input_size,
+                            rescale_ratio=setting_this['scale'],
+                        )
+                    else:
+                        # this can be useful in certain cases, like testing imagenet val images.
+                        dataset_np = dataset_np_this
                     f_input.create_dataset(dataset_grp_name,
                                            data=dataset_np,
                                            compression="gzip")
