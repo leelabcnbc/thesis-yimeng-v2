@@ -20,7 +20,7 @@ cudnn.enabled = True
 
 
 def load_image_dataset(image_dataset_key):
-    assert image_dataset_key == 'first1000'
+    assert image_dataset_key == 'first500'
     torch.manual_seed(0)
     valdir = join('/my_data_2/standard_datasets/ILSVRC2015/Data/CLS-LOC', 'val')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -42,11 +42,11 @@ def load_image_dataset(image_dataset_key):
 
     for i, (x, _) in enumerate(val_loader):
         data.append(x.numpy())
-        if i >= 9:
+        if i >= 4:
             break
 
     data = np.concatenate(data)
-    assert data.shape == (1000, 3, 224, 224)
+    assert data.shape == (500, 3, 224, 224)
     return data
 
 
@@ -55,17 +55,17 @@ networks_to_try = (
 )
 
 settings_dict = {
-    # using half saves space, plus it avoids boundary effects.
-    'center112': {'scale': None, 'rf_size': 112},
+    # I must use full RF. otherwise trimming causes me trouble.
+    'everything': {'scale': None, 'rf_size': None},
 }
 
 bg_dict_per_dataset = {
     # background color.
-    'first1000': None,
+    'first500': None,
 }
 
 dataset_dict = {
-    'first1000': lambda: load_image_dataset('first1000'),
+    'first500': lambda: load_image_dataset('first500'),
 }
 
 # I name them with a, just to separate files for a,b,c,
@@ -77,7 +77,8 @@ file_to_save_input = join(dir_dict['datasets'],
                           'cnn_feature_extraction_input',
                           'imagenet_val.hdf5')
 
-file_to_save_feature = join(dir_dict['features'],
+file_to_save_feature = join(
+                            dir_dict['features'],
                             'cnn_feature_extraction',
                             'imagenet_val',
                             'pcn_local.hdf5'
@@ -107,11 +108,16 @@ def do_all():
                         **setting,
                         **{'bg_color': bg_dict_per_dataset[dataset]}
                     },
-                    batch_size=50,
+                    # super small to be safe.
+                    batch_size=20,
                     file_to_save_input=file_to_save_input,
                     file_to_save_feature=file_to_save_feature,
                     dataset_grp_name=f'{dataset}/{setting_name}',
                     preprocess=False,
+                    flush=True,
+                    # combat `OSError: Can't write data (inflate() failed)` error.
+                    # this is much faster, and no error!
+                    compression=False,
                 )
         # may save some memory.
         del net

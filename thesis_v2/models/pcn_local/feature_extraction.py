@@ -35,7 +35,10 @@ def process_one_case_wrapper(*,
                              file_to_save_input,
                              file_to_save_feature,
                              dataset_grp_name,
-                             preprocess):
+                             preprocess,
+                             flush,
+                             compression,
+                             ):
     return process_one_case_wrapper_imagenet(
         net_name_this=net_name_this,
         net_this=net_this,
@@ -48,4 +51,6 @@ def process_one_case_wrapper(*,
         get_one_network_meta_fn=get_one_network_meta,
         dataset_grp_name=dataset_grp_name,
         preprocess=preprocess,
+        flush=flush,
+        compression=compression,
     )

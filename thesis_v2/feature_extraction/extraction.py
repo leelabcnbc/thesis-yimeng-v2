@@ -152,6 +152,8 @@ def _extract_features_save(module_names_ordered: List[str],
                            stop_idx: int,
                            numel: int,
                            callback_dict: dict,
+                           flush: bool,
+                           compression: bool,
                            ):
     for mod_idx, mod_name in enumerate(module_names_ordered):
         data_array = callback_dict[mod_name]
@@ -163,13 +165,14 @@ def _extract_features_save(module_names_ordered: List[str],
                     name,
                     shape=(numel,) + data.shape[1:],
                     dtype=data.dtype,
-                    compression="gzip"
+                    **(dict(compression="gzip") if compression else dict())
                 )
             # then store
             output_group[name][start_idx:stop_idx] = data
 
     # flushing is disabled, for best performance?
-    # output_group.file.flush()
+    if flush:
+        output_group.file.flush()
 
 
 def extract_features(net: nn.Module,
@@ -182,6 +185,8 @@ def extract_features(net: nn.Module,
                      verbose=True,
                      unpack=True,
                      deterministic=True,
+                     flush=False,
+                     compression=True,
                      ):
     from torch.backends import cudnn
     # make sure it's reproducible on the platform.
@@ -231,7 +236,7 @@ def extract_features(net: nn.Module,
         # then save, according to module_names_ordered
         _extract_features_save(augment_config['module_names'], output_group,
                                start_idx, stop_idx, num_element,
-                               callback_dict)
+                               callback_dict, flush=flush, compression=compression)
         # then clear
         clear_callback(callback_dict)
 

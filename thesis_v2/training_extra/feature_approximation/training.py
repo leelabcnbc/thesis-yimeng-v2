@@ -17,7 +17,9 @@ def train_one(*,
               model_seed=0, train_seed=0,
               max_epoch=20000,
               device='cuda',
-              return_model=True):
+              return_model=True,
+              batch_size=256,
+              ):
     if model_seed is not None:
         torch.manual_seed(model_seed)
         torch.cuda.manual_seed_all(model_seed)
@@ -47,7 +49,7 @@ def train_one(*,
         val_test_every=None,
         return_model=return_model,
         extra_params={
-            'datasets': {'y_dim': 4},
+            'datasets': {'y_dim': 4, 'batch_size': batch_size},
         },
     )
 

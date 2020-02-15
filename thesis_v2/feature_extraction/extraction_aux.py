@@ -22,6 +22,8 @@ def process_one_case_wrapper_imagenet(*,
                                       dataset_grp_name=None,
                                       input_size=(224, 224),
                                       preprocess=True,
+                                      flush=False,
+                                      compression=True,
                                       ):
     assert setting_this.keys() == {'scale', 'rf_size', 'bg_color'}
 
@@ -81,7 +83,9 @@ def process_one_case_wrapper_imagenet(*,
                                  batch_size=batch_size,
                                  augment_config=augment_config,
                                  # mostly for replicating old results
-                                 deterministic=deterministic
+                                 deterministic=deterministic,
+                                 flush=flush,
+                                 compression=compression,
                                  )
         else:
             print(f'{grp_name} feature extraction done before')

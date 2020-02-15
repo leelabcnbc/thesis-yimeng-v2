@@ -285,20 +285,25 @@ def get_slicing_dict(model_name, rf_size):
     layer_info = get_layer_info_dict(model_name)
 
     input_size = (224, 224)
-    top_bottom = input_size[0] / 2 - rf_size / 2, input_size[
-        0] / 2 + rf_size / 2
-    left_right = input_size[1] / 2 - rf_size / 2, input_size[
-        1] / 2 + rf_size / 2
 
     helper = cnnsizehelper.CNNSizeHelper(layer_info, input_size, False)
 
     slicing_dict = dict()
     fc_layers = {'poolfc'}
+
     for layer in helper.layer_info_dict:
         if layer not in fc_layers:
-            slicing_dict[layer] = helper.compute_minimum_coverage(layer,
-                                                                  top_bottom,
-                                                                  left_right)
+            if rf_size is not None:
+                top_bottom = input_size[0] / 2 - rf_size / 2, input_size[
+                    0] / 2 + rf_size / 2
+                left_right = input_size[1] / 2 - rf_size / 2, input_size[
+                    1] / 2 + rf_size / 2
+                slicing_dict[layer] = helper.compute_minimum_coverage(layer,
+                                                                      top_bottom,
+                                                                      left_right)
+            else:
+                slicing_dict[layer] = ((None, None), (None, None))
+
     slicing_dict = cnnsizehelper.get_slice_dict(slicing_dict,
                                                 slicing_dict.keys())
     for fc_layer in fc_layers:
