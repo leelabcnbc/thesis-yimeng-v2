@@ -168,7 +168,7 @@ def keygen(*,
         # seed
         f'm_se{model_seed}',
     ])
-    print(ret)
+    # print(ret)
     assert len(ret.split('/')) == 19
 
     return ret
