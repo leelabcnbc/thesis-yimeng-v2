@@ -136,5 +136,7 @@ def master(*,
               model_seed=model_seed,
               max_epoch=7000,
               return_model=False,
-              batch_size=32
+              batch_size=32,
+              # for conv_idx=0, which is too slow to finish 3 phases.
+              # num_phase=1,
               )

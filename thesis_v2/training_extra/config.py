@@ -5,7 +5,8 @@ def get_config(*,
                max_epoch,
                val_test_every,
                early_stopping_field,
-               show_every
+               show_every,
+               num_phase=3,
                ):
     phase1_dict = {
         'max_epoch': max_epoch,
@@ -26,6 +27,9 @@ def get_config(*,
     }
 
     phase_config_dict_list = [phase1_dict, phase2_dict, phase3_dict]
+    assert num_phase in {1, 2, 3}
+    print('num of phase: ', num_phase)
+    phase_config_dict_list = phase_config_dict_list[:num_phase]
     global_config_dict = {
         'device': device,
         'loss_every_iter': 1,

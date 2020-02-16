@@ -111,6 +111,7 @@ def train_one_wrapper(*,
         val_test_every=val_test_every,
         early_stopping_field=early_stopping_field,
         show_every=show_every,
+        **extra_params.get('training_extra_config', {}),
     )
 
     eval_fn = partial(eval_fn_wrapper, loss_type=opt_config['loss'], **extra_params.get('eval_fn', {}))
