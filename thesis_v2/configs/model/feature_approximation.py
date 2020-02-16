@@ -23,7 +23,13 @@ consts = {
                 'moduledict.final_act': 'final',
             }
         }
-    }
+    },
+    'local_pcn_original_imagenet_imagenet_val': {
+        'feature_file': join(dir_dict['features'], 'cnn_feature_extraction', 'imagenet_val', 'pcn_local.hdf5'),
+        'dataset_prefix_prefix': 'imagenet_val',
+        'model_name': 'PredNetBpE_3CLS',
+    },
+    'local_pcn_original_imagenet_sep2_model_prefix': 'PredNetBpE_3CLS_sep2'
 }
 
 
@@ -50,6 +56,40 @@ def local_pcn_recurrent_sep2_hyparameters():
     param_iterator_obj.add_pair(
         'kernel_size',
         (7, 9,)
+    )
+
+    # pcn_bypass={pcn_bypass},
+    param_iterator_obj.add_pair(
+        'bn_pre',
+        (True,),
+    )
+
+    return param_iterator_obj
+
+
+def local_pcn_original_imagenet_sep2_hyparameters():
+    param_iterator_obj = utils.ParamIterator()
+
+    param_iterator_obj.add_pair(
+        'model_seed',
+        range(1),
+    )
+
+    param_iterator_obj.add_pair(
+        'act_fn',
+        # should try relu later
+        ('relu', 'softplus'),
+    )
+
+    param_iterator_obj.add_pair(
+        'loss_type',
+        ('mse', 'l1')  # should try mse later
+    )
+
+    # In theory, it should be 9. but let's also try smaller ones.
+    param_iterator_obj.add_pair(
+        'kernel_size',
+        (9,)
     )
 
     # pcn_bypass={pcn_bypass},

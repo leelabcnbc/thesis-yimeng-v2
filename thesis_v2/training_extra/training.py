@@ -93,6 +93,7 @@ def train_one_wrapper(*,
     print('num_param', count_params(model))
     model = model.to(device)
     model = model.train()
+    # print(model)
 
     loss_fn = get_loss_fn(opt_config=opt_config)
     optimizer = get_optimizer_fn(model, opt_config['optimizer'])
