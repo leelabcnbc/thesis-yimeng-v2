@@ -138,5 +138,7 @@ def master(*,
               return_model=False,
               batch_size=32,
               # for conv_idx=0, which is too slow to finish 3 phases.
+              # for conv_idx=1,2, in addition to phase=1, additionally increase memory limit from 30G to 60G
+              # to avoid getting killed by slurm
               # num_phase=1,
               )
