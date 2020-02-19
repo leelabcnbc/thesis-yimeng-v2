@@ -39,6 +39,11 @@ def master(*,
            rcnn_bl_psize: int,
            rcnn_bl_ptype: Optional[str],
            rcnn_acc_type: str,
+
+           # sync with thesis_v2.models.maskcnn_polished_with_rcnn_k_bl.builder.gen_maskcnn_polished_with_rcnn_k_bl
+           ff_1st_block: bool = False,
+           ff_1st_bn_before_act: bool = True,
+           kernel_size_l23: int = 3,
            ):
     key = keygen(
         split_seed=split_seed,
@@ -49,6 +54,7 @@ def master(*,
         out_channel=out_channel,
         num_layer=num_layer,
         kernel_size_l1=kernel_size_l1,
+        kernel_size_l23=kernel_size_l23,
         pooling_ksize=pooling_ksize,
         scale_name=scale_name,
         smoothness_name=smoothness_name,
@@ -58,6 +64,9 @@ def master(*,
         rcnn_bl_psize=rcnn_bl_psize,
         rcnn_bl_ptype=rcnn_bl_ptype,
         rcnn_acc_type=rcnn_acc_type,
+
+        ff_1st_block=ff_1st_block,
+        ff_1st_bn_before_act=ff_1st_bn_before_act,
     )
 
     print('key', key)
@@ -81,7 +90,7 @@ def master(*,
             num_neuron=n,
             out_channel=out_channel,
             kernel_size_l1=kernel_size_l1,  # (try 5,9,13)
-            kernel_size_l23=3,
+            kernel_size_l23=kernel_size_l23,
             act_fn=act_fn,
             pooling_ksize=pooling_ksize,  # (try, 1,3,5,7)
             pooling_type=pooling_type,  # try (avg, max)  # looks that max works well here?
@@ -92,6 +101,8 @@ def master(*,
             blstack_pool_type=rcnn_bl_ptype,
             acc_mode=rcnn_acc_type,
             factored_constraint=None,
+            ff_1st_block=ff_1st_block,
+            ff_1st_bn_before_act=ff_1st_bn_before_act,
         )
 
     opt_config_partial = partial(
