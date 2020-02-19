@@ -68,7 +68,8 @@ def train_one_wrapper(*,
                       device,
                       val_test_every,
                       return_model,
-                      extra_params=None
+                      extra_params=None,
+                      print_model=False,
                       ):
     if extra_params is None:
         extra_params = dict()
@@ -93,7 +94,8 @@ def train_one_wrapper(*,
     print('num_param', count_params(model))
     model = model.to(device)
     model = model.train()
-    # print(model)
+    if print_model:
+        print(model)
 
     loss_fn = get_loss_fn(opt_config=opt_config)
     optimizer = get_optimizer_fn(model, opt_config['optimizer'])

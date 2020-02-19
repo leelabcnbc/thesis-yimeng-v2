@@ -15,6 +15,11 @@ class FactoredLinear2D(nn.Module):
     skeleton copied from implementation of nn.Linear from PyTorch 0.3.1
     """
 
+    def __repr__(self):
+        return f"FactoredLinear2D(map_size={self.map_size}, out_features={self.out_features}, " \
+               f"weight_feature_constraint={self.weight_feature_constraint}, " \
+               f"weight_spatial_constraint={self.weight_spatial_constraint}, bias={self.bias is not None})"
+
     def __init__(self, in_channels: int,
                  map_size: Union[int, List[int]],
                  out_features: int, bias: bool = True,

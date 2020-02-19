@@ -27,7 +27,9 @@ def train_one(*,
               device='cuda',
               val_test_every=50,
               return_model=True,
-              extra_params=None):
+              extra_params=None,
+              print_model=False,
+              ):
     if model_seed is not None:
         torch.manual_seed(model_seed)
         torch.cuda.manual_seed_all(model_seed)
@@ -57,6 +59,7 @@ def train_one(*,
         val_test_every=val_test_every,
         return_model=return_model,
         extra_params=extra_params,
+        print_model=print_model,
     )
 
 
