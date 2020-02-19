@@ -58,7 +58,7 @@ def explored_models_20200208():
 
     param_iterator_obj.add_pair(
         'pooling_ksize',
-        (3, )
+        (3,)
     )
 
     param_iterator_obj.add_pair(
@@ -138,38 +138,62 @@ def keygen(*,
            rcnn_acc_type: str,
            dataset_prefix: str = 'yuanyuan_8k_a_3day',
            model_prefix: str = 'maskcnn_polished_with_rcnn_k_bl',
+
+           # please be consistent with values set in thesis_v2.models.maskcnn_polished_with_rcnn_k_bl.builder.gen_maskcnn_polished_with_rcnn_k_bl  # noqa: E501
+           # I can also go super fancy, with `inspect.Signature`
+           # https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
+           # but let's not waste time on such things for now.
+
+           ff_1st_block: bool = False,
+           ff_1st_bn_before_act=True,
            ):
+    if ff_1st_block:
+        # then add another two blocks
+        additional_list = [
+            f'ff1st_{ff_1st_block}',
+            f'ff1stbba_{ff_1st_bn_before_act}',
+        ]
+    else:
+        additional_list = []
+
     # suffix itself can contain /
-    ret = '/'.join([
-        # model name, dataset name
-        f'{dataset_prefix}/{model_prefix}',
-        # seed
-        f's_se{split_seed}',
-        # model arch stuff
-        f'in_sz{input_size}',
-        f'out_ch{out_channel}',
-        f'num_l{num_layer}',
-        f'k_l1{kernel_size_l1}',
-        f'k_p{pooling_ksize}',
-        f'pt{pooling_type}',
-        f'bn_a_fc{bn_after_fc}',
-        f'act{act_fn}',
+    ret = '/'.join(
+        [
+            # model name, dataset name
+            f'{dataset_prefix}/{model_prefix}',
+            # seed
+            f's_se{split_seed}',
+            # model arch stuff
+            f'in_sz{input_size}',
+            f'out_ch{out_channel}',
+            f'num_l{num_layer}',
+            f'k_l1{kernel_size_l1}',
+            f'k_p{pooling_ksize}',
+            f'pt{pooling_type}',
+            f'bn_a_fc{bn_after_fc}',
+            f'act{act_fn}',
 
-        # add those RCNN-BL specific model arch stuff
-        f'r_c{rcnn_bl_cls}',
-        f'r_psize{rcnn_bl_psize}',
-        f'r_ptype{rcnn_bl_ptype}',
-        f'r_acc{rcnn_acc_type}',
-
-        # regularization, optimization stuff
-        f'sc{scale_name}',
-        f'sm{smoothness_name}',
-        f'l{loss_type}',
-        # seed
-        f'm_se{model_seed}',
-    ])
+            # add those RCNN-BL specific model arch stuff
+            f'r_c{rcnn_bl_cls}',
+            f'r_psize{rcnn_bl_psize}',
+            f'r_ptype{rcnn_bl_ptype}',
+            f'r_acc{rcnn_acc_type}'
+        ]
+        + additional_list +
+        [
+            # regularization, optimization stuff
+            f'sc{scale_name}',
+            f'sm{smoothness_name}',
+            f'l{loss_type}',
+            # seed
+            f'm_se{model_seed}',
+        ]
+    )
     # print(ret)
-    assert len(ret.split('/')) == 19
+    if not ff_1st_block:
+        assert len(ret.split('/')) == 19
+    else:
+        assert len(ret.split('/')) == 21
 
     return ret
 
