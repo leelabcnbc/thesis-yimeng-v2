@@ -47,6 +47,8 @@ def gen_local_pcn_recurrent_feature_approximator(
                                  in_channel=in_shape_lower[0] + in_shape_higher[0],
                                  out_channel=in_shape_higher[0],
                                  act_fn=act_fn,
+                                 # `bn_before_act` must be False, so that BN is afterwards, allowing negative values
+                                 # to be modeled.
                                  bn_before_act=False,
                                  state_dict=state_dict,
                                  bn=batchnorm_post,

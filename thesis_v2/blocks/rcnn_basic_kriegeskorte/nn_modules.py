@@ -101,6 +101,14 @@ class BLConvLayerStack(nn.Module):
             self.bn_layer_list
         )
 
+        # to capture intermediate response.
+        self.capture_list = nn.ModuleList(
+            [nn.Identity() for _ in range(self.n_layer)]
+        )
+
+        # capture input
+        self.input_capture = nn.Identity()
+
         if act_fn == 'relu':
             self.act_fn = nn.ReLU(inplace=True)
         elif act_fn == 'softplus':
@@ -126,6 +134,8 @@ class BLConvLayerStack(nn.Module):
             self.pool = nn.Identity()
 
     def forward(self, b_input):
+        # capture
+        b_input = self.input_capture(b_input)
         # main loop
         last_out = [None for _ in range(self.n_layer)]
 
@@ -153,6 +163,9 @@ class BLConvLayerStack(nn.Module):
 
                 # do act
                 last_out[layer_idx] = self.act_fn(last_out[layer_idx])
+
+                # capture
+                last_out[layer_idx] = self.capture_list[layer_idx](last_out[layer_idx])
 
             output_list.append(last_out[self.n_layer - 1])
 

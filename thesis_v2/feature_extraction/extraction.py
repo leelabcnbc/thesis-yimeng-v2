@@ -18,23 +18,27 @@ class Lambda(nn.Module):
 
 def _forward_hook(m, in_, out_: Tensor, module_name, callback_dict,
                   slice_this, verbose):
-    assert isinstance(out_, Tensor)
+    if isinstance(out_, Tensor):
+        out_ = (out_,)
 
-    data_all: np.ndarray = out_.detach().cpu().numpy()
-    # then slice it
-    data_this_to_use: np.ndarray = data_all[(...,) + slice_this]
+    assert isinstance(out_, tuple)
 
-    if verbose:
-        print(module_name, type(m))
-        print('input_shape', [tuple(x.size()) for x in in_],
-              'output_shape', tuple(out_.size()),
-              'slice', slice_this,
-              'sliced_shape', data_this_to_use.shape)
+    for z in out_:
+        data_all: np.ndarray = z.detach().cpu().numpy()
+        # then slice it
+        data_this_to_use: np.ndarray = data_all[(...,) + slice_this]
 
-    # print(f'{data_all.shape} -> {data_this_to_use.shape}')
-    # extra copy to guard against weird things,
-    # also, make sure order is right.
-    callback_dict[module_name].append(data_this_to_use.copy(order='C'))
+        if verbose:
+            print(module_name, type(m))
+            print('input_shape', [tuple(x.size()) for x in in_],
+                  'output_shape', tuple(z.size()),
+                  'slice', slice_this,
+                  'sliced_shape', data_this_to_use.shape)
+
+        # print(f'{data_all.shape} -> {data_this_to_use.shape}')
+        # extra copy to guard against weird things,
+        # also, make sure order is right.
+        callback_dict[module_name].append(data_this_to_use.copy(order='C'))
 
 
 def augment_module(net: nn.Module, *,
