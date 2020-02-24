@@ -22,9 +22,12 @@ from thesis_v2.configs.model.maskcnn_polished_with_rcnn_k_bl import (
 load_modules()
 
 global_vars = {
-    'feature_file_dir': join(dir_dict['features'],
-                             'maskcnn_polished_with_rcnn_k_bl',
-                             '20200218'),
+    'feature_file_dir': join(
+        # for cnbc cluster, whose `/user_data/yimengzh` is not big enough.
+        # '/home/yimengzh/thesis-v2-large-files',
+        dir_dict['features'],
+        'maskcnn_polished_with_rcnn_k_bl',
+        '20200218'),
     'augment_config': {
         'module_names': ['layer0', 'layer1', 'layer2'],
         'name_mapping': {
