@@ -40,7 +40,7 @@ sep='2+'+{sep_start},
 
 def good_model_param(param):
     # right now only care about those models with cycle = 5; input_size=50 to reduce output size
-    return param['rcnn_bl_cls'] == 4 and param['kernel_size_l23'] == 3 and param['num_layer'] == 3 and param['out_channel'] == 32
+    return param['rcnn_bl_cls'] == 4 and param['kernel_size_l23'] == 3 and param['num_layer'] == 3
 
 
 def param_iterator():
