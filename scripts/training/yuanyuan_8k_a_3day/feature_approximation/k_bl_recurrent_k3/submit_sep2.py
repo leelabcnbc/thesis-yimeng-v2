@@ -34,6 +34,7 @@ bn_pre={bn_pre},
 basemodel_key_script={basemodel_key_script},
 basemodel_idx={basemodel_idx},
 sep='2+'+{sep_start},
+bn_before_act={bn_before_act},
 )
 """.strip()
 

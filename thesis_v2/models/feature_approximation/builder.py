@@ -16,6 +16,7 @@ def gen_local_pcn_recurrent_feature_approximator(
         batchnorm_post=True,
         batchnorm_affine=True,
         do_init=True,
+        bn_before_act=False,
 ):
     # in_shape_lower is (C1, H, W).
     # in_shape_higher is (C2, H, W).
@@ -47,9 +48,12 @@ def gen_local_pcn_recurrent_feature_approximator(
                                  in_channel=in_shape_lower[0] + in_shape_higher[0],
                                  out_channel=in_shape_higher[0],
                                  act_fn=act_fn,
-                                 # `bn_before_act` must be False, so that BN is afterwards, allowing negative values
-                                 # to be modeled.
-                                 bn_before_act=False,
+                                 # `bn_before_act` should be False, so that BN is afterwards, allowing negative values
+                                 # to be modeled (if we want to model residuals along iterations).
+                                 #
+                                 # if set to True, it's used to model some non-residual directly and assuming that
+                                 # non residual value must be non negative.
+                                 bn_before_act=bn_before_act,
                                  state_dict=state_dict,
                                  bn=batchnorm_post,
                                  do_init=do_init,

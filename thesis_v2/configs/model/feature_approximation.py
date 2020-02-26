@@ -124,6 +124,11 @@ def k_bl_recurrent_sep2_hyparameters():
         (True,),
     )
 
+    param_iterator_obj.add_pair(
+        'bn_before_act',
+        (False, True),
+    )
+
     return param_iterator_obj
 
 
@@ -206,8 +211,14 @@ def keygen(*,
            basemodel_idx: int,
            dataset_prefix: str = 'yuanyuan_8k_a_3day',
            model_prefix: str,
+           bn_before_act: bool = False,
            ):
-    return f'{dataset_prefix}/{model_prefix}/baseidx{basemodel_idx}/act{act_fn}/loss{loss_type}/k{kernel_size}/bn_pre{bn_pre}/model_seed{model_seed}'  # noqa: E501
+    if not bn_before_act:
+        # for modeling residuals
+        return f'{dataset_prefix}/{model_prefix}/baseidx{basemodel_idx}/act{act_fn}/loss{loss_type}/k{kernel_size}/bn_pre{bn_pre}/model_seed{model_seed}'  # noqa: E501
+    else:
+        # for modeling non negative outputs
+        return f'{dataset_prefix}/{model_prefix}/baseidx{basemodel_idx}/act{act_fn}/loss{loss_type}/k{kernel_size}/bn_pre{bn_pre}/bn_b4_act{bn_before_act}/model_seed{model_seed}'  # noqa: E501
 
 
 def script_keygen(*,

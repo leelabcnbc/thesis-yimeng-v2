@@ -44,7 +44,7 @@ def fetch_data(key_script, grp_name):
     }
 
 
-def prepare_data(data_dict, sep: str):
+def prepare_data(data_dict, sep: str, bn_before_act):
     num_out = len(data_dict['out_list'])
     x_train = []
     y_train = []
@@ -58,7 +58,10 @@ def prepare_data(data_dict, sep: str):
                 continue
             print((idx1, idx2))
             x_train.append(np.concatenate([data_dict['in'], data_dict['inter_list'][idx1], data_dict['out_list'][idx1]], axis=1))
-            y_train.append(data_dict['out_list'][idx2] - data_dict['out_list'][idx1])
+            if not bn_before_act:
+                y_train.append(data_dict['out_list'][idx2] - data_dict['out_list'][idx1])
+            else:
+                y_train.append(data_dict['out_list'][idx2])
 
     x_train = np.concatenate(x_train, axis=0)
     y_train = np.concatenate(y_train, axis=0)
@@ -82,6 +85,7 @@ def master(*,
            basemodel_key_script,
            basemodel_idx,
            sep,
+           bn_before_act,
            ):
     key = keygen(
         model_seed=model_seed,
@@ -90,12 +94,13 @@ def master(*,
         kernel_size=kernel_size,
         bn_pre=bn_pre,
         basemodel_idx=basemodel_idx,
-        model_prefix=consts[f'k_bl_recurrent_k3_sep{sep}_model_prefix']
+        model_prefix=consts[f'k_bl_recurrent_k3_sep{sep}_model_prefix'],
+        bn_before_act=bn_before_act,
     )
     print(key)
 
     # load and prepare data
-    dataset_this = prepare_data(fetch_data(basemodel_key_script, 'X_train'), sep)
+    dataset_this = prepare_data(fetch_data(basemodel_key_script, 'X_train'), sep, bn_before_act)
 
     def gen_cnn_partial(in_shape, in_y_shape):
         assert len(in_shape) == 3
@@ -109,6 +114,7 @@ def master(*,
             kernel_size=kernel_size,
             act_fn=act_fn,
             batchnorm_pre=bn_pre,
+            bn_before_act=bn_before_act,
         )
 
     opt_config_partial = partial(get_feature_approximation_opt_config,
