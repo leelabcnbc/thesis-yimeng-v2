@@ -43,7 +43,7 @@ def good_model_param(param):
     return param['rcnn_bl_cls'] == 4 and param['kernel_size_l23'] == 3 and param['num_layer'] == 3
 
 
-def param_iterator():
+def param_iterator(sep_start_range=(0, 1)):
     for key_script, basemodel_param_dict in model_params_b_kl_recurrent_20200218(
         good_model_param
     ).items():
@@ -60,7 +60,7 @@ def param_iterator():
 
             # different starting point.
             # need to be encoded in model prefix
-            for sep_start in range(2):
+            for sep_start in sep_start_range:
                 key_this, key_this_original = script_keygen(
                     return_original_key=True,
                     return_model_prefix=True,
