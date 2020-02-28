@@ -44,7 +44,10 @@ def good_model_param(param):
     return param['rcnn_bl_cls'] == 4 and param['kernel_size_l23'] == 3 and param['num_layer'] == 3
 
 
-def param_iterator(sep_start_range=(0, 1)):
+def param_iterator(sep_start_range=(0, 1), additional_filter_fn=None):
+    if additional_filter_fn is None:
+        def additional_filter_fn(_):
+            return True
     for key_script, basemodel_param_dict in model_params_b_kl_recurrent_20200218(
         good_model_param
     ).items():
@@ -73,12 +76,15 @@ def param_iterator(sep_start_range=(0, 1)):
                     },
                 })
 
-                yield {
+                to_yield = {
                     'param_dict_actual': param_dict_actual,
                     'key_this': key_this,
                     'key_this_original': key_this_original,
                     'sep_start': sep_start,
                 }
+
+                if additional_filter_fn(to_yield):
+                    yield to_yield
 
 
 def main():

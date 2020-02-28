@@ -184,7 +184,7 @@ def model_params_local_pcn_recurrent_summer_2019_certain(good_model_param) -> di
     return all_params_dict
 
 
-def model_params_b_kl_recurrent_20200218(good_model_param) -> dict:
+def model_params_b_kl_recurrent_20200218(good_model_param, legacy=True) -> dict:
     all_params_dict = dict()
     for idx, param in enumerate(explored_models_20200218().generate()):
         # let's use a fully recurrent one for debugging.
@@ -193,11 +193,19 @@ def model_params_b_kl_recurrent_20200218(good_model_param) -> dict:
 
         key = keygen_k(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
         key_script = script_keygen_k(**param)
-        all_params_dict[key_script] = {
-            'key': key,
-            'param': param,
-            'idx': idx,  # this idx will be used to identify models. otherwise names are too long.
-        }
+        if legacy:
+            all_params_dict[key_script] = {
+                'key': key,
+                'param': param,
+                'idx': idx,  # this idx will be used to identify models. otherwise names are too long.
+            }
+        else:
+            all_params_dict[idx] = {
+                'key': key,
+                'param': param,
+                'idx': idx,  # this idx will be used to identify models. otherwise names are too long.
+                'key_script': key_script,
+            }
 
     return all_params_dict
 
