@@ -443,7 +443,7 @@ def train_one_phase(model, loss_func, dataset_train,
 
 def eval_wrapper(model: nn.Module, dataset: DataLoader,
                  device, num_input,
-                 eval_fn, loss_func) -> dict:
+                 eval_fn, loss_func, return_responses=False) -> dict:
     # some part inspired by https://github.com/pytorch/examples/blob/master/imagenet/main.py  # noqa: E501
     #
     # collect both output and target
@@ -482,4 +482,9 @@ def eval_wrapper(model: nn.Module, dataset: DataLoader,
     assert 'loss' not in stats_additional
     stats.update(stats_additional)
     model.train()
+
+    if return_responses:
+        assert 'responses' not in stats
+        stats['responses'] = outputs_all
+
     return stats
