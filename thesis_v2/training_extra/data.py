@@ -75,7 +75,7 @@ def generate_datasets(*,
         dataset_train = infinite_n_batch_loader(dataset_train, n=1)
     else:
         dataset_train = DataLoader(dataset_train, batch_size=batch_size,
-                                   shuffle=True,
+                                   shuffle=shuffle_train,
                                    drop_last=False)
 
     if X_test is not None and y_test is not None:
