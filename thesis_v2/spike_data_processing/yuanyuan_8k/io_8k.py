@@ -12,15 +12,17 @@ from .config_8k import (
 from ... import dir_dict
 
 
-def load_spike_count_and_meta_data(prefix):
+def load_spike_count_and_meta_data(prefix, *, load_spike=True):
     spike_count_dir = join(result_root_dir, 'spike_count')
 
-    spike_count_list = []
-    with h5py.File(join(spike_count_dir, f'{prefix}.hdf5'), 'r') as f:
-        # get all spike counts
-        num_sessions = f.attrs['total']
-        for idx in range(num_sessions):
-            spike_count_list.append(f[str(idx)][()])
+    spike_count_list = None
+    if load_spike:
+        spike_count_list = []
+        with h5py.File(join(spike_count_dir, f'{prefix}.hdf5'), 'r') as f:
+            # get all spike counts
+            num_sessions = f.attrs['total']
+            for idx in range(num_sessions):
+                spike_count_list.append(f[str(idx)][()])
 
     param_id_list = para_file_mapping_dict[prefix]
 
