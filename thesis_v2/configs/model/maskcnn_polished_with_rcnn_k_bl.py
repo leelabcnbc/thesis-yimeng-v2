@@ -262,7 +262,7 @@ def explored_models_20200430():
     param_iterator_obj.add_pair(
         'model_seed',
         # range(5),
-        range(1),  # otherwise too long.
+        range(2),  # otherwise too long.
     )
 
     param_iterator_obj.add_pair(
