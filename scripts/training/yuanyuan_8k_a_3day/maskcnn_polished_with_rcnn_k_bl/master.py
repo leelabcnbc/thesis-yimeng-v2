@@ -44,6 +44,7 @@ def master(*,
            ff_1st_block: bool = False,
            ff_1st_bn_before_act: bool = True,
            kernel_size_l23: int = 3,
+           train_keep: Optional[int] = None,
            ):
     key = keygen(
         split_seed=split_seed,
@@ -67,6 +68,7 @@ def master(*,
 
         ff_1st_block=ff_1st_block,
         ff_1st_bn_before_act=ff_1st_bn_before_act,
+        train_keep=train_keep,
     )
 
     print('key', key)
@@ -75,14 +77,24 @@ def master(*,
     datasets = get_data('a', 200, input_size, ('042318', '043018', '051018'), scale=0.5,
                         seed=split_seed)
 
+    if train_keep is not None:
+        assert train_keep <= 8000*0.8*0.8
+        train_keep_slice = slice(train_keep)
+    else:
+        train_keep_slice = slice(None)
+
     datasets = {
-        'X_train': datasets[0].astype(np.float32),
-        'y_train': datasets[1],
+        'X_train': datasets[0][train_keep_slice].astype(np.float32),
+        'y_train': datasets[1][train_keep_slice],
         'X_val': datasets[2].astype(np.float32),
         'y_val': datasets[3],
         'X_test': datasets[4].astype(np.float32),
         'y_test': datasets[5],
     }
+
+    for z in datasets:
+        print(z, datasets[z].shape)
+
 
     def gen_cnn_partial(input_size_cnn, n):
         return gen_maskcnn_polished_with_rcnn_k_bl(
