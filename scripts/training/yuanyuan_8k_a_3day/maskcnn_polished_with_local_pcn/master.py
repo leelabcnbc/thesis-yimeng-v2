@@ -10,7 +10,9 @@ from thesis_v2.models.maskcnn_polished_with_local_pcn.builder import (
     gen_maskcnn_polished_with_local_pcn, load_modules
 )
 
-from key_utils import keygen
+from thesis_v2.configs.model.maskcnn_polished_with_local_pcn import (
+    keygen
+)
 
 load_modules()
 
@@ -38,6 +40,7 @@ def master(*,
            pcn_final_act: bool,
            pcn_bn: bool,
            pcn_bias: bool,
+           train_keep=None,
            ):
     key = keygen(
         split_seed=split_seed,
@@ -62,20 +65,30 @@ def master(*,
         pcn_final_act=pcn_final_act,
         pcn_no_act=pcn_no_act,
         pcn_bias=pcn_bias,
+        train_keep=train_keep,
     )
 
     # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
     datasets = get_data('a', 200, input_size, ('042318', '043018', '051018'), scale=0.5,
                         seed=split_seed)
 
+    if train_keep is not None:
+        assert train_keep <= 8000 * 0.8 * 0.8
+        train_keep_slice = slice(train_keep)
+    else:
+        train_keep_slice = slice(None)
+
     datasets = {
-        'X_train': datasets[0].astype(np.float32),
-        'y_train': datasets[1],
+        'X_train': datasets[0][train_keep_slice].astype(np.float32),
+        'y_train': datasets[1][train_keep_slice],
         'X_val': datasets[2].astype(np.float32),
         'y_val': datasets[3],
         'X_test': datasets[4].astype(np.float32),
         'y_test': datasets[5],
     }
+
+    for z in datasets:
+        print(z, datasets[z].shape)
 
     def gen_cnn_partial(input_size_cnn, n):
         return gen_maskcnn_polished_with_local_pcn(
