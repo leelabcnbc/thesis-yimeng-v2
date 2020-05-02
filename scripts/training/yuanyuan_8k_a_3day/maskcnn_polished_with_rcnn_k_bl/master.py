@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from thesis_v2.data.prepared.yuanyuan_8k import get_data
+from thesis_v2.data.prepared.yuanyuan_8k import get_data, get_data_per_trial, flatten_per_trial_data_one
 
 from thesis_v2.training_extra.maskcnn_like.opt import get_maskcnn_v1_opt_config
 from thesis_v2.training_extra.maskcnn_like.training import (train_one,
@@ -45,7 +45,12 @@ def master(*,
            ff_1st_bn_before_act: bool = True,
            kernel_size_l23: int = 3,
            train_keep: Optional[int] = None,
+           model_prefix: str = 'maskcnn_polished_with_rcnn_k_bl',
+           seq_length: Optional[int] = None,
+           val_test_every: Optional[int] = None,
+           show_every: int = 100,
            ):
+
     key = keygen(
         split_seed=split_seed,
         model_seed=model_seed,
@@ -69,13 +74,25 @@ def master(*,
         ff_1st_block=ff_1st_block,
         ff_1st_bn_before_act=ff_1st_bn_before_act,
         train_keep=train_keep,
+        model_prefix=model_prefix,
+        seq_length=seq_length,
     )
 
     print('key', key)
 
-    # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
-    datasets = get_data('a', 200, input_size, ('042318', '043018', '051018'), scale=0.5,
-                        seed=split_seed)
+    if seq_length is None:
+        # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
+        datasets = get_data('a', 200, input_size, ('042318', '043018', '051018'), scale=0.5,
+                            seed=split_seed)
+    else:
+        datasets = get_data_per_trial('a', 200, input_size, ('042318', '043018', '051018'),
+                                      scale=0.5, seed=split_seed, previous_k_frames=seq_length-1)
+        # then flatten it.
+        datasets = tuple(
+            [
+                flatten_per_trial_data_one(zz) for zz in datasets
+            ]
+        )
 
     if train_keep is not None:
         assert train_keep <= 8000*0.8*0.8
@@ -115,6 +132,7 @@ def master(*,
             factored_constraint=None,
             ff_1st_block=ff_1st_block,
             ff_1st_bn_before_act=ff_1st_bn_before_act,
+            num_input_channel=(1 if seq_length is None else seq_length)
         )
 
     opt_config_partial = partial(
@@ -125,19 +143,27 @@ def master(*,
         loss_type=loss_type,
     )
 
+    if val_test_every is not None:
+        added_kw = {
+            'val_test_every': val_test_every,
+        }
+    else:
+        added_kw = dict()
+    added_kw['show_every'] = show_every
+
     result = train_one(
         arch_json_partial=gen_cnn_partial,
         opt_config_partial=opt_config_partial,
         datasets=datasets,
         key=key,
-        show_every=100,
         max_epoch=40000,
         model_seed=model_seed,
         return_model=False,
         extra_params={
             # reduce on batch axis
             'eval_fn': {'yhat_reduce_axis': 1}
-        }
+        },
+        **added_kw,
     )
 
     print(result['stats_best']['stats']['test']['corr_mean'])

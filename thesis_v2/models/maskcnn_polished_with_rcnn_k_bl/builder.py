@@ -41,6 +41,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
         # first conv block being purely feedforward, matching the behavior in maskcnn_polished_with_local_pcn
         ff_1st_block=False,
         ff_1st_bn_before_act=True,
+        num_input_channel = 1,
 ):
     assert num_layer >= 1
     assert kernel_size_l1 % 2 == 1
@@ -56,7 +57,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
     utils.update_module_dict(module_dict,
                              general.bn(
                                  name='bn_input',
-                                 num_features=1,
+                                 num_features=num_input_channel,
                                  affine=True, do_init=do_init,
                              )
                              )
@@ -70,7 +71,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      name='bl_stack',
                                      input_size=input_size_dict['map_size'],
                                      n_timesteps=n_timesteps,
-                                     channel_list=[1, ] + [out_channel, ] * num_layer,
+                                     channel_list=[num_input_channel, ] + [out_channel, ] * num_layer,
                                      kernel_size_list=[kernel_size_l1, ] + [kernel_size_l23, ] * (num_layer - 1),
                                      pool_ksize=blstack_pool_ksize,
                                      pool_type=blstack_pool_type,
@@ -86,7 +87,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      input_size=input_size_dict['map_size'],
                                      suffix='0',
                                      kernel_size=kernel_size_l1,
-                                     in_channel=1,
+                                     in_channel=num_input_channel,
                                      out_channel=out_channel,
                                      act_fn=act_fn,
                                      bn_before_act=ff_1st_bn_before_act,

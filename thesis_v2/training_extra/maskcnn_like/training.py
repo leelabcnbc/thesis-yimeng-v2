@@ -66,7 +66,7 @@ def train_one(*,
 def get_json_fn(extras, arch_json_partial, opt_config_partial):
     datasets = extras['datasets']
     resp_train = get_resp_train(datasets)
-    assert datasets['X_train'].shape[1] == 1
+    # assert datasets['X_train'].shape[1] == 1
     model_json = arch_json_partial(list(datasets['X_train'].shape[2:]),
                                    resp_train.shape[1])
     opt_config = opt_config_partial(model_json=model_json)

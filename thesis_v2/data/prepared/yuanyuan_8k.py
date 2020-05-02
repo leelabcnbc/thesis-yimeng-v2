@@ -216,6 +216,10 @@ date_compatibility_map = {
 }
 
 
+def flatten_per_trial_data_one(one_element_in_result_tuple):
+    return np.concatenate(one_element_in_result_tuple, axis=0)
+
+
 def get_data_per_trial(group, px_kept, final_size, date_list,
                        *, read_only=True, seed='legacy',
                        scale=None,
