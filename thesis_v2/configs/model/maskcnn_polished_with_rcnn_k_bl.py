@@ -534,7 +534,7 @@ def explored_models_20200509_cb19():
     param_iterator_obj.add_pair(
         'split_seed',
         # also try some other splits, with each class represented equally.
-        range(2, )
+        range(1, )
     )
 
     param_iterator_obj.add_pair(
@@ -563,7 +563,7 @@ def explored_models_20200509_cb19():
 
     param_iterator_obj.add_pair(
         'out_channel',
-        (8, 16, 32)
+        (8, 16)
     )
 
     param_iterator_obj.add_pair(
