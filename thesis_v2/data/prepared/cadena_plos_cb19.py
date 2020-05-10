@@ -51,6 +51,7 @@ def images(px_kept=80, final_size=40):
 
 
 def get_neural_data(
+        *,
         unit_mean_per_neuron=True,
         post_scale=None,
 ):
@@ -116,8 +117,10 @@ def get_neural_data_per_trial(
     return response_all
 
 
-def get_indices(seed,
-                group_by='image_numbers'
+def get_indices(*,
+                seed,
+                group_by='image_numbers',
+                return_dict=True,
                 ):
     map_dict = {
         'original': 0,
@@ -177,10 +180,38 @@ def get_indices(seed,
         np.full((5,), fill_value=val_idx.size // 5, dtype=np.int64)
     )
 
-    return {
+    indices = {
         'labels': labels,
         'groups': groups,
         'idx_train': train_idx,
         'idx_val': val_idx,
         'idx_test': test_idx,
     }
+    if return_dict:
+        return indices
+    else:
+        return (indices['idx_train'], indices['idx_val'], indices['idx_test'])
+
+
+def get_data(*, px_kept, final_size,
+             seed,
+             scale=None,
+             ):
+    x_all = images(px_kept, final_size)
+    assert x_all.shape == (global_dict['num_img'], 1, final_size, final_size)
+
+    y = get_neural_data(post_scale=scale)
+
+    indices = get_indices(seed=seed, return_dict=False)
+
+    result = []
+    for idx in indices:
+        result.append(x_all[idx])
+        if isinstance(y, np.ndarray):
+            result.append(y[idx])
+        elif isinstance(y, tuple):
+            result.append(tuple(y_this[idx] for y_this in y))
+        else:
+            raise NotImplementedError
+
+    return tuple(result)
