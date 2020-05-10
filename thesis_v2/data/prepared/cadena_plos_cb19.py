@@ -103,8 +103,10 @@ def get_neural_data_per_trial(
     elif fill_value == 'avg-over-valid-trials':
         # fill with average over valid trials
         avg_over_trials = np.nanmean(response_all, axis=0, keepdims=True)
-        assert avg_over_trials.shape == (1, global_dict['num_img'],)
+        assert avg_over_trials.shape == (1, global_dict['num_img'], global_dict['num_neurons_with_response_to_all_images'])
         response_all = np.where(np.isnan(response_all), avg_over_trials, response_all)
+    else:
+        raise NotImplementedError
 
     if fill_value is not None:
         assert np.all(np.isfinite(response_all))
