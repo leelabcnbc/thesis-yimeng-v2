@@ -380,7 +380,7 @@ def explored_models_20200502():
 
     param_iterator_obj.add_pair(
         # 1,2,3
-        'seq_length', range(1,4)
+        'seq_length', range(1, 4)
     )
 
     param_iterator_obj.add_pair(
@@ -422,10 +422,10 @@ def explored_models_20200502():
     param_iterator_obj.add_pair(
         'out_channel',
         (
-            # 8, 
+            # 8,
             16,
             # 32,
-         )
+        )
     )
 
     param_iterator_obj.add_pair(
@@ -513,6 +513,145 @@ def explored_models_20200502():
     )
 
     return param_iterator_obj
+
+
+def explored_models_20200509_cb19():
+    """those in scripts/training/cb19/maskcnn_polished_with_rcnn_k_bl/submit_20200509.py"""
+
+    param_iterator_obj = utils.ParamIterator()
+
+    param_iterator_obj.add_pair(
+        'dataset_prefix', (
+            'cb19',
+        )
+    )
+
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1160, 2320, 4640),
+    )
+
+    param_iterator_obj.add_pair(
+        'split_seed',
+        # also try some other splits, with each class represented equally.
+        range(2, )
+    )
+
+    param_iterator_obj.add_pair(
+        'model_seed',
+        # range(5),
+        range(2),  # otherwise too long.
+    )
+
+    param_iterator_obj.add_pair(
+        'act_fn',
+        # should try relu later
+        ('relu', 'softplus'),
+    )
+
+    param_iterator_obj.add_pair(
+        'loss_type',
+        ('mse', 'poisson')  # should try mse later
+    )
+
+    param_iterator_obj.add_pair(
+        'input_size',
+        (40,
+         # 100,  # should also try 100 later
+         )
+    )
+
+    param_iterator_obj.add_pair(
+        'out_channel',
+        (8, 16, 32)
+    )
+
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (2, 3)
+    )
+
+    # inherited from _with_local_pcn
+    param_iterator_obj.add_pair(
+        'kernel_size_l1',
+        (9,)
+    )
+
+    # try different kernel sizes.
+    param_iterator_obj.add_pair(
+        'kernel_size_l23',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_ksize',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_type',
+        ('avg',)
+    )
+
+    param_iterator_obj.add_pair(
+        'bn_after_fc',
+        (False,)  # should try True later
+    )
+
+    param_iterator_obj.add_pair(
+        ('scale_name', 'scale'),
+        lambda: {
+            # key is the name, value is the actual value to be passed in as is.
+            '0.01': '0.01',
+            # '0.001': '0.001',
+            # '0.1': '0.1',
+        }.items(),
+        late_call=True,
+    )
+
+    param_iterator_obj.add_pair(
+        ('smoothness_name', 'smoothness'),
+        lambda: {
+            '0.000005': '0.000005',
+            # '0.00005': '0.00005',
+            # '0.0005': '0.0005',
+            # '0.005': '0.005',
+        }.items(),
+        late_call=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        range(1, 5),
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_psize',
+        (1,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_ptype',
+        (None,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('cummean',)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_block',
+        (True,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_bn_before_act',
+        (True, False)
+    )
+
+    return param_iterator_obj
+
 
 def keygen(*,
            split_seed: Union[int, str],
