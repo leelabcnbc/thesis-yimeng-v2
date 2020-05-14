@@ -50,6 +50,7 @@ def master(*,
            seq_length: Optional[int] = None,
            val_test_every: Optional[int] = None,
            show_every: int = 100,
+           px_kept: Optional[int] = None,
            ):
 
     key = keygen(
@@ -77,13 +78,17 @@ def master(*,
         train_keep=train_keep,
         dataset_prefix=dataset_prefix,
         seq_length=seq_length,
+        px_kept=px_kept,
     )
 
     print('key', key)
 
+    if px_kept is None:
+        px_kept = 80
+
     if seq_length is None:
         # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
-        datasets = get_data(px_kept=80, final_size=input_size, seed=split_seed, scale=0.5)
+        datasets = get_data(px_kept=px_kept, final_size=input_size, seed=split_seed, scale=0.5)
     else:
         raise ValueError
 

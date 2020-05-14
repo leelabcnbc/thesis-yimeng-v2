@@ -151,12 +151,15 @@ class ParamIterator:
     def __init__(self):
         self.data = OrderedDict()
 
-    def add_pair(self, key: Union[str, Tuple[str, ...]], values, late_call: bool = False):
+    def add_pair(self, key: Union[str, Tuple[str, ...]], values, late_call: bool = False, replace=False):
         # late call is used to handle expensive calls
         # so values() provides the actual result.
         # also, if a generator is passed in, we should wrap it as a lambda,
         # so that it can be reiterated over and over.
-        assert key not in self.data
+        if not replace:
+            assert key not in self.data
+        else:
+            assert key in self.data
         if type(key) is str:
             pass
         elif type(key) is tuple:

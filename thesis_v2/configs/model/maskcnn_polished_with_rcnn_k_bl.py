@@ -653,6 +653,25 @@ def explored_models_20200509_cb19():
     return param_iterator_obj
 
 
+def explored_models_20200514_cb19():
+    """those in scripts/training/cb19/maskcnn_polished_with_rcnn_k_bl/submit_20200514.py"""
+    param_iterator_obj = explored_models_20200509_cb19()
+    param_iterator_obj.add_pair(
+        'input_size',
+        (50,
+         ),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'px_kept',
+        (100,
+         ),
+    )
+
+    return param_iterator_obj
+
+
 def keygen(*,
            split_seed: Union[int, str],
            model_seed: int,
@@ -686,6 +705,7 @@ def keygen(*,
            kernel_size_l23: int = 3,
            train_keep: Optional[int] = None,
            seq_length: Optional[int] = None,
+           px_kept: Optional[int] = None,
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -710,6 +730,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'seql_{seq_length}']
+
+    if px_kept is None:
+        additional_list += []
+    else:
+        additional_list += [f'px_{px_kept}']
 
     # suffix itself can contain /
     ret = '/'.join(
@@ -751,6 +776,11 @@ def keygen(*,
         added_param_size = 1
 
     if seq_length is None:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if px_kept is None:
         added_param_size += 0
     else:
         added_param_size += 1
