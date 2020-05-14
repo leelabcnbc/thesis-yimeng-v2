@@ -36,8 +36,8 @@ def get_raw_pkl():
 def images(px_kept=80, final_size=40):
     x_all = get_raw_pkl()['images']
     assert x_all.shape == (global_dict['num_img'], 140, 140)
-    assert px_kept == 80
-    assert final_size == 40
+    # assert px_kept == 80
+    # assert final_size == 40
     slice_to_use = slice(70 - px_kept // 2, 70 + px_kept // 2)
     x_all = x_all[:, slice_to_use, slice_to_use]
     downscale_ratio = px_kept // final_size
