@@ -10,7 +10,7 @@ https://www.biorxiv.org/content/10.1101/201764v2
 from os.path import join
 import pickle
 import numpy as np
-from skimage.transform import downscale_local_mean
+from skimage.transform import downscale_local_mean, resize
 from ... import dir_dict
 from . import one_shuffle_general
 
@@ -33,7 +33,7 @@ def get_raw_pkl():
         return pickle.load(f)
 
 
-def images(px_kept=80, final_size=40):
+def images(px_kept=80, final_size=40, force_resize=False):
     x_all = get_raw_pkl()['images']
     assert x_all.shape == (global_dict['num_img'], 140, 140)
     # assert px_kept == 80
@@ -41,9 +41,18 @@ def images(px_kept=80, final_size=40):
     slice_to_use = slice(70 - px_kept // 2, 70 + px_kept // 2)
     x_all = x_all[:, slice_to_use, slice_to_use]
     downscale_ratio = px_kept // final_size
-    assert downscale_ratio * final_size == px_kept
-    scale_factors = (1, downscale_ratio, downscale_ratio)
-    x_all = downscale_local_mean(x_all, scale_factors)[:, np.newaxis]
+    perfect_downscale = (downscale_ratio * final_size == px_kept)
+    if perfect_downscale or (not force_resize):
+        assert perfect_downscale
+        scale_factors = (1, downscale_ratio, downscale_ratio)
+        x_all = downscale_local_mean(x_all, scale_factors)[:, np.newaxis]
+    else:
+        print('use resize; not optimal for image quality')
+        # force resize.
+        x_all = np.asarray(
+            [resize(x, (final_size, final_size), mode='edge', anti_aliasing=True) for x in x_all]
+        )[:, np.newaxis]
+
     assert x_all.shape == (global_dict['num_img'], 1, final_size, final_size)
     assert x_all.min() >= 0
     assert x_all.max() <= 255
@@ -103,7 +112,8 @@ def get_neural_data_per_trial(
     elif fill_value == 'avg-over-valid-trials':
         # fill with average over valid trials
         avg_over_trials = np.nanmean(response_all, axis=0, keepdims=True)
-        assert avg_over_trials.shape == (1, global_dict['num_img'], global_dict['num_neurons_with_response_to_all_images'])
+        assert avg_over_trials.shape == (
+            1, global_dict['num_img'], global_dict['num_neurons_with_response_to_all_images'])
         response_all = np.where(np.isnan(response_all), avg_over_trials, response_all)
     else:
         raise NotImplementedError
@@ -198,8 +208,9 @@ def get_indices(*,
 def get_data(*, px_kept, final_size,
              seed,
              scale=None,
+             force_resize=False,
              ):
-    x_all = images(px_kept, final_size)
+    x_all = images(px_kept, final_size, force_resize=force_resize)
     assert x_all.shape == (global_dict['num_img'], 1, final_size, final_size)
 
     y = get_neural_data(post_scale=scale)

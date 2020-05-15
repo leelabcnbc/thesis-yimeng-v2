@@ -672,6 +672,20 @@ def explored_models_20200514_cb19():
     return param_iterator_obj
 
 
+def explored_models_20200515_cb19():
+    """those in scripts/training/cb19/maskcnn_polished_with_rcnn_k_bl/submit_20200515.py"""
+    param_iterator_obj = explored_models_20200514_cb19()
+
+    param_iterator_obj.add_pair(
+        'px_kept',
+        (80,
+         ),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def keygen(*,
            split_seed: Union[int, str],
            model_seed: int,

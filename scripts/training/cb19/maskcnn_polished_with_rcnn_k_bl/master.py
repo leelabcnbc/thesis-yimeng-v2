@@ -88,7 +88,7 @@ def master(*,
 
     if seq_length is None:
         # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
-        datasets = get_data(px_kept=px_kept, final_size=input_size, seed=split_seed, scale=0.5)
+        datasets = get_data(px_kept=px_kept, final_size=input_size, seed=split_seed, scale=0.5, force_resize=True)
     else:
         raise ValueError
 
