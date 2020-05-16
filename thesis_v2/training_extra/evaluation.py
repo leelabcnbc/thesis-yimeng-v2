@@ -9,6 +9,7 @@ def get_output_loss(*,
                     yhat, y, loss_type,
                     legacy=False,
                     handle_nan=False,
+                    drop_all_nan_epoch=False,
                     ):
     assert not legacy
     # assert legacy
@@ -21,6 +22,7 @@ def get_output_loss(*,
         good_vec = ~torch.isnan(y)
         if good_vec.sum().item() == 0:
             # ignore this epoch.
+            assert drop_all_nan_epoch
             return 0.0
         y = y[good_vec]
         yhat = yhat[good_vec]

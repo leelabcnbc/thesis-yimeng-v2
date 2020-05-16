@@ -30,7 +30,8 @@ def train_one(*,
               extra_params=None,
               print_model=False,
               handle_nan=False,
-              resp_mean_nan=0.5
+              resp_mean_nan=0.5,
+              drop_all_nan_epoch=False,
               ):
     if model_seed is not None:
         torch.manual_seed(model_seed)
@@ -53,7 +54,7 @@ def train_one(*,
         ),
         initialize_model_fn=partial(initialize_model, handle_nan=handle_nan, resp_mean_nan=resp_mean_nan),
         get_optimizer_fn=get_optimizer,
-        get_loss_fn=partial(get_loss, device=device, handle_nan=handle_nan),
+        get_loss_fn=partial(get_loss, device=device, handle_nan=handle_nan, drop_all_nan_epoch=drop_all_nan_epoch),
         datasets=datasets,
         key=key,
         show_every=show_every,
