@@ -121,6 +121,8 @@ def initialize_model(model: JSONNet, extras, handle_nan=False, resp_mean_nan=0.5
     if handle_nan:
         resp_mean = np.nanmean(resp_train, axis=0)
         # this is hack for debugging.
+        nan_mask = np.isnan(resp_mean)
+        print(f'neurons with NaN mean on train {nan_mask.sum()}/{nan_mask.size}')
         resp_mean[np.isnan(resp_mean)] = resp_mean_nan
     else:
         resp_mean = resp_train.mean(axis=0)
