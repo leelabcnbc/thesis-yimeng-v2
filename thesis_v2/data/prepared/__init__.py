@@ -50,3 +50,41 @@ def split_stuff(x_all, y, idx_sets):
         result.append(y[idx])
 
     return tuple(result)
+
+
+def combine_two_separate_datasets(
+        *,
+        x1: np.ndarray,
+        y1: np.ndarray,
+        x2: np.ndarray,
+        y2: np.ndarray,
+):
+    # this is for handling "transfer learning" where two datasets with completely different neurons are trained together
+    assert x1.ndim == x2.ndim == 4
+    assert x1.shape[1:] == x2.shape[1:]
+    assert y1.ndim == y2.ndim == 2
+
+    n1, n2 = x1.shape[0], x2.shape[0]
+    assert y1.shape[0] == n1
+    assert y2.shape[0] == n2
+
+    m1, m2 = y1.shape[1], y2.shape[1]
+    assert y1.dtype == y2.dtype
+    assert x1.dtype == x2.dtype
+
+    assert n1 > 0
+    assert n2 > 0
+    assert m1 > 0
+    assert m2 > 0
+
+    # for x, just concatenate
+    x = np.concatenate([x1, x2], axis=0)
+    assert x.shape == (n1 + n2,) + x1.shape[1:]
+
+    # for y, we need to fill some NaN to a bigger (n1+n2, m1+m2) array
+    y = np.full((n1 + n2, m1 + m2), fill_value=np.nan, dtype=y1.dtype)
+
+    y[:n1, :m1] = y1
+    y[n1:, m1:] = y2
+
+    return x, y

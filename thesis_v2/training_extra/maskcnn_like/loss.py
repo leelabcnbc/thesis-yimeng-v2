@@ -10,7 +10,7 @@ from ..evaluation import get_output_loss
 
 def get_loss(*, opt_config: dict,
              return_dict: bool = False,
-             device=None):
+             device=None, handle_nan=False):
     assert sanity_check_opt_config(opt_config)
     opt_config = deepcopy(opt_config)
 
@@ -36,7 +36,7 @@ def get_loss(*, opt_config: dict,
         output_loss = get_output_loss(yhat=yhat_neural,
                                       y=y_neural,
                                       loss_type=opt_config['loss'],
-                                      legacy=opt_config['legacy'])
+                                      legacy=opt_config['legacy'], handle_nan=handle_nan)
 
         if return_dict:
             # for debugging

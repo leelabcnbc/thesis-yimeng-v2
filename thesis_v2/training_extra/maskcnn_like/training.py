@@ -29,6 +29,8 @@ def train_one(*,
               return_model=True,
               extra_params=None,
               print_model=False,
+              handle_nan=False,
+              resp_mean_nan=0.5
               ):
     if model_seed is not None:
         torch.manual_seed(model_seed)
@@ -39,6 +41,9 @@ def train_one(*,
     # second being number of neurons.
 
     # get all jsons ready (model_json, opt_config)
+    if handle_nan:
+        # you should set both.
+        assert extra_params.get('eval_fn', {}).get('handle_nan', False)
 
     return train_one_wrapper(
         get_json_fn=partial(
@@ -46,9 +51,9 @@ def train_one(*,
             arch_json_partial=arch_json_partial,
             opt_config_partial=opt_config_partial,
         ),
-        initialize_model_fn=initialize_model,
+        initialize_model_fn=partial(initialize_model, handle_nan=handle_nan, resp_mean_nan=resp_mean_nan),
         get_optimizer_fn=get_optimizer,
-        get_loss_fn=partial(get_loss, device=device),
+        get_loss_fn=partial(get_loss, device=device, handle_nan=handle_nan),
         datasets=datasets,
         key=key,
         show_every=show_every,
@@ -108,9 +113,15 @@ def add_conv_layers(model: JSONNet):
                                       conv_layer_names]
 
 
-def initialize_model(model: JSONNet, extras):
+def initialize_model(model: JSONNet, extras, handle_nan=False, resp_mean_nan=0.5):
     # get all conv layers, for optimizer.
     add_conv_layers(model)
 
     resp_train = get_resp_train(extras['datasets'])
-    init_bias(model, resp_train.mean(axis=0))
+    if handle_nan:
+        resp_mean = np.nanmean(resp_train, axis=0)
+        # this is hack for debugging.
+        resp_mean[np.isnan(resp_mean)] = resp_mean_nan
+    else:
+        resp_mean = resp_train.mean(axis=0)
+    init_bias(model, resp_mean)

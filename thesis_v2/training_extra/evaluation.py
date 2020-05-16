@@ -7,7 +7,8 @@ from scipy.stats import pearsonr
 # this is for computing loss function
 def get_output_loss(*,
                     yhat, y, loss_type,
-                    legacy=False
+                    legacy=False,
+                    handle_nan=False,
                     ):
     assert not legacy
     # assert legacy
@@ -15,6 +16,11 @@ def get_output_loss(*,
         assert yhat.size()[1:] == y.size()
         # broadcasting.
         y = y.view(1, *y.size()).expand(yhat.size())
+
+    if handle_nan:
+        good_vec = ~torch.isnan(y)
+        y = y[good_vec]
+        yhat = yhat[good_vec]
 
     if loss_type == 'mse':
         # return mse_loss(yhat, y)
@@ -28,6 +34,18 @@ def get_output_loss(*,
         raise NotImplementedError
 
 
+def eval_fn_one_neuron(*, yhat, y, handle_nan=False, legacy_corr=True):
+    assert legacy_corr
+    if handle_nan:
+        # ignore inf. here we assume yhat use nan to denote missing,
+        # and inf might denote true data.
+        good_vec = np.logical_not(np.isnan(y))
+        y = y[good_vec]
+        yhat = yhat[good_vec]
+
+    return pearsonr(yhat, y)[0] if (np.std(yhat) > 1e-5 and np.std(y) > 1e-5) else 0
+
+
 # this is for evaluation
 def eval_fn_wrapper(*,
                     yhat_all, y_all, loss_type,
@@ -35,6 +53,7 @@ def eval_fn_wrapper(*,
                     return_corr=True,
                     legacy_corr=True,
                     yhat_reduce_axis=0,
+                    handle_nan=False,
                     ):
     # yhat_all and y_all
     # are batches of results as a list.
@@ -54,9 +73,13 @@ def eval_fn_wrapper(*,
     assert legacy_corr
     # this is better, more stable (discarding small stds).
     # used in what and where NIPS paper's code.
-    corr_each = np.array([pearsonr(yhat, y)[0] if np.std(
-        yhat) > 1e-5 and np.std(y) > 1e-5 else 0 for yhat, y in
-                          zip(yhat_all_neural.T, y_all_neural.T)])
+
+    corr_each = np.array([
+        eval_fn_one_neuron(
+            yhat=yhat, y=y, handle_nan=handle_nan, legacy_corr=legacy_corr
+        ) for yhat, y in zip(yhat_all_neural.T, y_all_neural.T)]
+    )
+
     assert np.all(np.isfinite(corr_each))
 
     if len(y_all[0]) > 1:
@@ -67,6 +90,11 @@ def eval_fn_wrapper(*,
     # assert len(y_all[0]) == 1
 
     ret_dict = dict()
+
+    if handle_nan:
+        good_vec = np.logical_not(np.isnan(y_all_neural))
+        yhat_all_neural = yhat_all_neural[good_vec]
+        y_all_neural = y_all_neural[good_vec]
 
     if loss_type == 'poisson':
         ret_dict['loss_no_reg'] = float(
