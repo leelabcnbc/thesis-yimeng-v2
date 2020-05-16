@@ -19,6 +19,9 @@ def get_output_loss(*,
 
     if handle_nan:
         good_vec = ~torch.isnan(y)
+        if good_vec.sum().item() == 0:
+            # ignore this epoch.
+            return 0.0
         y = y[good_vec]
         yhat = yhat[good_vec]
 
