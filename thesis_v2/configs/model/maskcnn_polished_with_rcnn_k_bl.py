@@ -686,6 +686,53 @@ def explored_models_20200515_cb19():
     return param_iterator_obj
 
 
+def explored_models_20200515():
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        ('quarter', 'half', 'full'),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'model_prefix', (
+            'maskcnn_polished_with_rcnn_k_bl_with_cb19',
+        )
+    )
+
+    param_iterator_obj.add_pair(
+        'cb19_px_kept',
+        (80, 100),
+    )
+
+    param_iterator_obj.add_pair(
+        'cb19_split_seed',
+        range(1),
+    )
+
+    return param_iterator_obj
+
+
+def encode_transfer_learning_cb19_params(params: dict):
+    cb19_px_kept = params.pop('cb19_px_kept')
+    cb19_split_seed = params.pop('cb19_split_seed')
+
+    params['additional_key'] = f'cb19_px{cb19_px_kept}_ss{cb19_split_seed}'
+
+    return params
+
+
+def decode_transfer_learning_cb19_params(additional_key):
+    s1, s2, s3 = additional_key.split('_')
+    assert s1 == 'cb19'
+    assert s2.startswith('px')
+    assert s3.startswith('ss')
+
+    return {
+        'cb19_px_kept': int(s2[2:]),
+        'cb19_split_seed': int(s3[2:]),
+    }
+
 def keygen(*,
            split_seed: Union[int, str],
            model_seed: int,
@@ -717,9 +764,11 @@ def keygen(*,
            ff_1st_block: bool = False,
            ff_1st_bn_before_act: bool = True,
            kernel_size_l23: int = 3,
-           train_keep: Optional[int] = None,
+           train_keep: Optional[Union[int, str]] = None,
            seq_length: Optional[int] = None,
            px_kept: Optional[int] = None,
+
+           additional_key: Optional[str] = None,
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -749,6 +798,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'px_{px_kept}']
+
+    if additional_key is None:
+        additional_list += []
+    else:
+        additional_list += [f'addkey_{additional_key}']
 
     # suffix itself can contain /
     ret = '/'.join(
@@ -799,6 +853,11 @@ def keygen(*,
     else:
         added_param_size += 1
 
+    if additional_key is None:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
     if not ff_1st_block and kernel_size_l23 == 3:
         assert len(ret.split('/')) == 19 + added_param_size
     elif not ff_1st_block and kernel_size_l23 != 3:
@@ -818,6 +877,7 @@ def script_keygen(**kwargs):
     # remove scale and smoothness
     del kwargs['scale']
     del kwargs['smoothness']
+
     key = keygen(**kwargs)
 
     # remove yuanyuan_8k_a_3day/maskcnn_polished part
