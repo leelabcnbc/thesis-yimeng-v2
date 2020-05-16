@@ -2,6 +2,7 @@
 
 I create this module because this set of hyper parameters need to be accessed from multiple places.
 """
+from copy import deepcopy
 from typing import Union, Optional
 from ...submission import utils
 
@@ -714,6 +715,7 @@ def explored_models_20200515():
 
 
 def encode_transfer_learning_cb19_params(params: dict):
+    params = deepcopy(params)
     cb19_px_kept = params.pop('cb19_px_kept')
     cb19_split_seed = params.pop('cb19_split_seed')
 

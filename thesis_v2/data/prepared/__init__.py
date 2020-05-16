@@ -87,4 +87,7 @@ def combine_two_separate_datasets(
     y[:n1, :m1] = y1
     y[n1:, m1:] = y2
 
+    assert np.all(np.isnan(y[n1:, :m1]))
+    assert np.all(np.isnan(y[:n1, m1:]))
+
     return x, y
