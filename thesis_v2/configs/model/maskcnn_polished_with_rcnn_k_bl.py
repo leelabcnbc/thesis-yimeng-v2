@@ -714,6 +714,28 @@ def explored_models_20200515():
     return param_iterator_obj
 
 
+def explored_models_20200516_gaya():
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1900//2, 1900, 3800),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'dataset_prefix', (
+            'gaya',
+        )
+    )
+
+    param_iterator_obj.add_pair(
+        'input_size',
+        (63,),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
 def encode_transfer_learning_cb19_params(params: dict):
     params = deepcopy(params)
     cb19_px_kept = params.pop('cb19_px_kept')
