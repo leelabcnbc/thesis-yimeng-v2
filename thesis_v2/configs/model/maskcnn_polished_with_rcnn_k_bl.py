@@ -714,6 +714,18 @@ def explored_models_20200515():
     return param_iterator_obj
 
 
+def explored_models_20200517():
+    # explore even smaller data set size
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (320, 640),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200516_gaya():
     param_iterator_obj = explored_models_20200430()
     param_iterator_obj.add_pair(
