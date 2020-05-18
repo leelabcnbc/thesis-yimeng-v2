@@ -748,6 +748,20 @@ def explored_models_20200516_gaya():
 
     return param_iterator_obj
 
+
+def explored_models_20200518_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        # 1900/8 != 1900//8. but it should be fine.
+        # 256 is the smallest we can take, because that's batch size.
+        (max(1900//8, 256), 1900//4),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def encode_transfer_learning_cb19_params(params: dict):
     params = deepcopy(params)
     cb19_px_kept = params.pop('cb19_px_kept')
