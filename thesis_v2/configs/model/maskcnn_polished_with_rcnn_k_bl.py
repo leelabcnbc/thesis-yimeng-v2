@@ -749,6 +749,18 @@ def explored_models_20200516_gaya():
     return param_iterator_obj
 
 
+def explored_models_20200519_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (5, 6, 7),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200518_gaya():
     param_iterator_obj = explored_models_20200516_gaya()
     param_iterator_obj.add_pair(
