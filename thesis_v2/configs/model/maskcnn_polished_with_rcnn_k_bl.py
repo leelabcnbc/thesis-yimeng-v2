@@ -791,6 +791,19 @@ def explored_models_20200523_gaya_feature_extraction_generator():
     )
 
 
+def explored_models_20200523_8k_feature_extraction_generator():
+    for x in chain(
+            explored_models_20200218().generate(),
+            explored_models_20200430().generate(),
+            explored_models_20200520().generate(),
+    ):
+        if 'train_keep' not in x:
+            x['train_keep'] = None
+        assert len(x) == 23
+        if x['kernel_size_l23'] == 3:
+            yield x
+
+
 def explored_models_20200518_gaya():
     param_iterator_obj = explored_models_20200516_gaya()
     param_iterator_obj.add_pair(
