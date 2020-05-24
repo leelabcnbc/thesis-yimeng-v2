@@ -4,7 +4,10 @@ I create this module because this set of hyper parameters need to be accessed fr
 """
 from copy import deepcopy
 from typing import Union, Optional
+from itertools import chain
 from ...submission import utils
+from ... import dir_dict
+from os.path import join
 
 
 def explored_models_20200208():
@@ -749,7 +752,7 @@ def explored_models_20200516_gaya():
     param_iterator_obj = explored_models_20200430()
     param_iterator_obj.add_pair(
         'train_keep',
-        (1900//2, 1900, 3800),
+        (1900 // 2, 1900, 3800),
         replace=True,
     )
 
@@ -780,13 +783,21 @@ def explored_models_20200519_gaya():
     return param_iterator_obj
 
 
+def explored_models_20200523_gaya_feature_extraction_generator():
+    # concatenate explored_models_20200516_gaya and explored_models_20200519_gaya
+    return chain(
+        explored_models_20200516_gaya().generate(),
+        explored_models_20200519_gaya().generate()
+    )
+
+
 def explored_models_20200518_gaya():
     param_iterator_obj = explored_models_20200516_gaya()
     param_iterator_obj.add_pair(
         'train_keep',
         # 1900/8 != 1900//8. but it should be fine.
         # 256 is the smallest we can take, because that's batch size.
-        (max(1900//8, 256), 1900//4),
+        (max(1900 // 8, 256), 1900 // 4),
         replace=True,
     )
 
@@ -813,6 +824,7 @@ def decode_transfer_learning_cb19_params(additional_key):
         'cb19_px_kept': int(s2[2:]),
         'cb19_split_seed': int(s3[2:]),
     }
+
 
 def keygen(*,
            split_seed: Union[int, str],
@@ -952,6 +964,27 @@ def keygen(*,
         raise RuntimeError
 
     return ret
+
+
+def gen_feature_extraction_global_vars(*, key):
+    global_vars = {
+        'feature_file_dir': join(
+            # for cnbc cluster, whose `/user_data/yimengzh` is not big enough.
+            # '/home/yimengzh/thesis-v2-large-files',
+            dir_dict['features'],
+            'maskcnn_polished_with_rcnn_k_bl',
+            key
+        ),
+        'augment_config': {
+            'module_names': ['blstack', 'final_act'],
+            'name_mapping': {
+                'moduledict.bl_stack': 'blstack',
+                'moduledict.final_act': 'final_act',
+            }
+        }
+    }
+
+    return global_vars
 
 
 def script_keygen(**kwargs):
