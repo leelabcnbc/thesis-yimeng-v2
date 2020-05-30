@@ -729,6 +729,24 @@ def explored_models_20200517():
     return param_iterator_obj
 
 
+def explored_models_20200530():
+    # explore acc type = 'last', using only last one, to compare with local PCN.
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1280, 2560, None),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('last',),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200520():
     # explore even smaller data set size
     param_iterator_obj = explored_models_20200430()
@@ -983,8 +1001,8 @@ def gen_feature_extraction_global_vars(*, key):
     global_vars = {
         'feature_file_dir': join(
             # for cnbc cluster, whose `/user_data/yimengzh` is not big enough.
-            # '/home/yimengzh/thesis-v2-large-files',
-            dir_dict['features'],
+            '/home/yimengzh/thesis-v2-large-files',
+            # dir_dict['features'],
             'maskcnn_polished_with_rcnn_k_bl',
             key
         ),

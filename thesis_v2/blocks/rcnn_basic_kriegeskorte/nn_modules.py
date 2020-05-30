@@ -176,7 +176,7 @@ class BLConvLayerStack(nn.Module):
 class RecurrentAccumulator(nn.Module):
     def __init__(self, mode: str):
         super().__init__()
-        assert mode in {'instant', 'cummean'}
+        assert mode in {'instant', 'cummean', 'last'}
         self.mode = mode
 
     def forward(self, input_tensor_tuple):
@@ -191,6 +191,8 @@ class RecurrentAccumulator(nn.Module):
             for i in range(len(input_tensor_tuple)):
                 ret.append(torch.mean(torch.stack(input_tensor_tuple[:i + 1]), 0))
             return tuple(ret)
+        elif self.mode == 'last':
+            return input_tensor_tuple[-1:]
         else:
             raise ValueError
 
