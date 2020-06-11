@@ -1033,8 +1033,8 @@ def gen_feature_extraction_global_vars(*, key):
     global_vars = {
         'feature_file_dir': join(
             # for cnbc cluster, whose `/user_data/yimengzh` is not big enough.
-            '/home/yimengzh/thesis-v2-large-files',
-            # dir_dict['features'],
+            # '/home/yimengzh/thesis-v2-large-files',
+            dir_dict['features'],
             'maskcnn_polished_with_rcnn_k_bl',
             key
         ),
