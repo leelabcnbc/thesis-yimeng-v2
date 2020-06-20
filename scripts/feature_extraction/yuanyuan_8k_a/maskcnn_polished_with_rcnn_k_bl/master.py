@@ -104,5 +104,6 @@ def master(*,
         post_process_fn=partial(
             postprocess_maskcnn_polished_with_rcnn_k_bl,
             rcnn_bl_cls=rcnn_bl_cls,
+            rcnn_acc_type=rcnn_acc_type,
         )
     )

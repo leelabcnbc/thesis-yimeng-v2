@@ -7,7 +7,7 @@ from numpy.linalg import norm
 
 
 def postprocess_maskcnn_polished_with_rcnn_k_bl(*, rcnn_bl_cls, global_vars, key_script, dataset_name, file_to_save,
-                                                max_len=10):
+                                                max_len=10, rcnn_acc_type):
     assert rcnn_bl_cls <= max_len + 1
     if rcnn_bl_cls > 1:
         diff_stats_dir = join(global_vars['feature_file_dir'], 'diff_stats_' + key_script)
@@ -21,14 +21,18 @@ def postprocess_maskcnn_polished_with_rcnn_k_bl(*, rcnn_bl_cls, global_vars, key
             # overall stats
             with h5py.File(file_to_save, 'r') as f:
                 g = f['test']
-                resp_neurons = [g[f'1.{x}'][()] for x in range(rcnn_bl_cls)]
-                diff_vec_neurons = generate_diff_vec_overall(
-                    tensor_list=resp_neurons,
-                    acc_mode='instant',
-                    ndim=2,
-                    max_len=max_len,
-                )
-                del resp_neurons
+
+                if rcnn_acc_type != 'last':
+                    resp_neurons = [g[f'1.{x}'][()] for x in range(rcnn_bl_cls)]
+                    diff_vec_neurons = generate_diff_vec_overall(
+                        tensor_list=resp_neurons,
+                        acc_mode='instant',
+                        ndim=2,
+                        max_len=max_len,
+                    )
+                    del resp_neurons
+                else:
+                    diff_vec_neurons = None
 
                 resp_map = [g[f'0.{x}'][()] for x in range(rcnn_bl_cls)]
                 diff_vec_map_instant = generate_diff_vec_overall(
