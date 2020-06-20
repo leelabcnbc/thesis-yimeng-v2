@@ -1,5 +1,5 @@
 from typing import Optional
-
+from functools import partial
 import numpy as np
 
 from thesis_v2.data.prepared.yuanyuan_8k import get_data
@@ -14,6 +14,8 @@ from thesis_v2.configs.model.maskcnn_polished_with_rcnn_k_bl import (
     keygen,
     gen_feature_extraction_global_vars
 )
+
+from thesis_v2.analysis.resp_diff import postprocess_maskcnn_polished_with_rcnn_k_bl
 
 load_modules()
 
@@ -99,4 +101,8 @@ def master(*,
         key=key,
         global_vars=gen_feature_extraction_global_vars(key=batch_key),
         get_data_fn=datasets_fn,
+        post_process_fn=partial(
+            postprocess_maskcnn_polished_with_rcnn_k_bl,
+            rcnn_bl_cls=rcnn_bl_cls,
+        )
     )
