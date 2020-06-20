@@ -906,6 +906,15 @@ def explored_models_20200617_8k_feature_extraction_generator():
         yield x
 
 
+def explored_models_20200619_8k_feature_extraction_generator():
+    for x in chain(
+            explored_models_20200617().generate(),
+    ):
+        assert len(x) == 23
+        assert x['kernel_size_l23'] == 3
+        assert x['rcnn_acc_type'] == 'last'
+        yield x
+
 def explored_models_20200518_gaya():
     param_iterator_obj = explored_models_20200516_gaya()
     param_iterator_obj.add_pair(
