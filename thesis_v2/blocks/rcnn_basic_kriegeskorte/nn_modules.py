@@ -174,23 +174,34 @@ class BLConvLayerStack(nn.Module):
 
 
 class RecurrentAccumulator(nn.Module):
-    def __init__(self, mode: str):
+    def __init__(self, mode: str, drop: int = 0, order: int = 1):
         super().__init__()
         assert mode in {'instant', 'cummean', 'last'}
         self.mode = mode
+        assert drop >= 0
+        self.drop = drop
+        self.order = order
+
+    def acc_mean_inner(self, input_tensor_tuple, order: int):
+        ret = []
+        # this is the cumulative mode in the original paper.
+        # https://discuss.pytorch.org/t/get-the-mean-from-a-list-of-tensors/31989/3
+        for i in range(len(input_tensor_tuple)):
+            ret.append(torch.mean(torch.stack(input_tensor_tuple[:i + 1]), 0))
+        if order == 1:
+            return tuple(ret)
+        else:
+            return self.acc_mean_inner(ret, order - 1)
 
     def forward(self, input_tensor_tuple):
         assert isinstance(input_tensor_tuple, tuple)
-        ret = []
+        # drop first `drop`
+        input_tensor_tuple = input_tensor_tuple[self.drop:]
         if self.mode == 'instant':
             # instant readout mode.
             return input_tensor_tuple
         elif self.mode == 'cummean':
-            # this is the cumulative mode in the original paper.
-            # https://discuss.pytorch.org/t/get-the-mean-from-a-list-of-tensors/31989/3
-            for i in range(len(input_tensor_tuple)):
-                ret.append(torch.mean(torch.stack(input_tensor_tuple[:i + 1]), 0))
-            return tuple(ret)
+            return self.acc_mean_inner(input_tensor_tuple, self.order)
         elif self.mode == 'last':
             return input_tensor_tuple[-1:]
         else:

@@ -59,6 +59,7 @@ def eval_fn_wrapper(*,
                     legacy_corr=True,
                     yhat_reduce_axis=0,
                     handle_nan=False,
+                    yhat_reduce_pick=-1,
                     ):
     # yhat_all and y_all
     # are batches of results as a list.
@@ -70,7 +71,7 @@ def eval_fn_wrapper(*,
         assert yhat_all_neural.ndim == 3
         # if it's 3 dim, then first dim is timestep.
         # pick the last timestep.
-        yhat_all_neural = yhat_all_neural[-1]
+        yhat_all_neural = yhat_all_neural[yhat_reduce_pick]
 
     assert yhat_all_neural.shape == y_all_neural.shape
     assert y_all_neural.ndim == 2
