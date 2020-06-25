@@ -6,5 +6,6 @@
 #SBATCH --mem=60G
 #SBATCH --gres=gpu:1
 #SBATCH --partition=CLUSTER,barbq
+#SBATCH --exclude=mind-1-26
 
 # partition to access barbq as well.

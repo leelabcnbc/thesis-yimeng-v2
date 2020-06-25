@@ -6,4 +6,4 @@
 #SBATCH --mem=30G
 #SBATCH --gres=gpu:1
 #SBATCH --partition=gpu
-#SBATCH --exclude=mind-1-28,mind-1-23
+#SBATCH --exclude=mind-1-28,mind-1-23,mind-1-26
