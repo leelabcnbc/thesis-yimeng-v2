@@ -876,6 +876,32 @@ def explored_models_20200519_gaya():
     return param_iterator_obj
 
 
+def explored_models_20200624_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (1,),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (4, 5, 6,),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'out_channel',
+        # 2,4 for matching parameters,
+        # 8, 16, 32 for comparison with recurrent models (with tied weights)
+        (2, 4, 8, 16, 32),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200523_gaya_feature_extraction_generator():
     # concatenate explored_models_20200516_gaya and explored_models_20200519_gaya
     return chain(
