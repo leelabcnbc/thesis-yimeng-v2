@@ -176,7 +176,8 @@ class BLConvLayerStack(nn.Module):
 class RecurrentAccumulator(nn.Module):
     def __init__(self, mode: str, drop: int = 0, order: int = 1):
         super().__init__()
-        assert mode in {'instant', 'cummean', 'last'}
+        # `last` is essentially `instant_last`
+        assert mode in {'instant', 'cummean', 'last', 'cummean_last'}
         self.mode = mode
         assert drop >= 0
         self.drop = drop
@@ -202,6 +203,9 @@ class RecurrentAccumulator(nn.Module):
             return input_tensor_tuple
         elif self.mode == 'cummean':
             return self.acc_mean_inner(input_tensor_tuple, self.order)
+        elif self.mode == 'cummean_last':
+            # this is probably closet to the actual evaluation protocol (using the last)
+            return self.acc_mean_inner(input_tensor_tuple, self.order)[-1:]
         elif self.mode == 'last':
             return input_tensor_tuple[-1:]
         else:

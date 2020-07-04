@@ -841,6 +841,26 @@ def explored_models_20200616():
     return param_iterator_obj
 
 
+def explored_models_20200704():
+    # explore acc type = 'last', using only last one, to compare with local PCN.
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (None, ),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        # this will make eval and train match.
+        # only using the mean of all average.
+        ('cummean_last',),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200516_gaya():
     param_iterator_obj = explored_models_20200430()
     param_iterator_obj.add_pair(
