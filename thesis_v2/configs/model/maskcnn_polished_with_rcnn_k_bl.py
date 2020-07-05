@@ -846,7 +846,7 @@ def explored_models_20200704():
     param_iterator_obj = explored_models_20200430()
     param_iterator_obj.add_pair(
         'train_keep',
-        (None, ),
+        (1280, 2560, None),
         replace=True,
     )
 
