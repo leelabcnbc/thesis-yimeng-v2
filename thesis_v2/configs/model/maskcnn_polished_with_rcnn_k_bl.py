@@ -861,6 +861,23 @@ def explored_models_20200704():
     return param_iterator_obj
 
 
+def explored_models_20200704_2():
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1280, 2560, None),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('avg',),
+    )
+
+    return param_iterator_obj
+
+
+
 def explored_models_20200516_gaya():
     param_iterator_obj = explored_models_20200430()
     param_iterator_obj.add_pair(
@@ -1032,6 +1049,7 @@ def keygen(*,
            px_kept: Optional[int] = None,
 
            additional_key: Optional[str] = None,
+           yhat_reduce_pick: int = -1,
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -1061,6 +1079,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'px_{px_kept}']
+
+    if yhat_reduce_pick == -1:
+        additional_list += []
+    else:
+        additional_list += [f'rp_{yhat_reduce_pick}']
 
     if additional_key is None:
         additional_list += []
@@ -1117,6 +1140,11 @@ def keygen(*,
         added_param_size += 1
 
     if additional_key is None:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if yhat_reduce_pick == -1:
         added_param_size += 0
     else:
         added_param_size += 1

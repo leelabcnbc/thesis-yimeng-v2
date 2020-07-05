@@ -71,7 +71,11 @@ def eval_fn_wrapper(*,
         assert yhat_all_neural.ndim == 3
         # if it's 3 dim, then first dim is timestep.
         # pick the last timestep.
-        yhat_all_neural = yhat_all_neural[yhat_reduce_pick]
+        if yhat_reduce_pick != 'avg':
+            yhat_all_neural = yhat_all_neural[yhat_reduce_pick]
+        else:
+            # this is probably better.
+            yhat_all_neural = yhat_all_neural.mean(axis=0)
 
     assert yhat_all_neural.shape == y_all_neural.shape
     assert y_all_neural.ndim == 2
