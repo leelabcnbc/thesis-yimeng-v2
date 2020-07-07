@@ -71,24 +71,45 @@ def eval_fn_wrapper(*,
         assert yhat_all_neural.ndim == 3
         # if it's 3 dim, then first dim is timestep.
         # pick the last timestep.
-        if yhat_reduce_pick != 'avg':
-            yhat_all_neural = yhat_all_neural[yhat_reduce_pick]
-        else:
+        if yhat_reduce_pick == 'avg':
             # this is probably better.
             yhat_all_neural = yhat_all_neural.mean(axis=0)
+        elif yhat_reduce_pick == 'none':
+            # keep 3d. this will make `loss_no_reg` be as close to K's paper as possible.
+            # need to broadcast y_all_neural
+            y_all_neural = np.broadcast_to(
+                y_all_neural,
+                (yhat_all_neural.shape[0],) + y_all_neural.shape
+            )
+        else:
+            yhat_all_neural = yhat_all_neural[yhat_reduce_pick]
 
     assert yhat_all_neural.shape == y_all_neural.shape
-    assert y_all_neural.ndim == 2
+    if yhat_reduce_pick == 'none':
+        assert y_all_neural.ndim == 3
+    else:
+        assert y_all_neural.ndim == 2
 
     assert legacy_corr
     # this is better, more stable (discarding small stds).
     # used in what and where NIPS paper's code.
 
-    corr_each = np.array([
-        eval_fn_one_neuron(
-            yhat=yhat, y=y, handle_nan=handle_nan, legacy_corr=legacy_corr
-        ) for yhat, y in zip(yhat_all_neural.T, y_all_neural.T)]
-    )
+    if yhat_reduce_pick != 'none':
+        corr_each = np.array([
+            eval_fn_one_neuron(
+                yhat=yhat, y=y, handle_nan=handle_nan, legacy_corr=legacy_corr
+            ) for yhat, y in zip(yhat_all_neural.T, y_all_neural.T)]
+        )
+    else:
+        # for 'none', we use avg response to evaluate.
+        corr_each = np.array([
+            eval_fn_one_neuron(
+                yhat=yhat, y=y, handle_nan=handle_nan, legacy_corr=legacy_corr
+            ) for yhat, y in zip(
+                yhat_all_neural.mean(axis=0).T,
+                y_all_neural[0].T
+            )]
+        )
 
     assert np.all(np.isfinite(corr_each))
 
