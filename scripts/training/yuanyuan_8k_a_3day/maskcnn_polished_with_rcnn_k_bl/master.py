@@ -52,7 +52,7 @@ def master(*,
            yhat_reduce_pick: int = -1,
            ):
 
-    assert yhat_reduce_pick in {-1, 'avg'}
+    assert yhat_reduce_pick in {-1, 'avg', 'none'}
 
     key = keygen(
         split_seed=split_seed,
