@@ -173,7 +173,9 @@ class ParamIterator:
             'late_call': late_call,
         }
 
-    def generate(self, key_predicate=None, ret_predicate=None):
+    def generate(self, key_predicate=None, ret_predicate=None, extra_keys=None):
+        if extra_keys is None:
+            extra_keys = dict()
         if key_predicate is None:
             def key_predicate(_):
                 return True
@@ -203,5 +205,5 @@ class ParamIterator:
                     ret_obj[kk] = vv
 
             # TODO use `ret_predicate` to filter some ret_obj
-
+            ret_obj.update(extra_keys)
             yield ret_obj
