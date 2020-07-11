@@ -50,6 +50,7 @@ def master(*,
            seq_length: Optional[int] = None,
            val_test_every: Optional[int] = None,
            show_every: int = 100,
+           yhat_reduce_pick: int = -1,
            ):
     assert input_size == global_dict['legacy_imsize']
     key = keygen(
@@ -77,6 +78,7 @@ def master(*,
         train_keep=train_keep,
         dataset_prefix=dataset_prefix,
         seq_length=seq_length,
+        yhat_reduce_pick=yhat_reduce_pick,
     )
 
     print('key', key)
@@ -151,7 +153,7 @@ def master(*,
         return_model=False,
         extra_params={
             # reduce on batch axis
-            'eval_fn': {'yhat_reduce_axis': 1}
+            'eval_fn': {'yhat_reduce_axis': 1, 'yhat_reduce_pick': yhat_reduce_pick}
         },
         **added_kw,
     )

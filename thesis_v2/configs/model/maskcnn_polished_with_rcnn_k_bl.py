@@ -962,6 +962,7 @@ def explored_models_20200709():
 
     return param_iterator_obj
 
+
 def explored_models_20200706():
     param_iterator_obj = explored_models_20200704_2()
     param_iterator_obj.add_pair(
@@ -1003,6 +1004,23 @@ def explored_models_20200519_gaya():
         'rcnn_bl_cls',
         (5, 6, 7),
         replace=True,
+    )
+
+    return param_iterator_obj
+
+
+def explored_models_20200711_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (1, 2, 3, 4, 5, 6, 7),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
     )
 
     return param_iterator_obj
@@ -1072,6 +1090,7 @@ def explored_models_20200619_8k_feature_extraction_generator():
         assert x['kernel_size_l23'] == 3
         assert x['rcnn_acc_type'] == 'last'
         yield x
+
 
 def explored_models_20200518_gaya():
     param_iterator_obj = explored_models_20200516_gaya()
