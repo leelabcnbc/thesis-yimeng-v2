@@ -1026,6 +1026,26 @@ def explored_models_20200711_gaya():
     return param_iterator_obj
 
 
+def explored_models_20200712_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (1, 2, 3, 4, 5, 6, 7),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        # this will make eval and train match.
+        # only using the mean of all average.
+        ('cummean_last',),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200624_gaya():
     param_iterator_obj = explored_models_20200516_gaya()
 
