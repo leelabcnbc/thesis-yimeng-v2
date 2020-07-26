@@ -963,6 +963,77 @@ def explored_models_20200709():
     return param_iterator_obj
 
 
+def explored_models_20200725_cm_avg():
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1280, 2560, None),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        range(1, 11),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
+    )
+
+    return param_iterator_obj
+
+
+def explored_models_20200725_cm_last():
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1280, 2560, None),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        range(1, 8),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        # this will make eval and train match.
+        # only using the mean of all average.
+        ('cummean_last',),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
+explored_models_20200725_deep_ff = explored_models_20200530_2
+
+
+def explored_models_20200725_generator():
+    # combine all three above, and having consistent number of parameters
+
+    for param_this in chain(
+            explored_models_20200725_cm_avg().generate(),
+            explored_models_20200725_cm_last().generate(),
+            explored_models_20200725_deep_ff().generate(),
+    ):
+        param_this_ret = {
+            'dataset_prefix': 'yuanyuan_8k_a_3day',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        param_this_ret.update(param_this)
+        assert param_this_ret['train_keep'] in {None, 2560, 1280}
+        # print(len(param_this_ret))
+        assert len(param_this_ret) == 26
+        yield param_this_ret
+
+
+
 def explored_models_20200706():
     param_iterator_obj = explored_models_20200704_2()
     param_iterator_obj.add_pair(
