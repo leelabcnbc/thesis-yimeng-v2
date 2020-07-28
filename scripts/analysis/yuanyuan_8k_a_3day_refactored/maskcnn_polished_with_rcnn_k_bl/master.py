@@ -230,6 +230,9 @@ def master(*,
                     model=model, loss_type=loss_type,
                     yhat_reduce_pick='avg',
                 )
+                if corr_cm_avg_debug != corr_cm_avg:
+                    print(corr_cm_avg_debug, corr_cm_avg_debug,
+                          np.asarray(corr_cm_avg_debug)-np.asarray(corr_cm_avg_debug))
                 assert corr_cm_avg_debug == corr_cm_avg
 
                 metrics_different_eval_schemes['cm-last'][str(bl_cls)] = corr_cm_last
