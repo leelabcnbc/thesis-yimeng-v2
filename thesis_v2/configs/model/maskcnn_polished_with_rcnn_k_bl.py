@@ -4,7 +4,7 @@ I create this module because this set of hyper parameters need to be accessed fr
 """
 from copy import deepcopy
 from typing import Union, Optional
-from itertools import chain
+from itertools import chain, zip_longest
 from ...submission import utils
 from ... import dir_dict
 from os.path import join
@@ -1013,13 +1013,13 @@ def explored_models_20200725_cm_last():
 explored_models_20200725_deep_ff = explored_models_20200530_2
 
 
-def explored_models_20200725_generator():
+def explored_models_20200725_generator(with_source=False):
     # combine all three above, and having consistent number of parameters
 
-    for param_this in chain(
-            explored_models_20200725_cm_avg().generate(),
-            explored_models_20200725_cm_last().generate(),
-            explored_models_20200725_deep_ff().generate(),
+    for src, param_this in chain(
+            zip_longest(['cm-avg'], explored_models_20200725_cm_avg().generate(), fillvalue='cm-avg'),
+            zip_longest(['cm-last'], explored_models_20200725_cm_last().generate(), fillvalue='cm-last'),
+            zip_longest(['deep-ff'], explored_models_20200725_deep_ff().generate(), fillvalue='deep-ff'),
     ):
         param_this_ret = {
             'dataset_prefix': 'yuanyuan_8k_a_3day',
@@ -1030,8 +1030,10 @@ def explored_models_20200725_generator():
         assert param_this_ret['train_keep'] in {None, 2560, 1280}
         # print(len(param_this_ret))
         assert len(param_this_ret) == 26
-        yield param_this_ret
-
+        if not with_source:
+            yield param_this_ret
+        else:
+            yield src, param_this_ret
 
 
 def explored_models_20200706():
