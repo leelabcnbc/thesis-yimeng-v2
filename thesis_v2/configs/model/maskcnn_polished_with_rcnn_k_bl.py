@@ -747,6 +747,28 @@ def explored_models_20200530():
     return param_iterator_obj
 
 
+def explored_models_20200731():
+    param_iterator_obj = explored_models_20200430()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1280, 2560, None),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('instant',),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200617():
     # explore acc type = 'last', using only last one, to compare with local PCN.
     param_iterator_obj = explored_models_20200430()
