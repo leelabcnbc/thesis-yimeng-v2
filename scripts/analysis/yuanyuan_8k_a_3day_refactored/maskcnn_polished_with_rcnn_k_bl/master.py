@@ -76,8 +76,14 @@ def master(*,
            model_prefix: str,
            yhat_reduce_pick: int,
            dataset_prefix: str,
+           accumulator_mode: str = 'cummean',
            ):
     assert yhat_reduce_pick in {-1, 'none'}
+
+    readout_mode_prefix = {
+        'cummean': 'cm',
+        'instant': 'inst',
+    }[accumulator_mode]
 
     key = keygen(
         split_seed=split_seed,
@@ -206,10 +212,10 @@ def master(*,
         # if cycle > 1 then do the following.
         if rcnn_bl_cls > 1:
             # always set cummean = `cummean`. NOT cummean_last.
-            model.moduledict['accumulator'].mode = 'cummean'
+            model.moduledict['accumulator'].mode = accumulator_mode
             # for cycle = 1,2,....,T
-            metrics_different_eval_schemes['cm-last'] = dict()
-            metrics_different_eval_schemes['cm-avg'] = dict()
+            metrics_different_eval_schemes[f'{readout_mode_prefix}-last'] = dict()
+            metrics_different_eval_schemes[f'{readout_mode_prefix}-avg'] = dict()
             assert model.moduledict['bl_stack'].n_timesteps == rcnn_bl_cls
             for bl_cls in range(1, rcnn_bl_cls + 1):
                 # set model to have bl_cls cycles.
@@ -235,8 +241,8 @@ def master(*,
                           np.asarray(corr_cm_avg_debug)-np.asarray(corr_cm_avg_debug))
                 assert corr_cm_avg_debug == corr_cm_avg
 
-                metrics_different_eval_schemes['cm-last'][str(bl_cls)] = corr_cm_last
-                metrics_different_eval_schemes['cm-avg'][str(bl_cls)] = corr_cm_avg
+                metrics_different_eval_schemes[f'{readout_mode_prefix}-last'][str(bl_cls)] = corr_cm_last
+                metrics_different_eval_schemes[f'{readout_mode_prefix}-avg'][str(bl_cls)] = corr_cm_avg
                 #
                 #     evaluate at yhat_reduce_pick = -1
                 #     evaluate at yhat_reduce_pick = 'none'

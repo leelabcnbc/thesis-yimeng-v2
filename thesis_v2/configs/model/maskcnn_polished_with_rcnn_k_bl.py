@@ -1058,6 +1058,45 @@ def explored_models_20200725_generator(with_source=False):
             yield src, param_this_ret
 
 
+def explored_models_20200801_generator(with_source=False, cnbc_prefix=False):
+    if cnbc_prefix:
+        extra_key_1 = {
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl.20200731',
+        }
+        extra_key_2 = {
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl.20200530',
+        }
+        extra_key_3 = {
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl.20200617',
+        }
+    else:
+        extra_key_1 = None
+        extra_key_2 = None
+        extra_key_3 = None
+
+    for src, param_this in chain(
+            zip_longest(['inst-avg'],
+                        explored_models_20200731().generate(extra_keys=extra_key_1), fillvalue='inst-avg'),
+            zip_longest(['inst-last'],
+                        explored_models_20200530().generate(extra_keys=extra_key_2), fillvalue='inst-last'),
+            zip_longest(['inst-last'],
+                        explored_models_20200617().generate(extra_keys=extra_key_3), fillvalue='inst-last'),
+    ):
+        param_this_ret = {
+            'dataset_prefix': 'yuanyuan_8k_a_3day',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        param_this_ret.update(param_this)
+        assert param_this_ret['train_keep'] in {None, 2560, 1280}
+        # print(len(param_this_ret))
+        assert len(param_this_ret) == 26
+        if not with_source:
+            yield param_this_ret
+        else:
+            yield src, param_this_ret
+
+
 def explored_models_20200706():
     param_iterator_obj = explored_models_20200704_2()
     param_iterator_obj.add_pair(
