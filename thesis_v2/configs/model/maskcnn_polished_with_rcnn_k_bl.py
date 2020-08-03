@@ -1227,6 +1227,51 @@ def explored_models_20200712_gaya():
     return param_iterator_obj
 
 
+def explored_models_20200802_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (1, 2, 3, 4, 5, 6, 7),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        # this will make eval and train match.
+        # only using the mean of all average.
+        ('instant',),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
+    )
+
+    return param_iterator_obj
+
+
+def explored_models_20200802_2_gaya():
+    param_iterator_obj = explored_models_20200516_gaya()
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (1, 2, 3, 4, 5, 6, 7),
+        replace=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        # this will make eval and train match.
+        # only using the mean of all average.
+        ('last',),
+        replace=True,
+    )
+
+    return param_iterator_obj
+
+
 def explored_models_20200801_gaya_generator(with_source=False):
     # combine all three above, and having consistent number of parameters
 
@@ -1244,6 +1289,32 @@ def explored_models_20200801_gaya_generator(with_source=False):
         assert param_this_ret['train_keep'] in {1900 // 2, 1900, 3800}
         # print(len(param_this_ret))
         assert len(param_this_ret) == 26
+        if not with_source:
+            yield param_this_ret
+        else:
+            yield src, param_this_ret
+
+
+def explored_models_20200802_gaya_generator(with_source=False, contain_model_prefix=False):
+    # combine all three above, and having consistent number of parameters
+
+    for src, param_this in chain(
+            zip_longest(['inst-avg'], explored_models_20200802_gaya().generate(), fillvalue='inst-avg'),
+            zip_longest(['inst-last'], explored_models_20200802_2_gaya().generate(), fillvalue='inst-last'),
+    ):
+        param_this_ret = {
+            'dataset_prefix': 'gaya',
+            'yhat_reduce_pick': -1,
+        }
+        if contain_model_prefix:
+            param_this_ret['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl',
+        param_this_ret.update(param_this)
+        assert param_this_ret['train_keep'] in {1900 // 2, 1900, 3800}
+        # print(len(param_this_ret))
+        if contain_model_prefix:
+            assert len(param_this_ret) == 26
+        else:
+            assert len(param_this_ret) == 25
         if not with_source:
             yield param_this_ret
         else:
