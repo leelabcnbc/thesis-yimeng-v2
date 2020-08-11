@@ -1307,7 +1307,7 @@ def explored_models_20200802_gaya_generator(with_source=False, contain_model_pre
             'yhat_reduce_pick': -1,
         }
         if contain_model_prefix:
-            param_this_ret['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl',
+            param_this_ret['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
         param_this_ret.update(param_this)
         assert param_this_ret['train_keep'] in {1900 // 2, 1900, 3800}
         # print(len(param_this_ret))
