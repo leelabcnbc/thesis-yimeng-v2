@@ -1,4 +1,6 @@
-from os.path import join
+from os.path import join, dirname
+from os import makedirs
+from typing import List
 
 from scipy.stats import pearsonr
 import numpy as np
@@ -6,22 +8,70 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from .util import savefig
+from .. import dir_dict
 
 
-def main_loop(df_in, dir_plot, metric_list=None, display=None):
+def main_loop(df_in, dir_key, metric_list=None, display=None):
     if display is None:
         def display(_):
             pass
     if metric_list is None:
         metric_list = [x for x in ['cc2_normed_avg', 'cc2_raw_avg', 'cc_raw_avg'] if x in df_in.columns]
+    tbl_data = dict()
     for metric in metric_list:
         print(metric)
         assert metric in df_in.columns
         df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
-        loop_over_train_size(df_this, metric=metric, dir_plot=dir_plot, display=display)
+        tbl_data[metric] = loop_over_train_size(df_this, metric=metric, dir_plot=dir_key, display=display)
+
+    # TODO: collect FF data as well
+    # combine ALL tbl_data, and then save a huge csv.
+
+    data_all = []
+    keys_all = []
+
+    # return {
+    #         'title': title,
+    #         'num_param_df': num_param_df,
+    #         'num_param_df_diff': (num_param_df / num_param_df.loc[1] - 1),
+    #         'perf_df': perf_df,
+    #         'perf_df_diff': (perf_df / perf_df.loc[1] - 1),
+    #     }
+
+    for metric_key, metric_data in tbl_data.items():
+        for train_size_key, train_size_data in metric_data.items():
+            for data_one in train_size_data:
+                data_all.extend(
+                    [
+                        data_one['num_param_df'],
+                        data_one['num_param_df_diff']*100,
+                        data_one['perf_df'],
+                        data_one['perf_df_diff']*100,
+                    ]
+                )
+                keys_all.extend(
+                    [
+                        (metric_key, train_size_key, data_one['title'], 'num_param_df'),
+                        (metric_key, train_size_key, data_one['title'], 'num_param_df_diff_%'),
+                        (metric_key, train_size_key, data_one['title'], 'perf_df'),
+                        (metric_key, train_size_key, data_one['title'], 'perf_df_diff_%'),
+                    ]
+                )
+
+    tbl_data_all: pd.DataFrame = pd.concat(data_all, axis=0,
+                                           keys=keys_all,
+                                           verify_integrity=True,
+                                           names=['metric', 'train_size', 'case', 'subframe'])
+
+    csv_f = join(dir_dict['analyses'], dir_key, 'main_results_aggregated.csv')
+    makedirs(dirname(csv_f), exist_ok=True)
+    tbl_data_all.to_csv(
+        csv_f
+    )
 
 
 def loop_over_train_size(df_in, *, metric, dir_plot, display):
+    tbl_data = dict()
     for train_keep in df_in.index.get_level_values('train_keep').unique():
         print(train_keep)
         readout_types_to_handle = sorted(
@@ -36,14 +86,17 @@ def loop_over_train_size(df_in, *, metric, dir_plot, display):
         # close('all'), show() pair is needed to save memory. otherwise, there are too many figures.
         # I don't like using this pair inside the code because I feel this is a global state changing stuff.
         # ideally, they should be called in script instead of a library function.
-        process_one_case(df_this, metric=metric, train_keep=train_keep,
-                         readout_types_to_handle=readout_types_to_handle,
-                         max_cls=7,
-                         check_no_missing_data=True,
-                         dir_plot=dir_plot,
-                         display=display,
-                         )
+        tbl_data_this = process_one_case(
+            df_this, metric=metric, train_keep=train_keep,
+            readout_types_to_handle=readout_types_to_handle,
+            max_cls=7,
+            check_no_missing_data=True,
+            dir_plot=dir_plot,
+            display=display,
+        )
         plt.show()
+        tbl_data[train_keep] = tbl_data_this
+    return tbl_data
 
 
 def check_model_seeds(df_in):
@@ -264,7 +317,7 @@ def process_one_case(df_in, *, metric, train_keep,
 
     # 5. plot/table! maybe have both combined / separate results.
 
-    plot_one_case(
+    return plot_one_case(
         data_ff=data_ff,
         data_r_list=data_r_list,
         r_name_list=readout_types_to_handle,
@@ -381,10 +434,13 @@ def plot_one_case(
     #     if suptitle is not None:
     #         fig.suptitle(f'{suptitle}')
     axes = axes.ravel()
+
+    tbl_data_all = []
+
     for idx, setup_this in enumerate(data_r_list[0]):
         ax = axes[idx]
         setup_this_ff = recurrent_to_ff_setup_mapping[setup_this]
-        plot_one_case_inner(
+        tbl_data_all.append(plot_one_case_inner(
             ax=ax,
             data_ff=data_ff[setup_this_ff],
             data_r_list=[x[setup_this] for x in data_r_list],
@@ -399,7 +455,7 @@ def plot_one_case(
             check_no_missing_data=check_no_missing_data,
             xticklabels_off=False if idx // 2 == 2 else True,
             display=display,
-        )
+        ))
     fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
 
     savefig(fig, join(dir_plot, suptitle.replace(' ', '+') + 'detailed.pdf'))
@@ -407,7 +463,7 @@ def plot_one_case(
     fig_main.subplots_adjust(left=0.1, right=0.975, hspace=0.2)
     axes_main = axes_main.ravel()
     # collect everything together.
-    plot_one_case_inner(
+    tbl_data_all.append(plot_one_case_inner(
         ax=axes_main[0],
         data_ff=pd.concat(
             [data_ff[recurrent_to_ff_setup_mapping[s]] for s in data_r_list[0]],
@@ -431,9 +487,13 @@ def plot_one_case(
         check_no_missing_data=check_no_missing_data,
         xticklabels_off=False,
         display=display,
-    )
+    ))
 
     # only FF.
+    # for FF, let's ignore saving to CSV, because the format is a bit different,
+    # and it's not a huge amount of work anyway.
+    # maybe I can do it later.
+
     plot_only_ff(
         ax=axes_main[1],
         data=pd.concat(
@@ -467,6 +527,8 @@ def plot_one_case(
         num_seed=num_seed,
         dir_plot=dir_plot,
     )
+
+    return tbl_data_all
 
 
 def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, suptitle):
@@ -529,8 +591,8 @@ def construct_frame(*, df_list, name_list, num_seed):
 def plot_one_case_inner(
         *,
         ax,
-        data_ff,
-        data_r_list,
+        data_ff: pd.DataFrame,
+        data_r_list: List[pd.DataFrame],
         setup_ff,
         setup_r,
         max_cls,
@@ -573,11 +635,11 @@ def plot_one_case_inner(
     perf_list = [pd.concat([perf_ff, x], axis=0).sort_index().unstack('rcnn_bl_cls').sort_index() for x in perf_r]
 
     num_param_ret = construct_frame(df_list=num_param_list, name_list=r_name_list, num_seed=num_seed)
-    num_param_df = num_param_ret['df_mean']
-    num_param_sem_df = num_param_ret['df_sem']
+    num_param_df: pd.DataFrame = num_param_ret['df_mean']
+    num_param_sem_df: pd.DataFrame = num_param_ret['df_sem']
     perf_ret = construct_frame(df_list=perf_list, name_list=r_name_list, num_seed=num_seed)
-    perf_df = perf_ret['df_mean']
-    perf_sem_df = perf_ret['df_sem']
+    perf_df: pd.DataFrame = perf_ret['df_mean']
+    perf_sem_df: pd.DataFrame = perf_ret['df_sem']
 
     if check_no_missing_data:
         assert np.all(np.isfinite(perf_sem_df.values))
@@ -622,6 +684,7 @@ def plot_one_case_inner(
     display((num_param_df / num_param_df.loc[1] - 1).style.format("{:.3%}"))
     display(perf_df)
     display((perf_df / perf_df.loc[1] - 1).style.format("{:.3%}"))
+
     ax.set_title(title)
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
@@ -634,3 +697,11 @@ def plot_one_case_inner(
 
     if xticklabels_off:
         ax.set_xticklabels([])
+
+    return {
+        'title': title,
+        'num_param_df': num_param_df,
+        'num_param_df_diff': (num_param_df / num_param_df.loc[1] - 1),
+        'perf_df': perf_df,
+        'perf_df_diff': (perf_df / perf_df.loc[1] - 1),
+    }
