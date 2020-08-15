@@ -37,16 +37,20 @@ def main_loop(df_in, dir_key, metric_list=None, display=None):
     #         'perf_df': perf_df,
     #         'perf_df_diff': (perf_df / perf_df.loc[1] - 1),
     #     }
+    data_all_ff = []
+    data_all_ff_t = []
+    keys_all_ff = []
 
     for metric_key, metric_data in tbl_data.items():
         for train_size_key, train_size_data in metric_data.items():
-            for data_one in train_size_data:
+            data_non_ff = train_size_data['non-ff']
+            for data_one in data_non_ff:
                 data_all.extend(
                     [
                         data_one['num_param_df'],
-                        data_one['num_param_df_diff']*100,
+                        data_one['num_param_df_diff'] * 100,
                         data_one['perf_df'],
-                        data_one['perf_df_diff']*100,
+                        data_one['perf_df_diff'] * 100,
                     ]
                 )
                 keys_all.extend(
@@ -57,6 +61,31 @@ def main_loop(df_in, dir_key, metric_list=None, display=None):
                         (metric_key, train_size_key, data_one['title'], 'perf_df_diff_%'),
                     ]
                 )
+            data_ff = train_size_data['ff']
+            data_all_ff.extend(
+                [
+                    data_ff['num_param_mean'],
+                    data_ff['num_param_mean_diff'] * 100,
+                    data_ff['perf_mean'],
+                    data_ff['perf_mean_diff'] * 100,
+                ]
+            )
+            data_all_ff_t.extend(
+                [
+                    data_ff['num_param_mean_t'],
+                    data_ff['num_param_mean_t_diff'] * 100,
+                    data_ff['perf_mean_t'],
+                    data_ff['perf_mean_t_diff'] * 100,
+                ]
+            )
+            keys_all_ff.extend(
+                [
+                    (metric_key, train_size_key, 'num_param_mean'),
+                    (metric_key, train_size_key, 'num_param_mean_diff_%'),
+                    (metric_key, train_size_key, 'perf_mean'),
+                    (metric_key, train_size_key, 'perf_mean_diff_%'),
+                ]
+            )
 
     tbl_data_all: pd.DataFrame = pd.concat(data_all, axis=0,
                                            keys=keys_all,
@@ -67,6 +96,24 @@ def main_loop(df_in, dir_key, metric_list=None, display=None):
     makedirs(dirname(csv_f), exist_ok=True)
     tbl_data_all.to_csv(
         csv_f
+    )
+
+    tbl_data_all_ff: pd.DataFrame = pd.concat(data_all_ff, axis=0,
+                                              keys=keys_all_ff,
+                                              verify_integrity=True,
+                                              names=['metric', 'train_size', 'subframe'])
+    csv_f_ff = join(dir_dict['analyses'], dir_key, 'main_results_ff.csv')
+    tbl_data_all_ff.to_csv(
+        csv_f_ff
+    )
+
+    tbl_data_all_ff_t: pd.DataFrame = pd.concat(data_all_ff_t, axis=0,
+                                                keys=keys_all_ff,
+                                                verify_integrity=True,
+                                                names=['metric', 'train_size', 'subframe'])
+    csv_f_ff_t = join(dir_dict['analyses'], dir_key, 'main_results_ff_t.csv')
+    tbl_data_all_ff_t.to_csv(
+        csv_f_ff_t
     )
 
 
@@ -391,15 +438,30 @@ def plot_only_ff(*, ax, data, num_seed, ylabel, check_no_missing_data, display):
 
     # use num_layer = 3, num_channel = 16 as base line
     display(num_param_mean)
-    display((num_param_mean / num_param_mean.loc[16] - 1).style.format("{:.3%}"))
+    num_param_mean_diff = (num_param_mean / num_param_mean.loc[16] - 1)
+    display(num_param_mean_diff.style.format("{:.3%}"))
     display(perf_mean)
-    display((perf_mean / perf_mean.loc[16] - 1).style.format("{:.3%}"))
-    num_param_mean = num_param_mean.T
-    perf_mean = perf_mean.T
-    display(num_param_mean)
-    display((num_param_mean / num_param_mean.loc[3] - 1).style.format("{:.3%}"))
-    display(perf_mean)
-    display((perf_mean / perf_mean.loc[3] - 1).style.format("{:.3%}"))
+    perf_mean_diff = (perf_mean / perf_mean.loc[16] - 1)
+    display(perf_mean_diff.style.format("{:.3%}"))
+    num_param_mean_t = num_param_mean.T
+    perf_mean_t = perf_mean.T
+    display(num_param_mean_t)
+    num_param_mean_t_diff = (num_param_mean_t / num_param_mean_t.loc[3] - 1)
+    display(num_param_mean_t_diff.style.format("{:.3%}"))
+    display(perf_mean_t)
+    perf_mean_t_diff = (perf_mean_t / perf_mean_t.loc[3] - 1)
+    display(perf_mean_t_diff.style.format("{:.3%}"))
+
+    return {
+        'num_param_mean': num_param_mean,
+        'num_param_mean_diff': num_param_mean_diff,
+        'perf_mean': perf_mean,
+        'perf_mean_diff': perf_mean_diff,
+        'num_param_mean_t': num_param_mean_t,
+        'num_param_mean_t_diff': num_param_mean_t_diff,
+        'perf_mean_t': perf_mean_t,
+        'perf_mean_t_diff': perf_mean_t_diff,
+    }
 
 
 def plot_one_case(
@@ -494,7 +556,7 @@ def plot_one_case(
     # and it's not a huge amount of work anyway.
     # maybe I can do it later.
 
-    plot_only_ff(
+    tbl_data_ff = plot_only_ff(
         ax=axes_main[1],
         data=pd.concat(
             list(data_ff.values()),
@@ -528,7 +590,10 @@ def plot_one_case(
         dir_plot=dir_plot,
     )
 
-    return tbl_data_all
+    return {
+        'non-ff': tbl_data_all,
+        'ff': tbl_data_ff,
+    }
 
 
 def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, suptitle):
@@ -681,9 +746,11 @@ def plot_one_case_inner(
         title = f'{title_override}' + f', n={num_variant}'
     print(title)
     display(num_param_df)
-    display((num_param_df / num_param_df.loc[1] - 1).style.format("{:.3%}"))
+    num_param_df_diff = (num_param_df / num_param_df.loc[1] - 1)
+    display(num_param_df_diff.style.format("{:.3%}"))
     display(perf_df)
-    display((perf_df / perf_df.loc[1] - 1).style.format("{:.3%}"))
+    perf_df_diff = (perf_df / perf_df.loc[1] - 1)
+    display(perf_df_diff.style.format("{:.3%}"))
 
     ax.set_title(title)
     ax.set_ylabel(ylabel)
@@ -701,7 +768,7 @@ def plot_one_case_inner(
     return {
         'title': title,
         'num_param_df': num_param_df,
-        'num_param_df_diff': (num_param_df / num_param_df.loc[1] - 1),
+        'num_param_df_diff': num_param_df_diff,
         'perf_df': perf_df,
-        'perf_df_diff': (perf_df / perf_df.loc[1] - 1),
+        'perf_df_diff': perf_df_diff,
     }
