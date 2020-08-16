@@ -1,5 +1,6 @@
 import json
 from os.path import join
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -25,10 +26,15 @@ def collect_rcnn_k_bl_main_result(*,
                                   train_size_mapping,
                                   cc_max_all_neurons,
                                   num_neuron,
+                                  internal_dynamics_cls=None,
                                   ):
     rows_all = []
+    rows_all_param_overwrite = []
 
     param_set = None
+
+    if internal_dynamics_cls is not None:
+        assert internal_dynamics_cls > 1
 
     for idx, (src, param) in enumerate(generator):
         assert len(param) == total_num_param
@@ -81,6 +87,19 @@ def collect_rcnn_k_bl_main_result(*,
         del param['rcnn_acc_type']
         total_param_to_explain -= 1
 
+        # skip if
+        # 1) internal_dynamics_cls is set
+        # 2) cls is not 1 nor internal_dynamics_cls
+        # note that cls=1 internal dynamics cannot be extracted this way.
+        # maybe I will put it to internal_dynamics_cls+1, as a hack.
+        if internal_dynamics_cls is not None:
+            # skip non trivial R models unless cls==internal_dynamics_cls
+            skip_this_for_internal = param['rcnn_bl_cls'] != 1 and param['rcnn_bl_cls'] != internal_dynamics_cls
+            use_internal_dynamics = param['rcnn_bl_cls'] == internal_dynamics_cls
+        else:
+            skip_this_for_internal = False
+            use_internal_dynamics = False
+
         # load eval json
         eval_json_file = join(dir_dict['analyses'], key, 'eval.json')
         try:
@@ -116,7 +135,31 @@ def collect_rcnn_k_bl_main_result(*,
         if cc_max_all_neurons is not None:
             row_this['cc2_normed_avg'] = ((cc_native / cc_max_all_neurons) ** 2).mean()
 
-        rows_all.append(row_this)
+        if not skip_this_for_internal:
+            rows_all.append(row_this)
+        else:
+            rows_all_param_overwrite.append(row_this)
+
+        if use_internal_dynamics:
+            # fill in cls = 2,....,internal_dynamics_cls-1,
+            # and fill cls = 1 into internal_dynamics_cls + 1
+            for cls_this in range(1, internal_dynamics_cls):
+                # right now, the param part is wrong. will replace later,
+                # using data in `rows_all_param_overwrite`
+                row_this_internal = deepcopy(row_this)
+                cc_this_internal = np.asarray(eval_json[param['readout_type']][str(cls_this)])
+
+                assert cc_this_internal.shape == (num_neuron,)
+                if cls_this != 1:
+                    row_this_internal['rcnn_bl_cls'] = cls_this
+                else:
+                    row_this_internal['rcnn_bl_cls'] = internal_dynamics_cls + 1
+                row_this_internal['cc_raw_avg'] = cc_this_internal.mean()
+                row_this_internal['cc2_raw_avg'] = (cc_this_internal ** 2).mean()
+                if cc_max_all_neurons is not None:
+                    row_this_internal['cc2_normed_avg'] = ((cc_this_internal / cc_max_all_neurons) ** 2).mean()
+                rows_all.append(row_this_internal)
+
         if param_set is None:
             param_set = set(param.keys())
         assert param_set == param.keys()
@@ -128,4 +171,26 @@ def collect_rcnn_k_bl_main_result(*,
         keys=sorted([k for k in param_set if k not in fixed_keys]),
         verify_integrity=True
     ).sort_index()
+
+    if len(rows_all_param_overwrite) > 0:
+        df_this_overwrite = pd.DataFrame(rows_all_param_overwrite, columns=sorted(list(rows_all_param_overwrite[0].keys())))
+        df_this_overwrite = df_this_overwrite.set_index(
+            keys=sorted([k for k in param_set if k not in fixed_keys]),
+            verify_integrity=True
+        ).sort_index()
+        cls_loc = df_this.index.names.index('rcnn_bl_cls')
+        # then overwrite.
+        for tuple_this in df_this_overwrite.itertuples():
+            if tuple_this[0][cls_loc] < internal_dynamics_cls:
+                df_this.loc[tuple_this[0], 'num_param'] = tuple_this.num_param
+
+        # fix cls == internal_dynamics_cls + 1
+        for index_this in df_this.index:
+            assert type(index_this) is tuple
+            if index_this[cls_loc] == internal_dynamics_cls + 1:
+                index_this_new = list(index_this)
+                index_this_new[cls_loc] = 1
+                index_this_new = tuple(index_this_new)
+                df_this.loc[index_this, 'num_param'] = df_this.loc[index_this_new, 'num_param']
+
     return df_this

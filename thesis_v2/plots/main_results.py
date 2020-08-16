@@ -11,7 +11,7 @@ from .util import savefig
 from .. import dir_dict
 
 
-def main_loop(df_in, dir_key, metric_list=None, display=None):
+def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7):
     if display is None:
         def display(_):
             pass
@@ -22,7 +22,8 @@ def main_loop(df_in, dir_key, metric_list=None, display=None):
         print(metric)
         assert metric in df_in.columns
         df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
-        tbl_data[metric] = loop_over_train_size(df_this, metric=metric, dir_plot=dir_key, display=display)
+        tbl_data[metric] = loop_over_train_size(df_this, metric=metric, dir_plot=dir_key,
+                                                display=display, max_cls=max_cls)
 
     # TODO: collect FF data as well
     # combine ALL tbl_data, and then save a huge csv.
@@ -117,7 +118,7 @@ def main_loop(df_in, dir_key, metric_list=None, display=None):
     )
 
 
-def loop_over_train_size(df_in, *, metric, dir_plot, display):
+def loop_over_train_size(df_in, *, metric, dir_plot, display, max_cls):
     tbl_data = dict()
     for train_keep in df_in.index.get_level_values('train_keep').unique():
         print(train_keep)
@@ -136,7 +137,7 @@ def loop_over_train_size(df_in, *, metric, dir_plot, display):
         tbl_data_this = process_one_case(
             df_this, metric=metric, train_keep=train_keep,
             readout_types_to_handle=readout_types_to_handle,
-            max_cls=7,
+            max_cls=max_cls,
             check_no_missing_data=True,
             dir_plot=dir_plot,
             display=display,
