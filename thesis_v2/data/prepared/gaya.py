@@ -1,11 +1,16 @@
 import numpy as np
 from modeling.data_utils import get_images, train_val_test_split
-from analysis.data_utils import get_all_neural_data, spike_counts, trial_average
+from analysis.data_utils import get_all_neural_data, spike_counts, trial_average, get_neural_data as get_neural_data_h
 
 # legacy means the set up in
 # https://github.com/leelabcnbc/gaya-data/blob/61f21849db0b195d95dda95b224b908206533026/modeling/scripts/train_data_driven_cnn.py   # noqa: E501
 
 global_dict = {
+    'tang_num_img': 2250,
+    'tang_num_img_train': 1400,
+    'tang_num_img_val': 350,
+    'tang_num_img_test': 500,
+    'tang_num_neuron': 34,
     'legacy_num_img': 5850,
     'legacy_num_img_train': 3800,
     'legacy_num_img_val': 1000,
@@ -19,12 +24,19 @@ assert global_dict['legacy_num_img'] == (
 )
 
 
-def images():
+def images(dataset='both'):
     downsample = 4
-    DATASET = 'both'
+    DATASET = dataset
     x_all = get_images(DATASET, downsample=downsample, torch_format=True,
                        normalize=False)
-    assert x_all.shape == (global_dict['legacy_num_img'], 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
+    if dataset == 'both':
+        num_im_ref = global_dict['legacy_num_img']
+    elif dataset == 'tang':
+        num_im_ref = global_dict['tang_num_img']
+    else:
+        raise NotImplementedError
+
+    assert x_all.shape == (num_im_ref, 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
     assert x_all.min() >= 0
     assert x_all.max() <= 255
     return x_all
@@ -34,18 +46,35 @@ def get_neural_data(
         *,
         unit_mean_per_neuron=True,
         post_scale=None,
+        start_offset=0,
+        end_offset=100,
+        dataset='both',
 ):
     CORR_THRESHOLD = 0.7
-    y = get_all_neural_data(corr_threshold=CORR_THRESHOLD,
-                            elecs=False)
+    if dataset == 'both':
+        y = get_all_neural_data(corr_threshold=CORR_THRESHOLD,
+                                elecs=False)
+    else:
+        assert dataset in {'tang', 'googim'}
+        y = get_neural_data_h(dataset=dataset, corr_threshold=CORR_THRESHOLD)
     # early response, for all the course project stuff
-    y = spike_counts(y, start=540, end=640)
+    y = spike_counts(y, start=540 + start_offset, end=540 + end_offset)
     y = trial_average(y)
 
-    assert y.shape == (
-        global_dict['legacy_num_img'],
-        global_dict['legacy_num_neuron']
-    )
+    if dataset == 'both':
+        shape_ref = (
+            global_dict['legacy_num_img'],
+            global_dict['legacy_num_neuron']
+        )
+    elif dataset == 'tang':
+        shape_ref = (
+            global_dict['tang_num_img'],
+            global_dict['tang_num_neuron']
+        )
+    else:
+        raise NotImplementedError
+
+    assert y.shape == shape_ref
 
     assert np.all(np.isfinite(y))
 
@@ -58,36 +87,56 @@ def get_neural_data(
     if post_scale is not None:
         y = y * post_scale
 
-    assert y.shape == (
-        global_dict['legacy_num_img'],
-        global_dict['legacy_num_neuron']
-    )
+    assert y.shape == shape_ref
 
     return y
 
 
-def get_indices(*, seed):
+def get_indices(*, seed, dataset):
     assert seed == 'legacy'
+    if dataset == 'both':
+        total_size = global_dict['legacy_num_img']
+        train_size = global_dict['legacy_num_img_train']
+        val_size = global_dict['legacy_num_img_val']
+        test_size = global_dict['legacy_num_img_test']
+    elif dataset == 'tang':
+        total_size = global_dict['tang_num_img']
+        train_size = global_dict['tang_num_img_train']
+        val_size = global_dict['tang_num_img_val']
+        test_size = global_dict['tang_num_img_test']
+    else:
+        raise NotImplementedError
+
+    assert total_size == train_size + val_size + test_size
+
     train_idx, val_idx, test_idx = train_val_test_split(
-        total_size=5850, train_size=3800, val_size=1000,
+        total_size=total_size, train_size=train_size, val_size=val_size,
         deterministic=True
     )
-    assert train_idx.shape == (global_dict['legacy_num_img_train'],)
-    assert val_idx.shape == (global_dict['legacy_num_img_val'],)
-    assert test_idx.shape == (global_dict['legacy_num_img_test'],)
+    assert train_idx.shape == (train_size,)
+    assert val_idx.shape == (val_size,)
+    assert test_idx.shape == (test_size,)
     assert np.array_equal(np.sort(np.concatenate([train_idx, val_idx, test_idx])),
-                          np.arange(global_dict['legacy_num_img']))
+                          np.arange(total_size))
 
     return train_idx, val_idx, test_idx
 
 
-def get_data(*, seed, scale=None):
-    x_all = images()
-    assert x_all.shape == (global_dict['legacy_num_img'], 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
+def get_data(*, seed, scale=None, dataset='both'):
+    x_all = images(dataset=dataset)
 
-    y = get_neural_data(post_scale=scale)
+    if dataset == 'both':
+        num_im_ref = global_dict['legacy_num_img']
+    elif dataset == 'tang':
+        num_im_ref = global_dict['tang_num_img']
+    else:
+        raise NotImplementedError
 
-    indices = get_indices(seed=seed)
+    assert x_all.shape == (num_im_ref, 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
+
+    y = get_neural_data(post_scale=scale, dataset=dataset)
+
+    indices = get_indices(seed=seed, dataset=dataset)
 
     result = []
     for idx in indices:
