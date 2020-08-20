@@ -616,10 +616,10 @@ def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, sup
         data_r_this = data_r.xs(cls_this, level='rcnn_bl_cls')
         assert num_variant == data_r_this.shape[0] * num_seed
         ax_scatter.scatter(data_r_this['num_param'], data_r_this['perf'], color=color, s=6, label=str(cls_this))
-        ymin, ymax = min(ymin, data_r_this['perf'].min()), min(ymax, data_r_this['perf'].max())
+        ymin, ymax = min(ymin, data_r_this['perf'].min()), max(ymax, data_r_this['perf'].max())
 
     margin = (ymax - ymin) * 0.05
-    ax_scatter.set_ylim((ymin - margin, ymax + 4 * margin))
+    ax_scatter.set_ylim((ymin - margin, ymax + margin))
 
     ax_scatter.legend(loc='upper left', ncol=len(cls_to_show_r) + 1, bbox_to_anchor=(0.01, 0.99),
                       borderaxespad=0., fontsize='x-small', handletextpad=0, title='# of iterations',
