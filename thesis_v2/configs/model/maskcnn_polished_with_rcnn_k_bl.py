@@ -1295,6 +1295,27 @@ def explored_models_20200801_gaya_generator(with_source=False):
             yield src, param_this_ret
 
 
+def explored_models_20200819_tang_generator(with_source=False):
+    # combine all three above, and having consistent number of parameters
+    for x in explored_models_20200801_gaya_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+        param_dict = deepcopy(param_dict)
+        param_dict['dataset_prefix'] = 'tang'
+        param_dict['train_keep'] = {3800: 1400, 1900: 700, 1900 // 2: 350}[param_dict['train_keep']]
+        assert param_dict['train_keep'] in {350, 700, 1400}
+        assert len(param_dict) == 26
+        if not with_source:
+            yield param_dict
+        else:
+            yield src, param_dict
+
+
+
+
 def explored_models_20200802_gaya_generator(with_source=False, contain_model_prefix=False):
     # combine all three above, and having consistent number of parameters
 

@@ -85,12 +85,22 @@ def master(*,
     assert split_seed == 'legacy'
     if seq_length is None:
         # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
-        datasets = get_data(seed=split_seed, scale=0.5)
+        datasets = get_data(seed=split_seed, scale=0.5, dataset={
+            'gaya': 'both'
+        }.get(dataset_prefix, dataset_prefix))
     else:
         raise ValueError
 
     assert train_keep is not None
-    assert train_keep <= global_dict['legacy_num_img_train']
+
+    if dataset_prefix == 'gaya':
+        num_train = global_dict['legacy_num_img_train']
+    elif dataset_prefix == 'tang':
+        num_train = global_dict['tang_num_img_train']
+    else:
+        raise NotImplementedError
+
+    assert train_keep <= num_train
     train_keep_slice = slice(train_keep)
 
     datasets = {
