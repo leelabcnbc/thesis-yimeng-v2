@@ -27,6 +27,7 @@ def collect_rcnn_k_bl_main_result(*,
                                   cc_max_all_neurons,
                                   num_neuron,
                                   internal_dynamics_cls=None,
+                                  skip_eval_json=False,
                                   ):
     rows_all = []
     rows_all_param_overwrite = []
@@ -100,26 +101,29 @@ def collect_rcnn_k_bl_main_result(*,
             skip_this_for_internal = False
             use_internal_dynamics = False
 
-        # load eval json
-        eval_json_file = join(dir_dict['analyses'], key, 'eval.json')
-        try:
-            with open(eval_json_file, 'rt', encoding='utf-8') as f_eval:
-                eval_json = json.load(f_eval)
-        except FileNotFoundError as e:
-            print('missing file', idx)
-            raise e
+        if not skip_eval_json:
+            # load eval json
+            eval_json_file = join(dir_dict['analyses'], key, 'eval.json')
+            try:
+                with open(eval_json_file, 'rt', encoding='utf-8') as f_eval:
+                    eval_json = json.load(f_eval)
+            except FileNotFoundError as e:
+                print('missing file', idx)
+                raise e
 
-        cc_native_debug = np.asarray(eval_json['native'])
+            cc_native_debug = np.asarray(eval_json['native'])
 
-        if param['rcnn_bl_cls'] != 1:
-            cc_native_debug_2 = np.asarray(eval_json[param['readout_type']][str(param['rcnn_bl_cls'])])
+            if param['rcnn_bl_cls'] != 1:
+                cc_native_debug_2 = np.asarray(eval_json[param['readout_type']][str(param['rcnn_bl_cls'])])
+            else:
+                cc_native_debug_2 = cc_native_debug
+
+            assert cc_native_debug.shape == cc_native.shape == (num_neuron,) == cc_native_debug_2.shape
+
+            assert np.allclose(cc_native, cc_native_debug, atol=1e-4)
+            assert np.allclose(cc_native, cc_native_debug_2, atol=1e-4)
         else:
-            cc_native_debug_2 = cc_native_debug
-
-        assert cc_native_debug.shape == cc_native.shape == (num_neuron,) == cc_native_debug_2.shape
-
-        assert np.allclose(cc_native, cc_native_debug, atol=1e-4)
-        assert np.allclose(cc_native, cc_native_debug_2, atol=1e-4)
+            eval_json = None
 
         if cc_max_all_neurons is not None:
             assert cc_max_all_neurons.shape == (num_neuron,)
@@ -153,7 +157,7 @@ def collect_rcnn_k_bl_main_result(*,
                 if cls_this != 1:
                     row_this_internal['rcnn_bl_cls'] = cls_this
                 else:
-                    row_this_internal['rcnn_bl_cls'] = internal_dynamics_cls + 1
+                    row_check_no_missing_datathis_internal['rcnn_bl_cls'] = internal_dynamics_cls + 1
                 row_this_internal['cc_raw_avg'] = cc_this_internal.mean()
                 row_this_internal['cc2_raw_avg'] = (cc_this_internal ** 2).mean()
                 if cc_max_all_neurons is not None:
