@@ -51,6 +51,7 @@ def master(*,
            val_test_every: Optional[int] = None,
            show_every: int = 100,
            yhat_reduce_pick: int = -1,
+           additional_key: Optional[str] = None,
            ):
     assert input_size == global_dict['legacy_imsize']
     key = keygen(
@@ -79,15 +80,27 @@ def master(*,
         dataset_prefix=dataset_prefix,
         seq_length=seq_length,
         yhat_reduce_pick=yhat_reduce_pick,
+        additional_key=additional_key,
     )
+
 
     print('key', key)
     assert split_seed == 'legacy'
     if seq_length is None:
+        if additional_key is not None:
+            offsets = additional_key.split(',')
+            assert len(offsets) == 2
+            offsets = {
+                'start_offset': int(offsets[0]),
+                'end_offset': int(offsets[1]),
+            }
+        else:
+            offsets = dict()
+
         # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
         datasets = get_data(seed=split_seed, scale=0.5, dataset={
             'gaya': 'both'
-        }.get(dataset_prefix, dataset_prefix))
+        }.get(dataset_prefix, dataset_prefix), **offsets)
     else:
         raise ValueError
 

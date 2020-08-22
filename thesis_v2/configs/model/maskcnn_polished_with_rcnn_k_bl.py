@@ -1314,6 +1314,21 @@ def explored_models_20200819_tang_generator(with_source=False):
             yield src, param_dict
 
 
+def explored_models_20200822_tang_generator(with_source=False):
+    for x in explored_models_20200819_tang_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+
+        # use full response, instead of default (0,100)
+        param_dict['additional_key'] = '0,500'
+        assert len(param_dict) == 27
+        if not with_source:
+            yield param_dict
+        else:
+            yield src, param_dict
 
 
 def explored_models_20200802_gaya_generator(with_source=False, contain_model_prefix=False):

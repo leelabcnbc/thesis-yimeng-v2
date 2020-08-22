@@ -122,7 +122,7 @@ def get_indices(*, seed, dataset):
     return train_idx, val_idx, test_idx
 
 
-def get_data(*, seed, scale=None, dataset='both'):
+def get_data(*, seed, scale=None, dataset='both', start_offset=0, end_offset=100):
     x_all = images(dataset=dataset)
 
     if dataset == 'both':
@@ -134,7 +134,7 @@ def get_data(*, seed, scale=None, dataset='both'):
 
     assert x_all.shape == (num_im_ref, 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
 
-    y = get_neural_data(post_scale=scale, dataset=dataset)
+    y = get_neural_data(post_scale=scale, dataset=dataset, start_offset=start_offset, end_offset=end_offset)
 
     indices = get_indices(seed=seed, dataset=dataset)
 
