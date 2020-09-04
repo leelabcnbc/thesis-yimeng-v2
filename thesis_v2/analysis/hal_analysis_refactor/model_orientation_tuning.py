@@ -102,23 +102,23 @@ def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None):
         'idx_dict': {
             'edge': edge_o_idxs,
             'bar': bar_o_idxs,
-            'hatch': bar_o_idxs,
+            'hatch': hatch_o_idxs,
         },
         'stimuli': get_stimuli(num_channel=num_channel, normalize=normalize, new_size=new_size)
     }
 
 
 def get_tunings_dict(acts, idx_dict):
-    num_im, num_c, _1, _2 = acts.shape
+    num_im, num_c = acts.shape
     assert np.array_equal(
-        np.sort(np.concatenate(list(idx_dict.values()))),
-        np.arange(acts.shape[0])
+        np.sort(np.concatenate(list(x.ravel() for x in idx_dict.values()))),
+        np.arange(num_im)
     )
 
     tunings_dict = dict()
     for k, idx_this in idx_dict.items():
         assert idx_this.ndim == 2
-        tuning_this = np.zeros((num_c, idx_this[0]))
+        tuning_this = np.zeros((num_c, idx_this.shape[0]))
         for idx_or, idx_imgs in enumerate(idx_this):
             # get max response overall all images, per channel
             acts_this = acts[idx_imgs].max(axis=0)
@@ -156,6 +156,7 @@ def get_tuning_diffs(*, num_c, self_weights, tunings_dict, bars, kernel_shape=(3
         best: int = np.argmax(ranges)
 
         best_range = tunings[best]
+        assert best_range.shape == (num_orientation, )
         best_orient: int = np.argmax(best_range)
         orthogonal_orient = (best_orient + num_orientation // 2) % num_orientation
         goods[i] = projs[best_orient]
@@ -169,15 +170,15 @@ def get_tuning_diffs(*, num_c, self_weights, tunings_dict, bars, kernel_shape=(3
     }
 
 
-def model_orientation_tuning_one(*, model, get_self_weights_fn, stimuli_dict, bars):
+def model_orientation_tuning_one(*, model, get_resp_fn, get_self_weights_fn, stimuli_dict, bars):
     # here, model gives a 320 x num_channel x H x W response map, given the (320, 1, new_size, new_size) ot_stimuli
     # get responses.
     stimuli = stimuli_dict['stimuli']
 
     # just evaluate in CPU, for simplicity.
     with torch.no_grad():
-        acts = model(torch.tensor(stimuli, dtype=torch.float32)).numpy()
-
+        acts = get_resp_fn(model, torch.tensor(stimuli, dtype=torch.float32)).numpy()
+    print(acts.mean(), acts.std(), acts.shape)
     # get central column
     num_im, num_c, h, w = acts.shape
     acts = acts[:, :, h // 2, w // 2]
