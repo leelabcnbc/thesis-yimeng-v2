@@ -314,8 +314,16 @@ def collect_rcnn_k_bl_hal_analysis(*,
         row_this['num_param'] = num_param
 
         if param['rcnn_bl_cls'] == 1:
+            row_this['hal_tuning_analysis_inverted'] = None
             row_this['hal_tuning_analysis'] = None
         else:
+            row_this['hal_tuning_analysis_inverted'] = model_orientation_tuning_one(
+                model=result['model'].eval(),
+                get_self_weights_fn=get_self_weights_fn,
+                get_resp_fn=get_resp_fn_hal_tuning,
+                stimuli_dict=get_stimuli_dict(new_size=input_size, inverted=True),
+                bars=get_bars(),
+            )
             row_this['hal_tuning_analysis'] = model_orientation_tuning_one(
                 model=result['model'].eval(),
                 get_self_weights_fn=get_self_weights_fn,

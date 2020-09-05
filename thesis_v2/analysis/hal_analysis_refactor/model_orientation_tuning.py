@@ -57,9 +57,13 @@ def get_bars():
     return bars
 
 
-def get_stimuli(*, num_channel, normalize, new_size):
+def get_stimuli(*, num_channel, normalize, new_size, inverted):
     ot_stimuli: np.ndarray = np.load(f'{DATA_DIR}/misc/tang_ot.npy')
     assert ot_stimuli.shape == (320, 160, 160) and ot_stimuli.min() >= 0.0 and ot_stimuli.max() <= 255.0
+
+    if inverted:
+        ot_stimuli = 255.0 - ot_stimuli
+
     if new_size is not None:
         # then resize each one
         # print('use resize; not optimal for image quality')
@@ -81,7 +85,7 @@ def get_stimuli(*, num_channel, normalize, new_size):
     return ot_stimuli
 
 
-def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None):
+def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None, inverted=False):
     edge_o_idxs = np.array([np.array([[40 * k + 5 * j + i for i in range(5)]
                                       for k in range(0, 2)]).flatten() for j in range(8)])
     bar_o_idxs = np.array([np.array([[40 * k + 5 * j + i for i in range(5)]
@@ -104,7 +108,7 @@ def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None):
             'bar': bar_o_idxs,
             'hatch': hatch_o_idxs,
         },
-        'stimuli': get_stimuli(num_channel=num_channel, normalize=normalize, new_size=new_size)
+        'stimuli': get_stimuli(num_channel=num_channel, normalize=normalize, new_size=new_size, inverted=inverted)
     }
 
 
