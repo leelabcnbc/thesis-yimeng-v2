@@ -62,7 +62,7 @@ def get_stimuli(*, num_channel, normalize, new_size):
     assert ot_stimuli.shape == (320, 160, 160) and ot_stimuli.min() >= 0.0 and ot_stimuli.max() <= 255.0
     if new_size is not None:
         # then resize each one
-        print('use resize; not optimal for image quality')
+        # print('use resize; not optimal for image quality')
         # force resize.
         ot_stimuli = np.asarray(
             [resize(x, (new_size, new_size), mode='edge', anti_aliasing=True) for x in ot_stimuli]
@@ -177,8 +177,14 @@ def model_orientation_tuning_one(*, model, get_resp_fn, get_self_weights_fn, sti
 
     # just evaluate in CPU, for simplicity.
     with torch.no_grad():
-        acts = get_resp_fn(model, torch.tensor(stimuli, dtype=torch.float32)).numpy()
-    print(acts.mean(), acts.std(), acts.shape)
+        acts = get_resp_fn(model, torch.tensor(stimuli, dtype=torch.float32))
+
+        if isinstance(acts, torch.Tensor):
+            acts = acts.numpy()
+
+    assert type(acts) is np.ndarray
+
+    # print(acts.mean(), acts.std(), acts.shape)
     # get central column
     num_im, num_c, h, w = acts.shape
     acts = acts[:, :, h // 2, w // 2]

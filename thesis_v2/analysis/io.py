@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from torchnetjson.builder import build_net
+import torch
 
 from ..configs.model.maskcnn_polished_with_rcnn_k_bl import (
     keygen
@@ -15,6 +16,16 @@ from ..training_extra.misc import count_params
 from .. import dir_dict
 
 from ..models.maskcnn_polished_with_rcnn_k_bl.builder import load_modules
+from ..feature_extraction.extraction import (
+    augment_module,
+    normalize_augment_config
+)
+
+from .hal_analysis_refactor.model_orientation_tuning import (
+    model_orientation_tuning_one,
+    get_bars,
+    get_stimuli_dict
+)
 
 load_modules()
 
@@ -177,7 +188,8 @@ def collect_rcnn_k_bl_main_result(*,
     ).sort_index()
 
     if len(rows_all_param_overwrite) > 0:
-        df_this_overwrite = pd.DataFrame(rows_all_param_overwrite, columns=sorted(list(rows_all_param_overwrite[0].keys())))
+        df_this_overwrite = pd.DataFrame(rows_all_param_overwrite,
+                                         columns=sorted(list(rows_all_param_overwrite[0].keys())))
         df_this_overwrite = df_this_overwrite.set_index(
             keys=sorted([k for k in param_set if k not in fixed_keys]),
             verify_integrity=True
@@ -196,5 +208,134 @@ def collect_rcnn_k_bl_main_result(*,
                 index_this_new[cls_loc] = 1
                 index_this_new = tuple(index_this_new)
                 df_this.loc[index_this, 'num_param'] = df_this.loc[index_this_new, 'num_param']
+
+    return df_this
+
+
+def get_resp_fn_hal_tuning(model, stimuli):
+    module_name = 'moduledict.accumulator'
+    augment_config = {
+        'module_names': [module_name, ]
+    }
+    augment_config = normalize_augment_config(augment_config)
+    callback_dict, remove_handles = augment_module(model, **augment_config)
+
+    # no need for torch.no_grad(), as it's already handled outside
+    # just for safety
+    with torch.no_grad():
+        model(stimuli)
+
+    # print(len(callback_dict[module_name]))
+
+    remove_handles()
+    # last one
+    return callback_dict[module_name][-1]
+
+
+def get_self_weights_fn(model):
+    # last layer
+    weights = model.moduledict['bl_stack'].layer_list[-1].l_conv.weight
+
+    assert weights is not None
+
+    weights = weights.detach().numpy()
+
+    assert weights.ndim == 4
+    assert weights.shape[0] == weights.shape[1]
+    self_weights = [weights[i, i, :, :].copy() for i in range(weights.shape[0])]
+    return self_weights
+
+
+def collect_rcnn_k_bl_hal_analysis(*,
+                                   fixed_keys,
+                                   generator,
+                                   total_num_param,
+                                   train_size_mapping,
+                                   ):
+    rows_all = []
+
+    param_set = None
+
+    for idx, (src, param) in enumerate(generator):
+        assert len(param) == total_num_param
+        total_param_to_explain = len(param)
+
+        if idx % 100 == 0:
+            print(idx)
+
+        input_size = param['input_size']
+
+        # some parameters that won't change.
+        for k_fix, v_fix in fixed_keys.items():
+            assert param[k_fix] == v_fix
+            total_param_to_explain -= 1
+
+        # {'yhat_reduce_pick': 'none', 'train_keep': 1280, 'model_seed': 0,
+        # act_fn': 'relu', 'loss_type': 'mse', 'out_channel': 8, 'num_layer': 2,
+        # 'rcnn_bl_cls': 1,
+        # 'rcnn_acc_type': 'cummean', 'ff_1st_bn_before_act': True}
+
+        # load model to get param count
+        key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
+        # 10 to go.
+        result = load_training_results(key, return_model=False)
+        # load twice, first time to get the model.
+        result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
+        num_param = count_params(result['model'])
+        # replace 'yhat_reduce_pick' + 'rcnn_acc_type' with 'readout_type'
+        readout_raw = param['yhat_reduce_pick'], param['rcnn_acc_type']
+        if readout_raw == (-1, 'cummean'):
+            # this should only happen for deep FF models, where this does not matter.
+            assert param['rcnn_bl_cls'] == 1
+            assert src == 'deep-ff'
+
+        param['readout_type'] = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+            (-1, 'cummean'): 'legacy',
+        }[readout_raw]
+        if param['readout_type'] == 'legacy':
+            assert src == 'deep-ff'
+        else:
+            #             print(src)
+            assert src == param['readout_type']
+
+        del param['yhat_reduce_pick']
+        del param['rcnn_acc_type']
+        total_param_to_explain -= 1
+
+        param['train_keep'] = train_size_mapping.get(param['train_keep'], param['train_keep'])
+        # add result
+        row_this = {
+            k: v for k, v in param.items() if k not in fixed_keys
+        }
+        row_this['num_param'] = num_param
+
+        if param['rcnn_bl_cls'] == 1:
+            row_this['hal_tuning_analysis'] = None
+        else:
+            row_this['hal_tuning_analysis'] = model_orientation_tuning_one(
+                model=result['model'].eval(),
+                get_self_weights_fn=get_self_weights_fn,
+                get_resp_fn=get_resp_fn_hal_tuning,
+                stimuli_dict=get_stimuli_dict(new_size=input_size),
+                bars=get_bars(),
+            )
+
+        rows_all.append(row_this)
+
+        if param_set is None:
+            param_set = set(param.keys())
+        assert param_set == param.keys()
+
+    assert param_set is not None
+
+    df_this = pd.DataFrame(rows_all, columns=sorted(list(rows_all[0].keys())))
+    df_this = df_this.set_index(
+        keys=sorted([k for k in param_set if k not in fixed_keys]),
+        verify_integrity=True
+    ).sort_index()
 
     return df_this
