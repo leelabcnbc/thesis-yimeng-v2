@@ -157,7 +157,7 @@ def collect_rcnn_k_bl_main_result(*,
                 if cls_this != 1:
                     row_this_internal['rcnn_bl_cls'] = cls_this
                 else:
-                    row_check_no_missing_datathis_internal['rcnn_bl_cls'] = internal_dynamics_cls + 1
+                    row_this_internal['rcnn_bl_cls'] = internal_dynamics_cls + 1
                 row_this_internal['cc_raw_avg'] = cc_this_internal.mean()
                 row_this_internal['cc2_raw_avg'] = (cc_this_internal ** 2).mean()
                 if cc_max_all_neurons is not None:
