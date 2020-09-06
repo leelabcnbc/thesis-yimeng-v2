@@ -24,16 +24,27 @@ class LayerSourceAnalysis:
         )
         return ret
 
-    def evaluate(self, scale_map):
+    def evaluate(self, scale_map=None, conv_map=None):
         # each scale is assigned some float number.
         # output a conv->float dict
+
+        if scale_map is None:
+            scale_map = dict()
+
+        if conv_map is None:
+            conv_map = dict()
+
         output = defaultdict(float)
         for x in self.source_list:
             conv, scale = x['conv'], x['scale']
             scale_materialized = [scale_map.get(s, s) for s in scale]
+            conv_materialized = [conv_map.get(c, 1.0) for c in conv]
             for z in scale_materialized:
                 assert type(z) is float
-            output[conv] += reduce((lambda x1, x2: x1 * x2), scale_materialized, 1.0)
+            for c in conv_materialized:
+                assert type(c) is float
+
+            output[conv] += reduce((lambda x1, x2: x1 * x2), scale_materialized + conv_materialized, 1.0)
         return dict(output)
 
     def apply_scale(self, scale):
