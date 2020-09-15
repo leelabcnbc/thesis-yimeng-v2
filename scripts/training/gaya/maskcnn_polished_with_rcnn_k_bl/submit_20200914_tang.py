@@ -49,8 +49,7 @@ ff_1st_bn_before_act={ff_1st_bn_before_act},
 kernel_size_l23={kernel_size_l23},
 train_keep={train_keep},
 dataset_prefix={dataset_prefix},
-yhat_reduce_pick={yhat_reduce_pick},
-additional_key={additional_key},
+yhat_reduce_pick={yhat_reduce_pick}
 )
 """.strip()
 
