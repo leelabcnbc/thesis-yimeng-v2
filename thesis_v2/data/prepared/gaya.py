@@ -49,6 +49,7 @@ def get_neural_data(
         start_offset=0,
         end_offset=100,
         dataset='both',
+        return_raw=False,
 ):
     CORR_THRESHOLD = 0.7
     if dataset == 'both':
@@ -59,7 +60,11 @@ def get_neural_data(
         y = get_neural_data_h(dataset=dataset, corr_threshold=CORR_THRESHOLD)
     # early response, for all the course project stuff
     y = spike_counts(y, start=540 + start_offset, end=540 + end_offset)
+    # this is for computing ccnorm
+    if return_raw:
+        return y
     y = trial_average(y)
+
 
     if dataset == 'both':
         shape_ref = (
