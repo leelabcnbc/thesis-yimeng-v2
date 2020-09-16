@@ -7,51 +7,82 @@ from analysis.data_utils import DATA_DIR
 from modeling.data_utils import torchvision_normalize
 
 # check `/scripts/debug/hal_analysis/tuning_analysis_debug.ipynb` on some sanity check of stimuli and bars
-def get_bars():
+def get_bars(legacy=True):
     # 0/180
     horz_bar = np.array([
         [0.0, 0.0, 0.0],
         [1.0, 1.0, 1.0],
         [0.0, 0.0, 0.0]])
     # 22.5
-    horz_r_bar = np.array([
-        [0.0, 0.0, 1.0],
-        [1.0, 1.0, 1.0],
-        [1.0, 0.0, 0.0]])
+    if legacy:
+        horz_r_bar = np.array([
+            [0.0, 0.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [1.0, 0.0, 0.0]])
+    else:
+        # slightly better. not entirely correct.
+        horz_r_bar = np.array([
+            [0.0, 0.0, 0.5],
+            [0.5, 1.0, 0.5],
+            [0.5, 0.0, 0.0]])
     # 45
     rdia_bar = np.array([
         [0.0, 0.0, 1.0],
         [0.0, 1.0, 0.0],
         [1.0, 0.0, 0.0]])
     # 67.5
-    vert_r_bar = np.array([
-        [0.0, 1.0, 1.0],
-        [0.0, 1.0, 0.0],
-        [1.0, 1.0, 0.0]])
+    if legacy:
+        vert_r_bar = np.array([
+            [0.0, 1.0, 1.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0]])
+    else:
+        vert_r_bar = np.array([
+            [0.0, 0.5, 0.5],
+            [0.0, 1.0, 0.0],
+            [0.5, 0.5, 0.0]])
     # 90
     vert_bar = np.array([
         [0.0, 1.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.0, 1.0, 0.0]])
     # 112.5
-    vert_l_bar = np.array([
-        [1.0, 1.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 1.0, 1.0]])
+    if legacy:
+        vert_l_bar = np.array([
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 1.0]])
+    else:
+        vert_l_bar = np.array([
+            [0.5, 0.5, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.5, 0.5]])
     # 135
     ldia_bar = np.array([
         [1.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 1.0]])
     # 167.5
-    horz_l_bar = np.array([
-        [1.0, 0.0, 0.0],
-        [1.0, 1.0, 1.0],
-        [0.0, 0.0, 1.0]])
+    if legacy:
+        horz_l_bar = np.array([
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 1.0],
+            [0.0, 0.0, 1.0]])
+    else:
+        horz_l_bar = np.array([
+            [0.5, 0.0, 0.0],
+            [0.5, 1.0, 0.5],
+            [0.0, 0.0, 0.5]])
     # you must follow this order.
     # this order is consistent with order in `get_stimuli_dict`
     bars = [horz_bar, horz_r_bar, rdia_bar, vert_r_bar, vert_bar,
             vert_l_bar, ldia_bar, horz_l_bar]
+    if not legacy:
+        for b in bars:
+            assert (
+                np.array_equal(np.sort(b.ravel()), np.asarray([0, 0, 0, 0, 0, 0, 1, 1, 1])) or
+                np.array_equal(np.sort(b.ravel()), np.asarray([0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 1]))
+            )
 
     bars = [bar / np.linalg.norm(bar.ravel()) for bar in bars]
     return bars
@@ -85,7 +116,7 @@ def get_stimuli(*, num_channel, normalize, new_size, inverted):
     return ot_stimuli
 
 
-def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None, inverted=False):
+def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None, inverted=False, also_get_inverted=False):
     edge_o_idxs = np.array([np.array([[40 * k + 5 * j + i for i in range(5)]
                                       for k in range(0, 2)]).flatten() for j in range(8)])
     bar_o_idxs = np.array([np.array([[40 * k + 5 * j + i for i in range(5)]
@@ -99,10 +130,20 @@ def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None, inverted=
         np.arange(320)
     )
 
+
+    if also_get_inverted:
+        edge_o_idxs = np.concatenate([edge_o_idxs, edge_o_idxs+320], axis=1)
+        bar_o_idxs = np.concatenate([bar_o_idxs, bar_o_idxs + 320], axis=1)
+        hatch_o_idxs = np.concatenate([hatch_o_idxs, hatch_o_idxs + 320], axis=1)
+        assert np.array_equal(
+            np.sort(np.concatenate([edge_o_idxs.ravel(), bar_o_idxs.ravel(), hatch_o_idxs.ravel()])),
+            np.arange(640)
+        )
+
     assert edge_o_idxs.shape[0] == bar_o_idxs.shape[0] == hatch_o_idxs.shape[0] == 8
 
     # each of `_idx` is arranged into a (8, x) matrix, i'th (0-indexed_ row with stimuli of orientation `i*22.5`
-    return {
+    ret = {
         'idx_dict': {
             'edge': edge_o_idxs,
             'bar': bar_o_idxs,
@@ -110,6 +151,13 @@ def get_stimuli_dict(*, num_channel=1, normalize=False, new_size=None, inverted=
         },
         'stimuli': get_stimuli(num_channel=num_channel, normalize=normalize, new_size=new_size, inverted=inverted)
     }
+
+    if also_get_inverted:
+        ret['stimuli'] = np.concatenate([
+            ret['stimuli'],
+            get_stimuli(num_channel=num_channel, normalize=normalize, new_size=new_size, inverted=not inverted)
+        ], axis=0)
+    return ret
 
 
 def get_tunings_dict(acts, idx_dict):
