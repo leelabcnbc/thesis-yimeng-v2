@@ -6,6 +6,8 @@ import numpy as np
 from numpy.linalg import norm
 import pandas as pd
 
+from joblib.parallel import Parallel, delayed
+
 from torchnetjson.builder import build_net
 import torch
 
@@ -249,98 +251,163 @@ def get_self_weights_fn(model):
     return self_weights
 
 
+def collect_rcnn_k_bl_hal_analysis_inner(
+        *,
+        src, param,
+        fixed_keys,
+        total_num_param,
+        train_size_mapping
+):
+    assert len(param) == total_num_param
+    total_param_to_explain = len(param)
+
+    input_size = param['input_size']
+
+    # some parameters that won't change.
+    for k_fix, v_fix in fixed_keys.items():
+        assert param[k_fix] == v_fix
+        total_param_to_explain -= 1
+
+    # {'yhat_reduce_pick': 'none', 'train_keep': 1280, 'model_seed': 0,
+    # act_fn': 'relu', 'loss_type': 'mse', 'out_channel': 8, 'num_layer': 2,
+    # 'rcnn_bl_cls': 1,
+    # 'rcnn_acc_type': 'cummean', 'ff_1st_bn_before_act': True}
+
+    # load model to get param count
+    key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
+    # 10 to go.
+    result = load_training_results(key, return_model=False)
+    # load twice, first time to get the model.
+    result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
+    num_param = count_params(result['model'])
+    # replace 'yhat_reduce_pick' + 'rcnn_acc_type' with 'readout_type'
+    readout_raw = param['yhat_reduce_pick'], param['rcnn_acc_type']
+    if readout_raw == (-1, 'cummean'):
+        # this should only happen for deep FF models, where this does not matter.
+        assert param['rcnn_bl_cls'] == 1
+        assert src == 'deep-ff'
+
+    param['readout_type'] = {
+        ('none', 'cummean'): 'cm-avg',
+        (-1, 'cummean_last'): 'cm-last',
+        ('none', 'instant'): 'inst-avg',
+        (-1, 'last'): 'inst-last',
+        (-1, 'cummean'): 'legacy',
+    }[readout_raw]
+    if param['readout_type'] == 'legacy':
+        assert src == 'deep-ff'
+    else:
+        #             print(src)
+        assert src == param['readout_type']
+
+    del param['yhat_reduce_pick']
+    del param['rcnn_acc_type']
+    total_param_to_explain -= 1
+
+    param['train_keep'] = train_size_mapping.get(param['train_keep'], param['train_keep'])
+    # add result
+    row_this = {
+        k: v for k, v in param.items() if k not in fixed_keys
+    }
+    row_this['num_param'] = num_param
+
+    if param['rcnn_bl_cls'] == 1:
+        row_this['hal_tuning_analysis_inverted'] = None
+        row_this['hal_tuning_analysis'] = None
+        row_this['hal_tuning_analysis_improved'] = None
+        row_this['hal_tuning_analysis_improved_baseline'] = None
+    else:
+        row_this['hal_tuning_analysis_inverted'] = model_orientation_tuning_one(
+            model=result['model'].eval(),
+            get_self_weights_fn=get_self_weights_fn,
+            get_resp_fn=get_resp_fn_hal_tuning,
+            stimuli_dict=get_stimuli_dict(new_size=input_size, inverted=True),
+            bars=get_bars(),
+        )
+        row_this['hal_tuning_analysis'] = model_orientation_tuning_one(
+            model=result['model'].eval(),
+            get_self_weights_fn=get_self_weights_fn,
+            get_resp_fn=get_resp_fn_hal_tuning,
+            stimuli_dict=get_stimuli_dict(new_size=input_size),
+            bars=get_bars(),
+        )
+        row_this['hal_tuning_analysis_improved'] = model_orientation_tuning_one(
+            model=result['model'].eval(),
+            get_self_weights_fn=get_self_weights_fn,
+            get_resp_fn=get_resp_fn_hal_tuning,
+            stimuli_dict=get_stimuli_dict(new_size=input_size, also_get_inverted=True),
+            bars=get_bars(legacy=False),
+        )
+        # get some initial model
+        torch.manual_seed(row_this['model_seed'])
+        model_random = build_net(result['config_extra']['model'])
+        row_this['hal_tuning_analysis_improved_baseline'] = model_orientation_tuning_one(
+            model=model_random.eval(),
+            get_self_weights_fn=get_self_weights_fn,
+            get_resp_fn=get_resp_fn_hal_tuning,
+            stimuli_dict=get_stimuli_dict(new_size=input_size, also_get_inverted=True),
+            bars=get_bars(legacy=False),
+        )
+
+    # if param['rcnn_bl_cls'] == 1:
+    #     # row_this['hal_tuning_analysis_inverted'] = None
+    #     row_this['hal_tuning_analysis'] = None
+    #     # row_this['hal_tuning_analysis_improved'] = None
+    #     row_this['hal_tuning_analysis_baseline'] = None
+    # else:
+    #     # row_this['hal_tuning_analysis_inverted'] = model_orientation_tuning_one(
+    #     #     model=result['model'].eval(),
+    #     #     get_self_weights_fn=get_self_weights_fn,
+    #     #     get_resp_fn=get_resp_fn_hal_tuning,
+    #     #     stimuli_dict=get_stimuli_dict(new_size=input_size, inverted=True),
+    #     #     bars=get_bars(),
+    #     # )
+    #     row_this['hal_tuning_analysis'] = model_orientation_tuning_one(
+    #         model=result['model'].eval(),
+    #         get_self_weights_fn=get_self_weights_fn,
+    #         get_resp_fn=get_resp_fn_hal_tuning,
+    #         stimuli_dict=get_stimuli_dict(new_size=input_size),
+    #         bars=get_bars(legacy=False),
+    #     )
+    #     # row_this['hal_tuning_analysis_improved'] = model_orientation_tuning_one(
+    #     #     model=result['model'].eval(),
+    #     #     get_self_weights_fn=get_self_weights_fn,
+    #     #     get_resp_fn=get_resp_fn_hal_tuning,
+    #     #     stimuli_dict=get_stimuli_dict(new_size=input_size, also_get_inverted=True),
+    #     #     bars=get_bars(legacy=False),
+    #     # )
+    #     # # get some initial model
+    #     torch.manual_seed(row_this['model_seed'])
+    #     model_random = build_net(result['config_extra']['model'])
+    #     row_this['hal_tuning_analysis_baseline'] = model_orientation_tuning_one(
+    #         model=model_random.eval(),
+    #         get_self_weights_fn=get_self_weights_fn,
+    #         get_resp_fn=get_resp_fn_hal_tuning,
+    #         stimuli_dict=get_stimuli_dict(new_size=input_size),
+    #         bars=get_bars(legacy=False),
+    #     )
+
+    return row_this, set(param.keys())
+
+
 def collect_rcnn_k_bl_hal_analysis(*,
                                    fixed_keys,
                                    generator,
                                    total_num_param,
                                    train_size_mapping,
                                    ):
-    rows_all = []
-
-    param_set = None
-
-    for idx, (src, param) in enumerate(generator):
-        assert len(param) == total_num_param
-        total_param_to_explain = len(param)
-
-        if idx % 100 == 0:
-            print(idx)
-
-        input_size = param['input_size']
-
-        # some parameters that won't change.
-        for k_fix, v_fix in fixed_keys.items():
-            assert param[k_fix] == v_fix
-            total_param_to_explain -= 1
-
-        # {'yhat_reduce_pick': 'none', 'train_keep': 1280, 'model_seed': 0,
-        # act_fn': 'relu', 'loss_type': 'mse', 'out_channel': 8, 'num_layer': 2,
-        # 'rcnn_bl_cls': 1,
-        # 'rcnn_acc_type': 'cummean', 'ff_1st_bn_before_act': True}
-
-        # load model to get param count
-        key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
-        # 10 to go.
-        result = load_training_results(key, return_model=False)
-        # load twice, first time to get the model.
-        result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
-        num_param = count_params(result['model'])
-        # replace 'yhat_reduce_pick' + 'rcnn_acc_type' with 'readout_type'
-        readout_raw = param['yhat_reduce_pick'], param['rcnn_acc_type']
-        if readout_raw == (-1, 'cummean'):
-            # this should only happen for deep FF models, where this does not matter.
-            assert param['rcnn_bl_cls'] == 1
-            assert src == 'deep-ff'
-
-        param['readout_type'] = {
-            ('none', 'cummean'): 'cm-avg',
-            (-1, 'cummean_last'): 'cm-last',
-            ('none', 'instant'): 'inst-avg',
-            (-1, 'last'): 'inst-last',
-            (-1, 'cummean'): 'legacy',
-        }[readout_raw]
-        if param['readout_type'] == 'legacy':
-            assert src == 'deep-ff'
-        else:
-            #             print(src)
-            assert src == param['readout_type']
-
-        del param['yhat_reduce_pick']
-        del param['rcnn_acc_type']
-        total_param_to_explain -= 1
-
-        param['train_keep'] = train_size_mapping.get(param['train_keep'], param['train_keep'])
-        # add result
-        row_this = {
-            k: v for k, v in param.items() if k not in fixed_keys
-        }
-        row_this['num_param'] = num_param
-
-        if param['rcnn_bl_cls'] == 1:
-            row_this['hal_tuning_analysis_inverted'] = None
-            row_this['hal_tuning_analysis'] = None
-        else:
-            row_this['hal_tuning_analysis_inverted'] = model_orientation_tuning_one(
-                model=result['model'].eval(),
-                get_self_weights_fn=get_self_weights_fn,
-                get_resp_fn=get_resp_fn_hal_tuning,
-                stimuli_dict=get_stimuli_dict(new_size=input_size, inverted=True),
-                bars=get_bars(),
-            )
-            row_this['hal_tuning_analysis'] = model_orientation_tuning_one(
-                model=result['model'].eval(),
-                get_self_weights_fn=get_self_weights_fn,
-                get_resp_fn=get_resp_fn_hal_tuning,
-                stimuli_dict=get_stimuli_dict(new_size=input_size),
-                bars=get_bars(),
-            )
-
-        rows_all.append(row_this)
-
-        if param_set is None:
-            param_set = set(param.keys())
-        assert param_set == param.keys()
-
+    ret_all = Parallel(n_jobs=-1, verbose=5)(
+        delayed(collect_rcnn_k_bl_hal_analysis_inner)(
+            src=src, param=param,
+            fixed_keys=fixed_keys,
+            total_num_param=total_num_param,
+            train_size_mapping=train_size_mapping,
+        ) for src, param in generator
+    )
+    rows_all = [x[0] for x in ret_all]
+    param_set = ret_all[0][1]
+    for zzz in ret_all:
+        assert zzz[1] == param_set
     assert param_set is not None
 
     df_this = pd.DataFrame(rows_all, columns=sorted(list(rows_all[0].keys())))
