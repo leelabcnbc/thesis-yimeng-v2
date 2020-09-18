@@ -316,6 +316,8 @@ def collect_rcnn_k_bl_hal_analysis_inner(
         row_this['hal_tuning_analysis'] = None
         row_this['hal_tuning_analysis_improved'] = None
         row_this['hal_tuning_analysis_improved_baseline'] = None
+        row_this['hal_tuning_analysis_half_improved'] = None
+        row_this['hal_tuning_analysis_half_improved_baseline'] = None
     else:
         row_this['hal_tuning_analysis_inverted'] = model_orientation_tuning_one(
             model=result['model'].eval(),
@@ -338,6 +340,14 @@ def collect_rcnn_k_bl_hal_analysis_inner(
             stimuli_dict=get_stimuli_dict(new_size=input_size, also_get_inverted=True),
             bars=get_bars(legacy=False),
         )
+
+        row_this['hal_tuning_analysis_half_improved'] = model_orientation_tuning_one(
+            model=result['model'].eval(),
+            get_self_weights_fn=get_self_weights_fn,
+            get_resp_fn=get_resp_fn_hal_tuning,
+            stimuli_dict=get_stimuli_dict(new_size=input_size),
+            bars=get_bars(legacy=False),
+        )
         # get some initial model
         torch.manual_seed(row_this['model_seed'])
         model_random = build_net(result['config_extra']['model'])
@@ -349,43 +359,13 @@ def collect_rcnn_k_bl_hal_analysis_inner(
             bars=get_bars(legacy=False),
         )
 
-    # if param['rcnn_bl_cls'] == 1:
-    #     # row_this['hal_tuning_analysis_inverted'] = None
-    #     row_this['hal_tuning_analysis'] = None
-    #     # row_this['hal_tuning_analysis_improved'] = None
-    #     row_this['hal_tuning_analysis_baseline'] = None
-    # else:
-    #     # row_this['hal_tuning_analysis_inverted'] = model_orientation_tuning_one(
-    #     #     model=result['model'].eval(),
-    #     #     get_self_weights_fn=get_self_weights_fn,
-    #     #     get_resp_fn=get_resp_fn_hal_tuning,
-    #     #     stimuli_dict=get_stimuli_dict(new_size=input_size, inverted=True),
-    #     #     bars=get_bars(),
-    #     # )
-    #     row_this['hal_tuning_analysis'] = model_orientation_tuning_one(
-    #         model=result['model'].eval(),
-    #         get_self_weights_fn=get_self_weights_fn,
-    #         get_resp_fn=get_resp_fn_hal_tuning,
-    #         stimuli_dict=get_stimuli_dict(new_size=input_size),
-    #         bars=get_bars(legacy=False),
-    #     )
-    #     # row_this['hal_tuning_analysis_improved'] = model_orientation_tuning_one(
-    #     #     model=result['model'].eval(),
-    #     #     get_self_weights_fn=get_self_weights_fn,
-    #     #     get_resp_fn=get_resp_fn_hal_tuning,
-    #     #     stimuli_dict=get_stimuli_dict(new_size=input_size, also_get_inverted=True),
-    #     #     bars=get_bars(legacy=False),
-    #     # )
-    #     # # get some initial model
-    #     torch.manual_seed(row_this['model_seed'])
-    #     model_random = build_net(result['config_extra']['model'])
-    #     row_this['hal_tuning_analysis_baseline'] = model_orientation_tuning_one(
-    #         model=model_random.eval(),
-    #         get_self_weights_fn=get_self_weights_fn,
-    #         get_resp_fn=get_resp_fn_hal_tuning,
-    #         stimuli_dict=get_stimuli_dict(new_size=input_size),
-    #         bars=get_bars(legacy=False),
-    #     )
+        row_this['hal_tuning_analysis_half_improved_baseline'] = model_orientation_tuning_one(
+            model=model_random.eval(),
+            get_self_weights_fn=get_self_weights_fn,
+            get_resp_fn=get_resp_fn_hal_tuning,
+            stimuli_dict=get_stimuli_dict(new_size=input_size),
+            bars=get_bars(legacy=False),
+        )
 
     return row_this, set(param.keys())
 
