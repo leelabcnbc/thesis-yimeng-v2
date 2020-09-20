@@ -97,6 +97,12 @@ class BLConvLayerStack(nn.Module):
             # https://discuss.pytorch.org/t/convering-a-batch-normalization-layer-from-tf-to-pytorch/20407/2
             self.bn_layer_list.extend([nn.BatchNorm2d(num_features=channel_list[i + 1],
                                                       eps=bn_eps, momentum=bn_momentum) for i in range(n_layer)])
+            # first, all layers for t=0
+            # then t=1,
+            # then t=2,
+            # ...
+            # then t=len(n_timesteps)
+
         self.bn_layer_list = nn.ModuleList(
             self.bn_layer_list
         )

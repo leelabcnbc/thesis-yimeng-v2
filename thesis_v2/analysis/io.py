@@ -408,20 +408,23 @@ def compute_average_scale_of_weight(weight: np.ndarray):
 
 def get_scale_and_conv_maps_for_a_model(model):
     bl_stack = model.moduledict['bl_stack']
-    assert len(bl_stack.layer_list) == 1
-    layer_this = bl_stack.layer_list[0]
-    # TODO: handle cases when num layer > 1
-    bn_list = bl_stack.bn_layer_list
+    bn_list_global = bl_stack.bn_layer_list
+    layer_list_global = bl_stack.layer_list
+    assert len(layer_list_global) == bl_stack.n_layer
+    assert len(bn_list_global) == bl_stack.n_timesteps * bl_stack.n_layer
     conv_map = dict()
-    if layer_this.l_conv is None:
-        conv_map['R1'] = None
-    else:
-        conv_map['R1'] = compute_average_scale_of_weight(layer_this.l_conv.weight.detach().numpy())
-
-    conv_map['B1'] = compute_average_scale_of_weight(layer_this.b_conv.weight.detach().numpy())
     scale_map = dict()
-    for idx, bn_layer in enumerate(bn_list, start=1):
-        scale_map[f's1,{idx}'] = compute_average_scale_of_weight(bn_layer.weight.detach().numpy())
+    for layer_idx, layer_this in enumerate(layer_list_global):
+        layer_idx_human = layer_idx + 1
+        bn_list = [bn_list_global[t * bl_stack.n_layer + layer_idx] for t in range(bl_stack.n_timesteps)]
+        if layer_this.l_conv is None:
+            conv_map[f'R{layer_idx_human}'] = None
+        else:
+            conv_map[f'R{layer_idx_human}'] = compute_average_scale_of_weight(layer_this.l_conv.weight.detach().numpy())
+
+        conv_map[f'B{layer_idx_human}'] = compute_average_scale_of_weight(layer_this.b_conv.weight.detach().numpy())
+        for idx, bn_layer in enumerate(bn_list, start=1):
+            scale_map[f's{layer_idx_human},{idx}'] = compute_average_scale_of_weight(bn_layer.weight.detach().numpy())
 
     for vvv in conv_map.values():
         assert vvv is None or vvv >= 0
@@ -499,18 +502,15 @@ def collect_rcnn_k_bl_source_analysis(*,
         }
         row_this['num_param'] = num_param
 
-        if param['num_layer'] > 2 or param['readout_type'] == 'legacy':
-            row_this['source_analysis'] = None  # not included yet
-        else:
-            maps = get_scale_and_conv_maps_for_a_model(result['model'])
-            src_analysis_instance = get_source_analysis_for_one_model_spec(
-                num_recurrent_layer=param['num_layer'] - 1, num_cls=param['rcnn_bl_cls'],
-                readout_type=param['readout_type'],
-            )
-            # get the scales for everything of this model
-            row_this['source_analysis'] = src_analysis_instance.evaluate(
-                scale_map=maps['scale_map'], conv_map=maps['conv_map']
-            )
+        maps = get_scale_and_conv_maps_for_a_model(result['model'])
+        src_analysis_instance = get_source_analysis_for_one_model_spec(
+            num_recurrent_layer=param['num_layer'] - 1, num_cls=param['rcnn_bl_cls'],
+            readout_type=param['readout_type'],
+        )
+        # get the scales for everything of this model
+        row_this['source_analysis'] = src_analysis_instance.evaluate(
+            scale_map=maps['scale_map'], conv_map=maps['conv_map']
+        )
 
         rows_all.append(row_this)
 

@@ -82,6 +82,10 @@ def get_average_source(source_list):
 def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, readout_type, return_raw=False):
     assert num_recurrent_layer >= 1
     assert num_cls >= 1
+
+    if readout_type == 'legacy':
+        assert num_cls == 1
+
     # first, get data at all iterations, inst
     # here, `I` is the feedforward input, which is constant across all time steps.
     sources_list = [
@@ -113,7 +117,7 @@ def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, read
     if return_raw:
         return sources_list
 
-    if readout_type == 'inst-last':
+    if readout_type in {'inst-last', 'legacy'}:
         return sources_list[-1][-1]
     elif readout_type in {'cm-last', 'inst-avg'}:
         # one averaging. my source analysis does not tell the difference between the two.
