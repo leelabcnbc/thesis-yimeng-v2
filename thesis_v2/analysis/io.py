@@ -414,14 +414,14 @@ def get_scale_and_conv_maps_for_a_model(model):
     bn_list = bl_stack.bn_layer_list
     conv_map = dict()
     if layer_this.l_conv is None:
-        conv_map['R'] = None
+        conv_map['R1'] = None
     else:
-        conv_map['R'] = compute_average_scale_of_weight(layer_this.l_conv.weight.detach().numpy())
+        conv_map['R1'] = compute_average_scale_of_weight(layer_this.l_conv.weight.detach().numpy())
 
-    conv_map['B'] = compute_average_scale_of_weight(layer_this.b_conv.weight.detach().numpy())
+    conv_map['B1'] = compute_average_scale_of_weight(layer_this.b_conv.weight.detach().numpy())
     scale_map = dict()
     for idx, bn_layer in enumerate(bn_list, start=1):
-        scale_map[f's{idx}'] = compute_average_scale_of_weight(bn_layer.weight.detach().numpy())
+        scale_map[f's1,{idx}'] = compute_average_scale_of_weight(bn_layer.weight.detach().numpy())
 
     for vvv in conv_map.values():
         assert vvv is None or vvv >= 0

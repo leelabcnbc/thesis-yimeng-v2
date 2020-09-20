@@ -80,36 +80,46 @@ def get_average_source(source_list):
 
 
 def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, readout_type, return_raw=False):
-    assert num_recurrent_layer == 1
+    assert num_recurrent_layer >= 1
     assert num_cls >= 1
     # first, get data at all iterations, inst
+    # here, `I` is the feedforward input, which is constant across all time steps.
+    sources_list = [
+        [LayerSourceAnalysis().add_source(conv=('I',), scale=(1.0,))]*num_cls
+    ]
 
-    sources = [LayerSourceAnalysis().add_source(conv=('B',), scale=('s1',))]
+    for layer_idx in range(num_recurrent_layer):
+        # extra
+        layer_idx_human = layer_idx + 1
+        sources_this = []
+        conv_symbol_b = f'B{layer_idx_human}'
+        conv_symbol_r = f'R{layer_idx_human}'
+        scale_prefix = f's{layer_idx_human}'
 
-    for t in range(2, num_cls + 1):
-        src_this = LayerSourceAnalysis().add_source(
-            conv=('B',), scale=()
-        )
-        # input from recurrent
-        src_prev_with_recurrent = sources[-1].apply_conv(('R',))
-
-        src_this = src_this.add(src_prev_with_recurrent)
-        src_this = src_this.apply_scale((f's{t}',))
-
-        sources.append(src_this)
-
-    assert len(sources) == num_cls
+        for t in range(num_cls):
+            scale_this = f'{scale_prefix},{t+1}'
+            # take previous layer's output at this time step.
+            src_this = sources_list[-1][t]
+            # apply B convolution
+            src_this = src_this.apply_conv((conv_symbol_b,))
+            if t > 0:
+                # take last iteration's output and take R convolution, add the result
+                src_this = src_this.add(sources_this[-1].apply_conv((conv_symbol_r,)))
+            # BN.
+            src_this = src_this.apply_scale((scale_this,))
+            sources_this.append(src_this)
+        sources_list.append(sources_this)
 
     if return_raw:
-        return sources
+        return sources_list
 
     if readout_type == 'inst-last':
-        return sources[-1]
+        return sources_list[-1][-1]
     elif readout_type in {'cm-last', 'inst-avg'}:
         # one averaging. my source analysis does not tell the difference between the two.
-        return get_average_source(sources)
+        return get_average_source(sources_list[-1])
     elif readout_type == 'cm-avg':
-        sources = [get_average_source(sources[:idx + 1]) for idx in range(num_cls)]
+        sources = [get_average_source(sources_list[-1][:idx + 1]) for idx in range(num_cls)]
         return get_average_source(sources)
     else:
         raise ValueError
