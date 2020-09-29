@@ -253,10 +253,12 @@ def get_self_weights_fn(model):
 
 def collect_rcnn_k_bl_hal_analysis_inner(
         *,
+        idx,
         src, param,
         fixed_keys,
         total_num_param,
-        train_size_mapping
+        train_size_mapping,
+        ignore_seed_in_baseline
 ):
     assert len(param) == total_num_param
     total_param_to_explain = len(param)
@@ -349,7 +351,10 @@ def collect_rcnn_k_bl_hal_analysis_inner(
             bars=get_bars(legacy=False),
         )
         # get some initial model
-        torch.manual_seed(row_this['model_seed'])
+        if not ignore_seed_in_baseline:
+            torch.manual_seed(row_this['model_seed'])
+        else:
+            torch.manual_seed(idx)
         model_random = build_net(result['config_extra']['model'])
         row_this['hal_tuning_analysis_improved_baseline'] = model_orientation_tuning_one(
             model=model_random.eval(),
@@ -375,14 +380,17 @@ def collect_rcnn_k_bl_hal_analysis(*,
                                    generator,
                                    total_num_param,
                                    train_size_mapping,
+                                   ignore_seed_in_baseline=False,
                                    ):
     ret_all = Parallel(n_jobs=-1, verbose=5)(
         delayed(collect_rcnn_k_bl_hal_analysis_inner)(
+            idx=idx,
             src=src, param=param,
             fixed_keys=fixed_keys,
             total_num_param=total_num_param,
             train_size_mapping=train_size_mapping,
-        ) for src, param in generator
+            ignore_seed_in_baseline=ignore_seed_in_baseline,
+        ) for idx, (src, param) in enumerate(generator)
     )
     rows_all = [x[0] for x in ret_all]
     param_set = ret_all[0][1]
