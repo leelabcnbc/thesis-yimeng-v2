@@ -53,7 +53,6 @@ def master(*,
            yhat_reduce_pick: int = -1,
            additional_key: Optional[str] = None,
            ):
-    assert input_size == global_dict['legacy_imsize']
     key = keygen(
         split_seed=split_seed,
         model_seed=model_seed,
@@ -100,7 +99,7 @@ def master(*,
         # keeping mean response at 0.5 seems the best. somehow. using batch norm is bad, somehow.
         datasets = get_data(seed=split_seed, scale=0.5, dataset={
             'gaya': 'both'
-        }.get(dataset_prefix, dataset_prefix), **offsets)
+        }.get(dataset_prefix, dataset_prefix), **offsets, crop=input_size)
     else:
         raise ValueError
 

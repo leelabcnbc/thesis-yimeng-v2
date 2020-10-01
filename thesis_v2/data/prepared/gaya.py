@@ -24,7 +24,7 @@ assert global_dict['legacy_num_img'] == (
 )
 
 
-def images(dataset='both'):
+def images(dataset='both', crop=None):
     downsample = 4
     DATASET = dataset
     x_all = get_images(DATASET, downsample=downsample, torch_format=True,
@@ -37,6 +37,13 @@ def images(dataset='both'):
         raise NotImplementedError
 
     assert x_all.shape == (num_im_ref, 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
+
+    if crop is not None:
+        # crop the central crop x crop out of legacy_imsize
+        slicer = slice((global_dict['legacy_imsize'] - crop) // 2, (global_dict['legacy_imsize'] + crop) // 2)
+        x_all = x_all[:, :, slicer, slicer]
+        assert x_all.shape == (num_im_ref, 1, crop, crop)
+
     assert x_all.min() >= 0
     assert x_all.max() <= 255
     return x_all
@@ -64,7 +71,6 @@ def get_neural_data(
     if return_raw:
         return y
     y = trial_average(y)
-
 
     if dataset == 'both':
         shape_ref = (
@@ -127,8 +133,8 @@ def get_indices(*, seed, dataset):
     return train_idx, val_idx, test_idx
 
 
-def get_data(*, seed, scale=None, dataset='both', start_offset=0, end_offset=100):
-    x_all = images(dataset=dataset)
+def get_data(*, seed, scale=None, dataset='both', start_offset=0, end_offset=100, crop=None):
+    x_all = images(dataset=dataset, crop=crop)
 
     if dataset == 'both':
         num_im_ref = global_dict['legacy_num_img']
@@ -137,7 +143,10 @@ def get_data(*, seed, scale=None, dataset='both', start_offset=0, end_offset=100
     else:
         raise NotImplementedError
 
-    assert x_all.shape == (num_im_ref, 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
+    if crop is None:
+        assert x_all.shape == (num_im_ref, 1, global_dict['legacy_imsize'], global_dict['legacy_imsize'])
+    else:
+        assert x_all.shape == (num_im_ref, 1, crop, crop)
 
     y = get_neural_data(post_scale=scale, dataset=dataset, start_offset=start_offset, end_offset=end_offset)
 

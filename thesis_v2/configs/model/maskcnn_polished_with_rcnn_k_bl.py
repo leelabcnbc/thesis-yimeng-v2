@@ -1314,6 +1314,23 @@ def explored_models_20200819_tang_generator(with_source=False):
             yield src, param_dict
 
 
+def explored_models_20200930_tang_generator(with_source=False):
+    # combine all three above, and having consistent number of parameters
+    for x in explored_models_20200819_tang_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+        param_dict = deepcopy(param_dict)
+        param_dict['input_size'] = 37
+        assert len(param_dict) == 26
+        if not with_source:
+            yield param_dict
+        else:
+            yield src, param_dict
+
+
 def explored_models_20200914_tang_generator(with_source=False):
     # combine all three above, and having consistent number of parameters
     for x in explored_models_20200802_gaya_generator(with_source=with_source, contain_model_prefix=True):
