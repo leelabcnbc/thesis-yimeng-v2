@@ -1086,6 +1086,35 @@ def explored_models_20200725_generator(with_source=False):
             yield src, param_this_ret
 
 
+def explored_models_20201001_generator(with_source=False):
+    # similar to explored_models_20200725_generator, with more channels.
+    for src, param_this in chain(
+            zip_longest(['cm-avg'], explored_models_20200725_cm_avg().generate(), fillvalue='cm-avg'),
+            zip_longest(['cm-last'], explored_models_20200725_cm_last().generate(), fillvalue='cm-last'),
+            zip_longest(['deep-ff'], explored_models_20200725_deep_ff().generate(), fillvalue='deep-ff'),
+    ):
+        param_this_ret = {
+            'dataset_prefix': 'yuanyuan_8k_a_3day',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        param_this_ret.update(param_this)
+        assert param_this_ret['train_keep'] in {None, 2560, 1280}
+
+        assert param_this_ret['out_channel'] in {2, 4, 8, 16, 32}
+        if param_this_ret['out_channel'] in {2, 4, 8}:
+            continue
+
+        param_this_ret['out_channel'] = {16: 48, 32: 64}[param_this_ret['out_channel']]
+
+        # print(len(param_this_ret))
+        assert len(param_this_ret) == 26
+        if not with_source:
+            yield param_this_ret
+        else:
+            yield src, param_this_ret
+
+
 def explored_models_20200801_generator(with_source=False, cnbc_prefix=False):
     if cnbc_prefix:
         extra_key_1 = {
