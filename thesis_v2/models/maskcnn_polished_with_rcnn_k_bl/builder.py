@@ -41,7 +41,8 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
         # first conv block being purely feedforward, matching the behavior in maskcnn_polished_with_local_pcn
         ff_1st_block=False,
         ff_1st_bn_before_act=True,
-        num_input_channel = 1,
+        num_input_channel=1,
+        blstack_norm_type='batchnorm',
 ):
     assert num_layer >= 1
     assert kernel_size_l1 % 2 == 1
@@ -78,8 +79,9 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      act_fn=act_fn,
                                      do_init=do_init,
                                      state_dict=input_size_dict,
-                                     )
-                                )
+                                     norm_type=blstack_norm_type,
+                                 )
+                                 )
     else:
         # copied from thesis_v2.models.maskcnn_polished_with_local_pcn.builder.gen_maskcnn_polished_with_local_pcn
         utils.update_module_dict(module_dict,
@@ -105,6 +107,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      act_fn=act_fn,
                                      do_init=do_init,
                                      state_dict=input_size_dict,
+                                     norm_type=blstack_norm_type,
                                  )
                                  )
 
@@ -175,7 +178,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
         conv_layers_comment = [f'bl_stack.layer_list.{x}.b_conv' for x in range(num_layer)]
     else:
         conv_stage_modules = {'bn_input', 'conv0', 'bl_stack', 'accumulator'}
-        conv_layers_comment = ['conv0'] + [f'bl_stack.layer_list.{x}.b_conv' for x in range(num_layer-1)]
+        conv_layers_comment = ['conv0'] + [f'bl_stack.layer_list.{x}.b_conv' for x in range(num_layer - 1)]
 
     if debug_args.get('only_fc', False):
         fc_stage_modules = {'fc'}
@@ -189,31 +192,31 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
     param_dict = utils.generate_param_dict(
         module_dict=module_dict,
         op_params=[
-            {
-                'type': 'sequential',
-                'param': ((lambda idx, x: x in conv_stage_modules), {'module_op_kwargs': {'unpack': False}}),
-                'in': 'input0',
-                'out': 'feature_map',
-                'keep_out': False,
-            },
-            {
-                'type': 'sequential',
-                'param': ((lambda idx, x: x in fc_stage_modules), {'module_op_name': 'module_repeat'}),
-                'in': 'feature_map',
-                'out': 'out_neural_separate',
-                'keep_out': not use_stack,
-            },
-            # finally combine them together.
+                      {
+                          'type': 'sequential',
+                          'param': ((lambda idx, x: x in conv_stage_modules), {'module_op_kwargs': {'unpack': False}}),
+                          'in': 'input0',
+                          'out': 'feature_map',
+                          'keep_out': False,
+                      },
+                      {
+                          'type': 'sequential',
+                          'param': ((lambda idx, x: x in fc_stage_modules), {'module_op_name': 'module_repeat'}),
+                          'in': 'feature_map',
+                          'out': 'out_neural_separate',
+                          'keep_out': not use_stack,
+                      },
+                      # finally combine them together.
 
-        ] + ([
-            {
-                'type': 'stack',
-                'param': {'dim': 0},
-                'in': 'out_neural_separate',
-                'out': 'out_neural',
-                'keep_out': True,
-            }
-        ] if use_stack else []),
+                  ] + ([
+                           {
+                               'type': 'stack',
+                               'param': {'dim': 0},
+                               'in': 'out_neural_separate',
+                               'out': 'out_neural',
+                               'keep_out': True,
+                           }
+                       ] if use_stack else []),
         comments={
             'conv_layers': conv_layers_comment
         },

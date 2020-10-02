@@ -16,7 +16,7 @@ def blstack(
         init_std: float = 0.01,
         do_init: bool = True,
         state_dict: dict,
-
+        norm_type: str,
 ):
     input_size = check_input_size(input_size, strict=True)
 
@@ -53,6 +53,7 @@ def blstack(
             'pool_ksize': pool_ksize,
             'pool_type': pool_type,
             'act_fn': act_fn,
+            'norm_type': norm_type,
         },
         'init': {
             'strategy': 'normal',

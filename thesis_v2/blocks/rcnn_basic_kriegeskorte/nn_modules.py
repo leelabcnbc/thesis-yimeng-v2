@@ -72,6 +72,7 @@ class BLConvLayerStack(nn.Module):
                  # ='max'
                  pool_type,
                  bias: bool = False,
+                 norm_type: str = 'batchnorm',
                  ):
         # channel_list should be of length 1+number of layers.
         # channel_list[0] being the number of channels for input
@@ -93,15 +94,24 @@ class BLConvLayerStack(nn.Module):
 
         # BN layers.
         self.bn_layer_list = []
-        for t in range(n_timesteps):
-            # https://discuss.pytorch.org/t/convering-a-batch-normalization-layer-from-tf-to-pytorch/20407/2
-            self.bn_layer_list.extend([nn.BatchNorm2d(num_features=channel_list[i + 1],
-                                                      eps=bn_eps, momentum=bn_momentum) for i in range(n_layer)])
+        if norm_type == 'batchnorm':
+            for t in range(n_timesteps):
+                # https://discuss.pytorch.org/t/convering-a-batch-normalization-layer-from-tf-to-pytorch/20407/2
+                self.bn_layer_list.extend([nn.BatchNorm2d(num_features=channel_list[i + 1],
+                                                          eps=bn_eps, momentum=bn_momentum) for i in range(n_layer)])
+        elif norm_type == 'instancenorm':
+            # instance norm layers
+            for t in range(n_timesteps):
+                self.bn_layer_list.extend([nn.InstanceNorm2d(num_features=channel_list[i + 1],
+                                                             eps=bn_eps, momentum=bn_momentum, affine=True) for i in
+                                           range(n_layer)])
             # first, all layers for t=0
             # then t=1,
             # then t=2,
             # ...
             # then t=len(n_timesteps)
+        else:
+            raise ValueError
 
         self.bn_layer_list = nn.ModuleList(
             self.bn_layer_list
@@ -226,13 +236,13 @@ def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
     attrs_to_init = [
                         f'layer_list.{x}.b_conv.weight' for x in range(n_layer)
                     ] + ([
-                        f'layer_list.{x}.l_conv.weight' for x in range(n_layer)
-                    ] if n_time > 1 else [])
+                             f'layer_list.{x}.l_conv.weight' for x in range(n_layer)
+                         ] if n_time > 1 else [])
     attrs_to_init_zero_optional = [
                                       f'layer_list.{x}.b_conv.bias' for x in range(n_layer)
                                   ] + ([
-                                      f'layer_list.{x}.l_conv.bias' for x in range(n_layer)
-                                  ] if n_time > 1 else [])
+                                           f'layer_list.{x}.l_conv.bias' for x in range(n_layer)
+                                       ] if n_time > 1 else [])
     left_out_attrs = [
                          f'bn_layer_list.{x}.weight' for x in range(n_time * n_layer)
                      ] + [
@@ -241,12 +251,14 @@ def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
                          f'bn_layer_list.{x}.num_batches_tracked' for x in range(n_time * n_layer)
                      ] + [
                          f'bn_layer_list.{x}.running_var' for x in range(n_time * n_layer)
-                     ]+ [
+                     ] + [
                          f'bn_layer_list.{x}.running_mean' for x in range(n_time * n_layer)
                      ]
 
     # all bns
     for i in range(n_time * n_layer):
+        # this should work for both BN and instance norm, because instance norm is
+        # derived from batch norm
         bn_init_passthrough(
             mod.bn_layer_list[i], dict()
         )
