@@ -1360,6 +1360,24 @@ def explored_models_20200930_tang_generator(with_source=False):
             yield src, param_dict
 
 
+def explored_models_20201002_tang_generator(with_source=False):
+    for x in explored_models_20200930_tang_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+
+        for key in ('0,500', '400,500'):
+            # default (0,100)
+            param_dict['additional_key'] = key
+            assert len(param_dict) == 27
+            if not with_source:
+                yield deepcopy(param_dict)
+            else:
+                yield src, deepcopy(param_dict)
+
+
 def explored_models_20200914_tang_generator(with_source=False):
     # combine all three above, and having consistent number of parameters
     for x in explored_models_20200802_gaya_generator(with_source=with_source, contain_model_prefix=True):

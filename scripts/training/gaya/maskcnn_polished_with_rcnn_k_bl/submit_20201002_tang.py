@@ -4,7 +4,7 @@ from copy import deepcopy
 from thesis_v2 import dir_dict
 from thesis_v2.submission import utils
 from thesis_v2.configs.model.maskcnn_polished_with_rcnn_k_bl import (
-    explored_models_20200930_tang_generator,
+    explored_models_20201002_tang_generator,
     script_keygen
 )
 
@@ -50,16 +50,15 @@ kernel_size_l23={kernel_size_l23},
 train_keep={train_keep},
 dataset_prefix={dataset_prefix},
 yhat_reduce_pick={yhat_reduce_pick},
+additional_key={additional_key},
 )
 """.strip()
 
 
 def main():
     script_dict = dict()
-    for param_dict in explored_models_20200930_tang_generator():
+    for param_dict in explored_models_20201002_tang_generator():
         param_dict = deepcopy(param_dict)
-        # this `del` is actually not needed. extra arugments will be simply ignored
-        # by python's .format (by default).
         del param_dict['model_prefix']
         key_this = script_keygen(**param_dict)
         assert key_this not in script_dict
@@ -71,7 +70,7 @@ def main():
 
     utils.submit(
         script_dict, 'maskcnn_like', 'standard', True,
-        dirname_relative='scripts+tang+maskcnn_polished_with_rcnn_k_bl+20200930'
+        dirname_relative='scripts+tang+maskcnn_polished_with_rcnn_k_bl+20201002'
     )
 
 
