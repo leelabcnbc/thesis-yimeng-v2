@@ -599,6 +599,30 @@ def plot_one_case(
     }
 
 
+def plot_scatter_plot_inner_mean(*,
+                                 ax_scatter,
+                                 data,
+                                 color,
+                                 ):
+    # get unique combinations of num layer and num channel
+    index_out_channel = data.index.get_level_values('out_channel').values
+    index_num_layer = data.index.get_level_values('num_layer').values
+
+    data_channel_layer = np.asarray([index_out_channel, index_num_layer]).T
+    #     print(data_channel_layer.dtype, data_channel_layer.shape)
+    unique_channel_layer = np.unique(data_channel_layer, axis=0).tolist()
+    assert len(unique_channel_layer) == 6  # two layer configs x three channel configs
+
+    for key_this in unique_channel_layer:
+        key_this = tuple(key_this)
+        (c_this, l_this) = key_this
+        df_this = data.xs(key=(c_this, l_this), level=('out_channel', 'num_layer'))
+        perf_mean = df_this['perf'].mean()
+        num_param_mean = df_this['num_param'].mean()
+        ax_scatter.plot([num_param_mean - 500, num_param_mean + 500], [perf_mean, perf_mean], color=color,
+                        linestyle='--')
+
+
 def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, suptitle):
     fig_scatter, ax_scatter = plt.subplots(nrows=1, ncols=1, figsize=(8, 5), squeeze=True, dpi=300)
     fig_scatter.subplots_adjust(left=0.1, right=0.975, bottom=0.1, top=0.9)
@@ -609,14 +633,15 @@ def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, sup
     assert len(cls_to_show_r) == len(color_to_show_r)
     num_variant = data_ff.shape[0] * num_seed
     ax_scatter.scatter(data_ff['num_param'], data_ff['perf'], color='k', s=6, label='1')
-
     ymin, ymax = data_ff['perf'].min(), data_ff['perf'].max()
+    plot_scatter_plot_inner_mean(ax_scatter=ax_scatter,data=data_ff,color='k')
 
     for cls_this, color in zip(cls_to_show_r, color_to_show_r):
         data_r_this = data_r.xs(cls_this, level='rcnn_bl_cls')
         assert num_variant == data_r_this.shape[0] * num_seed
         ax_scatter.scatter(data_r_this['num_param'], data_r_this['perf'], color=color, s=6, label=str(cls_this))
         ymin, ymax = min(ymin, data_r_this['perf'].min()), max(ymax, data_r_this['perf'].max())
+        plot_scatter_plot_inner_mean(ax_scatter=ax_scatter, data=data_r_this, color=color)
 
     margin = (ymax - ymin) * 0.05
     ax_scatter.set_ylim((ymin - margin, ymax + margin))
@@ -674,6 +699,8 @@ def plot_one_case_inner(
         display,
 ):
     # remap data_r_list's num layer to be compatible with ff
+    # otherwise, when I do `.unstack('rcnn_bl_cls')` later,
+    # I won't get a nice N x 7 table with all entries filled.
     data_r_list_new = []
     for data_r_this in data_r_list:
         data_r_this = data_r_this.copy(deep=True)
