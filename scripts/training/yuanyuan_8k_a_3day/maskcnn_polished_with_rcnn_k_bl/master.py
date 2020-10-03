@@ -50,6 +50,7 @@ def master(*,
            val_test_every: Optional[int] = None,
            show_every: int = 100,
            yhat_reduce_pick: int = -1,
+           blstack_norm_type: str = 'batchnorm',
            ):
 
     assert yhat_reduce_pick in {-1, 'avg', 'none'}
@@ -80,6 +81,7 @@ def master(*,
         model_prefix=model_prefix,
         seq_length=seq_length,
         yhat_reduce_pick=yhat_reduce_pick,
+        blstack_norm_type=blstack_norm_type,
     )
 
     print('key', key)
@@ -136,7 +138,8 @@ def master(*,
             factored_constraint=None,
             ff_1st_block=ff_1st_block,
             ff_1st_bn_before_act=ff_1st_bn_before_act,
-            num_input_channel=(1 if seq_length is None else seq_length)
+            num_input_channel=(1 if seq_length is None else seq_length),
+            blstack_norm_type=blstack_norm_type,
         )
 
     opt_config_partial = partial(

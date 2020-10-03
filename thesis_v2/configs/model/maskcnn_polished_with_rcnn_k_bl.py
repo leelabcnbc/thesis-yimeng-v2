@@ -1115,6 +1115,24 @@ def explored_models_20201001_generator(with_source=False):
             yield src, param_this_ret
 
 
+def explored_models_20201003_generator(with_source=False):
+    # similar to explored_models_20200725_generator, with more channels.
+    # combine all three above, and having consistent number of parameters
+    for x in explored_models_20200725_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+        param_dict = deepcopy(param_dict)
+        param_dict['blstack_norm_type'] = 'instancenorm'
+        assert len(param_dict) == 27
+        if not with_source:
+            yield param_dict
+        else:
+            yield src, param_dict
+
+
 def explored_models_20200801_generator(with_source=False, cnbc_prefix=False):
     if cnbc_prefix:
         extra_key_1 = {
@@ -1578,6 +1596,7 @@ def keygen(*,
 
            additional_key: Optional[str] = None,
            yhat_reduce_pick: int = -1,
+           blstack_norm_type: str = 'batchnorm',
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -1612,6 +1631,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'rp_{yhat_reduce_pick}']
+
+    if blstack_norm_type == 'batchnorm':
+        additional_list += []
+    else:
+        additional_list += [f'bnt_{blstack_norm_type}']
 
     if additional_key is None:
         additional_list += []
@@ -1673,6 +1697,11 @@ def keygen(*,
         added_param_size += 1
 
     if yhat_reduce_pick == -1:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if blstack_norm_type == 'batchnorm':
         added_param_size += 0
     else:
         added_param_size += 1
