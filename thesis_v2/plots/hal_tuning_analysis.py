@@ -41,9 +41,9 @@ def final_one_case(
     for z1, z2 in zip(data_baseline.values(), data_learned.values()):
         data_baseline_all.extend(z1)
         data_learned_all.extend(z2)
-    assert len(data_baseline) == len(data_learned) == 4
+    assert len(data_baseline) == len(data_learned)
 
-    fig, axes = plt.subplots(nrows=5, ncols=2, figsize=(20, 20), squeeze=False)
+    fig, axes = plt.subplots(nrows=len(data_learned)+1, ncols=2, figsize=(20, 4*(len(data_learned)+1)), squeeze=False)
     data_all = np.asarray([data_baseline_all, data_learned_all]).T
     print(data_all.shape)
     axes[0, 0].hist(data_all, label=['baseline', 'learned'], bins=20)
