@@ -1086,7 +1086,7 @@ def explored_models_20200725_generator(with_source=False):
             yield src, param_this_ret
 
 
-def explored_models_20201001_generator(with_source=False):
+def explored_models_20201001_generator(with_source=False, largest_cls=None):
     # similar to explored_models_20200725_generator, with more channels.
     for src, param_this in chain(
             zip_longest(['cm-avg'], explored_models_20200725_cm_avg().generate(), fillvalue='cm-avg'),
@@ -1103,6 +1103,9 @@ def explored_models_20201001_generator(with_source=False):
 
         assert param_this_ret['out_channel'] in {2, 4, 8, 16, 32}
         if param_this_ret['out_channel'] in {2, 4, 8}:
+            continue
+
+        if largest_cls is not None and param_this_ret['rcnn_bl_cls'] > largest_cls:
             continue
 
         param_this_ret['out_channel'] = {16: 48, 32: 64}[param_this_ret['out_channel']]

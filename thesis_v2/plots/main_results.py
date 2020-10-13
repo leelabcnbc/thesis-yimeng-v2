@@ -492,7 +492,7 @@ def plot_one_case(
 
     assert len(r_name_list) == len(data_r_list)
 
-    assert nrows == 3
+    # assert nrows == 3
     fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(8, 8), squeeze=False, dpi=300)
     fig.subplots_adjust(left=0.1, right=0.975, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
     assert suptitle is not None
@@ -611,7 +611,7 @@ def plot_scatter_plot_inner_mean(*,
     data_channel_layer = np.asarray([index_out_channel, index_num_layer]).T
     #     print(data_channel_layer.dtype, data_channel_layer.shape)
     unique_channel_layer = np.unique(data_channel_layer, axis=0).tolist()
-    assert len(unique_channel_layer) == 6  # two layer configs x three channel configs
+    # assert len(unique_channel_layer) == 6  # two layer configs x three channel configs
 
     for key_this in unique_channel_layer:
         key_this = tuple(key_this)
