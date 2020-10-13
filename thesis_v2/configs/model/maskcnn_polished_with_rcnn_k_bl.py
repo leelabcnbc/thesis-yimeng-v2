@@ -1118,6 +1118,30 @@ def explored_models_20201001_generator(with_source=False, largest_cls=None):
             yield src, param_this_ret
 
 
+def explored_models_20201012_generator(with_source=False):
+    for x in chain(
+            explored_models_20200801_generator(with_source=with_source),
+            explored_models_20200801_2_generator(with_source=with_source),
+    ):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+
+        assert param_dict['out_channel'] in {8, 16, 32}
+        if param_dict['out_channel'] in {8}:
+            continue
+
+        param_dict['out_channel'] = {16: 48, 32: 64}[param_dict['out_channel']]
+
+        assert len(param_dict) == 26
+        if not with_source:
+            yield param_dict
+        else:
+            yield src, param_dict
+
+
 def explored_models_20201003_generator(with_source=False):
     # similar to explored_models_20200725_generator, with more channels.
     # combine all three above, and having consistent number of parameters
