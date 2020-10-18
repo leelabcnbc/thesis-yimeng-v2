@@ -493,7 +493,11 @@ def plot_one_case(
     assert len(r_name_list) == len(data_r_list)
 
     # assert nrows == 3
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(8, 8), squeeze=False, dpi=300)
+    if nrows == 3:
+        fig_h = 8
+    else:
+        fig_h = 8 / 3 * nrows
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(8, fig_h), squeeze=False, dpi=300)
     fig.subplots_adjust(left=0.1, right=0.975, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2)
     assert suptitle is not None
     #     if suptitle is not None:
