@@ -1405,6 +1405,26 @@ def explored_models_20200930_tang_generator(with_source=False):
             yield src, param_dict
 
 
+def explored_models_20201018_tang_generator(with_source=False, additional_keys=('0,500',)):
+    # combine all three above, and having consistent number of parameters
+    for x in explored_models_20200914_tang_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+        param_dict = deepcopy(param_dict)
+        param_dict['input_size'] = 37
+        for key in additional_keys:
+            # default (0,100)
+            param_dict['additional_key'] = key
+            assert len(param_dict) == 27
+            if not with_source:
+                yield deepcopy(param_dict)
+            else:
+                yield src, deepcopy(param_dict)
+
+
 def explored_models_20201002_tang_generator(with_source=False, additional_keys=('0,500', '400,500')):
     for x in explored_models_20200930_tang_generator(with_source=with_source):
         if not with_source:
