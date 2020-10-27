@@ -1443,6 +1443,15 @@ def explored_models_20201002_tang_generator(with_source=False, additional_keys=(
                 yield src, deepcopy(param_dict)
 
 
+def explored_models_20201026_tang_generator(with_source=False):
+    # Use 80-500
+    #   Prediction: FF becomes worse
+    #   Percentage of improvement will be bigger
+    # It could be due to absolute lower performance as well
+    # A side point.
+    return explored_models_20201002_tang_generator(with_source=with_source, additional_keys=('80,500',))
+
+
 def explored_models_20200914_tang_generator(with_source=False):
     # combine all three above, and having consistent number of parameters
     for x in explored_models_20200802_gaya_generator(with_source=with_source, contain_model_prefix=True):
