@@ -88,19 +88,29 @@ def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, read
 
     # first, get data at all iterations, inst
     # here, `I` is the feedforward input, which is constant across all time steps.
+
+    # sources_list is a 2D list, indexed by [layer][time]
+    # eventually it should have `num_recurrent_layer+1` x `num_cls` elements.
+    # +1 because there is a feedforward layer.
+
+    # for the first layer (feed forward), the output at each time step is the same.
     sources_list = [
         [LayerSourceAnalysis().add_source(conv=('I',), scale=(1.0,))]*num_cls
     ]
 
+    # go over each recurrent layer
     for layer_idx in range(num_recurrent_layer):
-        # extra
+
+        # get the names for scale (S), feedforward (Bottom up) and lateral (Recurrent) operators.
         layer_idx_human = layer_idx + 1
         sources_this = []
         conv_symbol_b = f'B{layer_idx_human}'
         conv_symbol_r = f'R{layer_idx_human}'
         scale_prefix = f's{layer_idx_human}'
 
+        # go over each time step.
         for t in range(num_cls):
+            # each iteration has a different scale operator.
             scale_this = f'{scale_prefix},{t+1}'
             # take previous layer's output at this time step.
             src_this = sources_list[-1][t]
