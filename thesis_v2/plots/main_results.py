@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from .util import savefig
 from .. import dir_dict
+from .main_results_tables import get_perf_over_cls_data, get_ff_vs_best_r_data
 
 
 def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
@@ -23,6 +24,23 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
         print(metric)
         assert metric in df_in.columns
         df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
+
+        get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
+                               axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'])
+
+        get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
+                               axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed',
+                                               'num_layer', 'out_channel']
+                               )
+
+        get_ff_vs_best_r_data(
+            df_this,
+            axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'],
+            max_cls=max_cls, display=display,
+            reference_num_layer_ff=3,
+            override_ff_num_layer=[2, 3, 4, 5, 6]
+        )
+
         tbl_data[metric] = loop_over_train_size(df_this, metric=metric, dir_plot=dir_key,
                                                 display=display, max_cls=max_cls,
                                                 check_no_missing_data=check_no_missing_data)
@@ -638,7 +656,7 @@ def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, sup
     num_variant = data_ff.shape[0] * num_seed
     ax_scatter.scatter(data_ff['num_param'], data_ff['perf'], color='k', s=6, label='1')
     ymin, ymax = data_ff['perf'].min(), data_ff['perf'].max()
-    plot_scatter_plot_inner_mean(ax_scatter=ax_scatter,data=data_ff,color='k')
+    plot_scatter_plot_inner_mean(ax_scatter=ax_scatter, data=data_ff, color='k')
 
     for cls_this, color in zip(cls_to_show_r, color_to_show_r):
         data_r_this = data_r.xs(cls_this, level='rcnn_bl_cls')
