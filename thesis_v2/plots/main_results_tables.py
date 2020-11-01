@@ -128,6 +128,7 @@ def get_perf_over_cls_data(df_in: pd.DataFrame, *,
             max_gain = ((total_merged[col_r] - total_merged[col_ff]) / total_merged[col_ff]).unstack(
                 'rcnn_bl_cls'
             )
+            max_val = total_merged[col_r].unstack('rcnn_bl_cls').max(axis=1)
             if subtype in {'mean'}:
                 assert np.all(np.isfinite(max_gain.values))
             max_gain = max_gain.max(axis=1) * 100
@@ -135,7 +136,8 @@ def get_perf_over_cls_data(df_in: pd.DataFrame, *,
             assert np.all(np.isfinite(r_part.values))
             final_this = pd.concat([ff_part,
                                     r_part,
-                                    max_gain.to_frame('max gain %')
+                                    max_gain.to_frame('max gain %'),
+                                    max_val.to_frame('best r'),
                                     ], axis=1)
 
             # remove the name of columns
