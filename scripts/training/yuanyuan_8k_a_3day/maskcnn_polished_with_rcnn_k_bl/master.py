@@ -51,8 +51,8 @@ def master(*,
            show_every: int = 100,
            yhat_reduce_pick: int = -1,
            blstack_norm_type: str = 'batchnorm',
+           act_fn_inner: str = 'same',
            ):
-
     assert yhat_reduce_pick in {-1, 'avg', 'none'}
 
     key = keygen(
@@ -82,6 +82,7 @@ def master(*,
         seq_length=seq_length,
         yhat_reduce_pick=yhat_reduce_pick,
         blstack_norm_type=blstack_norm_type,
+        act_fn_inner=act_fn_inner,
     )
 
     print('key', key)
@@ -92,7 +93,7 @@ def master(*,
                             seed=split_seed)
     else:
         datasets = get_data_per_trial('a', 200, input_size, ('042318', '043018', '051018'),
-                                      scale=0.5, seed=split_seed, previous_k_frames=seq_length-1)
+                                      scale=0.5, seed=split_seed, previous_k_frames=seq_length - 1)
         # then flatten it.
         datasets = tuple(
             [
@@ -101,7 +102,7 @@ def master(*,
         )
 
     if train_keep is not None:
-        assert train_keep <= 8000*0.8*0.8
+        assert train_keep <= 8000 * 0.8 * 0.8
         train_keep_slice = slice(train_keep)
     else:
         train_keep_slice = slice(None)
@@ -117,7 +118,6 @@ def master(*,
 
     for z in datasets:
         print(z, datasets[z].shape)
-
 
     def gen_cnn_partial(input_size_cnn, n):
         return gen_maskcnn_polished_with_rcnn_k_bl(
@@ -140,6 +140,7 @@ def master(*,
             ff_1st_bn_before_act=ff_1st_bn_before_act,
             num_input_channel=(1 if seq_length is None else seq_length),
             blstack_norm_type=blstack_norm_type,
+            act_fn_inner=act_fn_inner,
         )
 
     opt_config_partial = partial(

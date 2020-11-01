@@ -1118,6 +1118,39 @@ def explored_models_20201001_generator(with_source=False, largest_cls=None):
             yield src, param_this_ret
 
 
+def explored_models_20201101_generator(with_source=False, largest_cls=7):
+    # using sigmoid as internal units
+    for src, param_this in chain(
+            zip_longest(['cm-avg'], explored_models_20200725_cm_avg().generate(), fillvalue='cm-avg'),
+            zip_longest(['cm-last'], explored_models_20200725_cm_last().generate(), fillvalue='cm-last'),
+            zip_longest(['deep-ff'], explored_models_20200725_deep_ff().generate(), fillvalue='deep-ff'),
+    ):
+        for act_fn_inner in ['sigmoid', 'tanh']:
+            param_this_ret = {
+                'dataset_prefix': 'yuanyuan_8k_a_3day',
+                'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+                'yhat_reduce_pick': -1,
+            }
+            param_this_ret.update(param_this)
+            assert param_this_ret['train_keep'] in {None, 2560, 1280}
+
+            assert param_this_ret['out_channel'] in {2, 4, 8, 16, 32}
+            if param_this_ret['out_channel'] in {2, 4}:
+                continue
+
+            if largest_cls is not None and param_this_ret['rcnn_bl_cls'] > largest_cls:
+                continue
+
+            param_this_ret['act_fn_inner'] = act_fn_inner
+
+            # print(len(param_this_ret))
+            assert len(param_this_ret) == 27
+            if not with_source:
+                yield param_this_ret
+            else:
+                yield src, param_this_ret
+
+
 def explored_models_20201012_generator(with_source=False):
     for x in chain(
             explored_models_20200801_generator(with_source=with_source),
@@ -1653,6 +1686,7 @@ def keygen(*,
            additional_key: Optional[str] = None,
            yhat_reduce_pick: int = -1,
            blstack_norm_type: str = 'batchnorm',
+           act_fn_inner: str = 'same',
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -1692,6 +1726,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'bnt_{blstack_norm_type}']
+
+    if act_fn_inner == 'same':
+        additional_list += []
+    else:
+        additional_list += [f'actin_{act_fn_inner}']
 
     if additional_key is None:
         additional_list += []
@@ -1758,6 +1797,11 @@ def keygen(*,
         added_param_size += 1
 
     if blstack_norm_type == 'batchnorm':
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if act_fn_inner == 'same':
         added_param_size += 0
     else:
         added_param_size += 1

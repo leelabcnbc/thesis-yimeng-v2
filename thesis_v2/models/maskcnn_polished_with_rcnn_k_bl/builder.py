@@ -43,10 +43,14 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
         ff_1st_bn_before_act=True,
         num_input_channel=1,
         blstack_norm_type='batchnorm',
+        act_fn_inner='same',
 ):
     assert num_layer >= 1
     assert kernel_size_l1 % 2 == 1
     assert kernel_size_l23 % 2 == 1
+
+    if act_fn_inner == 'same':
+        act_fn_inner = act_fn
 
     input_size = utils.check_input_size(input_size)
 
@@ -76,7 +80,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      kernel_size_list=[kernel_size_l1, ] + [kernel_size_l23, ] * (num_layer - 1),
                                      pool_ksize=blstack_pool_ksize,
                                      pool_type=blstack_pool_type,
-                                     act_fn=act_fn,
+                                     act_fn=act_fn_inner,
                                      do_init=do_init,
                                      state_dict=input_size_dict,
                                      norm_type=blstack_norm_type,
@@ -91,7 +95,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      kernel_size=kernel_size_l1,
                                      in_channel=num_input_channel,
                                      out_channel=out_channel,
-                                     act_fn=act_fn,
+                                     act_fn=act_fn_inner,
                                      bn_before_act=ff_1st_bn_before_act,
                                      state_dict=input_size_dict,
                                  ))
@@ -104,7 +108,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      kernel_size_list=[kernel_size_l23, ] * (num_layer - 1),
                                      pool_ksize=blstack_pool_ksize,
                                      pool_type=blstack_pool_type,
-                                     act_fn=act_fn,
+                                     act_fn=act_fn_inner,
                                      do_init=do_init,
                                      state_dict=input_size_dict,
                                      norm_type=blstack_norm_type,

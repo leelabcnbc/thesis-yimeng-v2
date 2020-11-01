@@ -129,6 +129,10 @@ class BLConvLayerStack(nn.Module):
             self.act_fn = nn.ReLU(inplace=True)
         elif act_fn == 'softplus':
             self.act_fn = nn.Softplus()
+        elif act_fn == 'tanh':
+            self.act_fn = nn.Tanh()
+        elif act_fn == 'sigmoid':
+            self.act_fn = nn.Sigmoid()
         elif act_fn is None:
             self.act_fn = nn.Identity()
         else:

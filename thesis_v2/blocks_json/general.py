@@ -38,7 +38,7 @@ def act(*,
         ):
     assert type(act_fn) is str
 
-    assert act_fn in {'softplus', 'relu', 'exp'}
+    assert act_fn in {'softplus', 'relu', 'exp', 'sigmoid', 'tanh'}
     module_dict = OrderedDict()
     module_dict[name] = {
         'name': f'torch.nn.{act_fn}' if act_fn != 'exp' else 'general.exp',
