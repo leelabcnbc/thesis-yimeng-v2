@@ -111,8 +111,13 @@ def get_perf_over_cls_data(df_in: pd.DataFrame, *,
         'train_keep',
         'out_channel',
         'num_layer',
-        'readout_type'
+        'readout_type',
+        # for detailed break down
+        'act_fn',
+        'ff_1st_bn_before_act',
+        'loss_type',
     ]
+    result = dict()
     for c in columns:
         for subtype in ['mean', 'sem']:
             print(f'ff vs different cls, {c}_{subtype}')
@@ -123,7 +128,8 @@ def get_perf_over_cls_data(df_in: pd.DataFrame, *,
             max_gain = ((total_merged[col_r] - total_merged[col_ff]) / total_merged[col_ff]).unstack(
                 'rcnn_bl_cls'
             )
-            assert np.all(np.isfinite(max_gain.values))
+            if subtype in {'mean'}:
+                assert np.all(np.isfinite(max_gain.values))
             max_gain = max_gain.max(axis=1) * 100
             r_part = total_merged[col_r].unstack('rcnn_bl_cls')
             assert np.all(np.isfinite(r_part.values))
@@ -141,6 +147,8 @@ def get_perf_over_cls_data(df_in: pd.DataFrame, *,
                 axis=0
             ).sort_index()
             display(final_this)
+            result[col_r] = final_this
+    return result
 
 
 def get_ff_vs_best_r_data(
