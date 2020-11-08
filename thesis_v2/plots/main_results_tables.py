@@ -19,26 +19,26 @@ def avg_inner(df, *, key_and_possible_values):
 
     # then compute mean
     # then compute sem.
-    return pd.concat([df.mean(axis=0).rename(lambda x: x + '_mean'),
-                      df.sem(axis=0, ddof=0).rename(lambda x: x + '_sem')])
+    return pd.concat([df.apply(func=mean_generalized, axis=0).rename(lambda x: x + '_mean'),
+                      df.apply(func=sem_generalized, axis=0).rename(lambda x: x + '_sem')])
 
 
-def reduce_df(df_this, key_and_possible_values):
+def reduce_df(df_this, key_and_possible_values, reduce_fn):
     return df_this.groupby(level=[x for x in df_this.index.names if x not in key_and_possible_values]).apply(
-        partial(avg_inner, key_and_possible_values=key_and_possible_values)
+        partial(reduce_fn, key_and_possible_values=key_and_possible_values)
     )
 
 
-def process_ff(df_ff_this: pd.DataFrame, key_and_possible_values):
+def process_ff(df_ff_this: pd.DataFrame, key_and_possible_values, reduce_fn, ff_reduce_fn):
     # average out all different GPU cards (same parameter, different runs using different cards)
     readout_type_parsed: pd.DataFrame = df_ff_this.groupby(
-        level=[x for x in df_ff_this.index.names if x != 'readout_type']).mean()
+        level=[x for x in df_ff_this.index.names if x != 'readout_type']).apply(ff_reduce_fn)
     # then average out seeds
-    return reduce_df(readout_type_parsed, key_and_possible_values)
+    return reduce_df(readout_type_parsed, key_and_possible_values, reduce_fn)
 
 
-def process_r(df_r_this, key_and_possible_values):
-    return reduce_df(df_r_this, key_and_possible_values)
+def process_r(df_r_this, key_and_possible_values, reduce_fn):
+    return reduce_df(df_r_this, key_and_possible_values, reduce_fn)
 
 
 def merge_thin_and_wide(*, df_fewer_columns, df_more_columns, fewer_suffix):
@@ -62,7 +62,31 @@ def merge_thin_and_wide(*, df_fewer_columns, df_more_columns, fewer_suffix):
     return merged.set_index(r_index_names, verify_integrity=True).sort_index()
 
 
-def preprocess(df_in, *, max_cls, axes_to_reduce, override_ff_num_layer=None):
+from scipy.stats import sem
+
+
+def mean_generalized(x: pd.Series):
+    data = np.asarray([x for x in x.values])
+    assert data.ndim in {1, 2}
+    return data.mean(axis=0)
+
+
+def sem_generalized(x: pd.Series):
+    data = np.asarray([x for x in x.values])
+    assert data.ndim in {1, 2}
+    return sem(data, axis=0, ddof=0)
+
+
+def preprocess(df_in, *,
+               max_cls, axes_to_reduce, override_ff_num_layer=None,
+               reduce_fn=None, ff_reduce_fn=None):
+    if reduce_fn is None:
+        reduce_fn = avg_inner
+
+    if ff_reduce_fn is None:
+        def ff_reduce_fn(x: pd.DataFrame):
+            return x.apply(func=mean_generalized, axis=0)
+
     # provide main table
     columns = df_in.columns.tolist()
     df_in = df_in.copy()
@@ -92,8 +116,8 @@ def preprocess(df_in, *, max_cls, axes_to_reduce, override_ff_num_layer=None):
     # filter ff table
     for kk, vv in key_and_possible_values_ff.items():
         df_ff = df_ff[df_ff.index.get_level_values(kk).isin(vv)]
-    df_ff = process_ff(df_ff, key_and_possible_values_ff)
-    df_r = process_r(df_r, key_and_possible_values)
+    df_ff = process_ff(df_ff, key_and_possible_values_ff, reduce_fn, ff_reduce_fn)
+    df_r = process_r(df_r, key_and_possible_values, reduce_fn)
     return columns, df_ff, df_r
 
 
