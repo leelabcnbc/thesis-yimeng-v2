@@ -1118,14 +1118,16 @@ def explored_models_20201001_generator(with_source=False, largest_cls=None):
             yield src, param_this_ret
 
 
-def explored_models_20201101_generator(with_source=False, largest_cls=7):
+def explored_models_20201101_generator(with_source=False, largest_cls=7, act_fn_inner_list=None):
+    if act_fn_inner_list is None:
+        act_fn_inner_list = ['sigmoid', 'tanh']
     # using sigmoid as internal units
     for src, param_this in chain(
             zip_longest(['cm-avg'], explored_models_20200725_cm_avg().generate(), fillvalue='cm-avg'),
             zip_longest(['cm-last'], explored_models_20200725_cm_last().generate(), fillvalue='cm-last'),
             zip_longest(['deep-ff'], explored_models_20200725_deep_ff().generate(), fillvalue='deep-ff'),
     ):
-        for act_fn_inner in ['sigmoid', 'tanh']:
+        for act_fn_inner in act_fn_inner_list:
             param_this_ret = {
                 'dataset_prefix': 'yuanyuan_8k_a_3day',
                 'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',

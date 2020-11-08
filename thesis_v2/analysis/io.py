@@ -44,6 +44,7 @@ def collect_rcnn_k_bl_main_result(*,
                                   num_neuron,
                                   internal_dynamics_cls=None,
                                   skip_eval_json=False,
+                                  no_missing_data=True,
                                   ):
     rows_all = []
     rows_all_param_overwrite = []
@@ -73,12 +74,18 @@ def collect_rcnn_k_bl_main_result(*,
         # load model to get param count
         key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
         # 10 to go.
-        result = load_training_results(key, return_model=False)
-        # load twice, first time to get the model.
-        result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
-        num_param = count_params(result['model'])
+        try:
+            result = load_training_results(key, return_model=False)
+            # load twice, first time to get the model.
+            result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
+            num_param = count_params(result['model'])
+            cc_native = np.asarray(result['stats_best']['stats']['test']['corr'])
+        except FileNotFoundError as e:
+            num_param = -1
+            cc_native = np.full((num_neuron,), np.nan, dtype=np.float32)
+            if no_missing_data:
+                raise e
 
-        cc_native = np.asarray(result['stats_best']['stats']['test']['corr'])
 
         # replace 'yhat_reduce_pick' + 'rcnn_acc_type' with 'readout_type'
         readout_raw = param['yhat_reduce_pick'], param['rcnn_acc_type']
