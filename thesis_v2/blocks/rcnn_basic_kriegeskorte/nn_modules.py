@@ -1,9 +1,10 @@
-from typing import List
-
+from typing import List, Optional
+from collections import Counter
 import torch
 from torch import nn
 
 from .. import register_module, standard_init, bn_init_passthrough
+from ...analysis.utils import get_source_analysis_for_one_model_spec, LayerSourceAnalysis
 
 
 class BLConvLayer(nn.Module):
@@ -56,6 +57,26 @@ class BLConvLayer(nn.Module):
         return sum_output
 
 
+def extract_l_and_t(s):
+    assert s[0] == 's'
+    layer, time = s[1:].split(',')
+    return int(layer) - 1, int(time) - 1
+
+
+def extract_l_and_type(s):
+    t = s[0]
+    assert t in {'R', 'B'}
+    return int(s[1:]) - 1, t
+
+
+def get_bn_counter(multipath_source: List[LayerSourceAnalysis]):
+    counter = Counter()
+    for src_analysis in multipath_source:
+        for src_dict in src_analysis.source_list:
+            counter.update(extract_l_and_t(x) for x in src_dict['conv'] if x.startswith('s'))
+    return counter
+
+
 class BLConvLayerStack(nn.Module):
     def __init__(self,
                  *,
@@ -73,6 +94,11 @@ class BLConvLayerStack(nn.Module):
                  pool_type,
                  bias: bool = False,
                  norm_type: str = 'batchnorm',
+                 # multi-path ensemble
+                 multi_path: bool = False,
+                 # if `multi_path_separate_bn` is true, each path has its own BNs;
+                 # otherwise, they share some BNs.
+                 multi_path_separate_bn: Optional[bool] = None,
                  ):
         # channel_list should be of length 1+number of layers.
         # channel_list[0] being the number of channels for input
@@ -91,6 +117,22 @@ class BLConvLayerStack(nn.Module):
                          bias=bias,
                          generate_lateral=(n_timesteps > 1)) for i in range(n_layer)]
         )
+
+        self.multi_path = multi_path
+        self.multi_path_separate_bn = multi_path_separate_bn
+
+        if self.multi_path:
+            self.multipath_source = get_source_analysis_for_one_model_spec(
+                num_recurrent_layer=n_layer, num_cls=n_timesteps,
+                # any one is fine.
+                readout_type='inst-last',
+                return_raw=True,
+                add_bn_in_chain=True
+            )[-1]
+            assert type(self.multi_path_separate_bn) is bool
+        else:
+            self.multipath_source = None
+            assert self.multi_path_separate_bn is None
 
         # BN layers.
         self.bn_layer_list = []
@@ -116,6 +158,35 @@ class BLConvLayerStack(nn.Module):
         self.bn_layer_list = nn.ModuleList(
             self.bn_layer_list
         )
+
+        if self.multi_path_separate_bn:
+            # then we need to create additional copies of BNs
+            # probably the easist way is to create some ModuleList variables called
+            # self.bn_layer_add_list_{layer_idx}_{time_idx}
+            # using setattr.
+            # when obtaining them, use getattr
+            # the reason for using this hack, compared to Dict->List is because a regular dict cannot be
+            # properly registered, and ModuleDict is supposed to only work with Module typed values, rather
+            # than ModuleList.
+
+            # not needed for instance norm as that performed worse.
+            assert norm_type == 'batchnorm'
+            # use a counter to count.
+            counter: Counter = get_bn_counter(self.multipath_source)
+            for (layer_idx, time_idx), ct in counter.items():
+                # not [BatchNorm2d]*(ct-1), which duplicates BN layers.
+                if ct > 1:
+                    bn_list_this = [
+                        nn.BatchNorm2d(num_features=channel_list[layer_idx + 1], eps=bn_eps, momentum=bn_momentum) for _
+                        in range(ct - 1)
+                    ]
+                    setattr(self, f'bn_layer_add_list_{layer_idx}_{time_idx}', bn_list_this)
+                else:
+                    # no need for additional. just use the original one.
+                    pass
+            self.add_bn_counter = counter
+        else:
+            self.add_bn_counter = None
 
         # to capture intermediate response.
         self.capture_list = nn.ModuleList(
@@ -153,41 +224,99 @@ class BLConvLayerStack(nn.Module):
             assert self.pool_type is None
             self.pool = nn.Identity()
 
+    def obtain_conv(self, comp):
+        layer, t = extract_l_and_type(comp)
+        layer_this: BLConvLayer = self.layer_list[layer]
+        if t == 'B':
+            return layer_this.b_conv
+        elif t == 'R':
+            return layer_this.l_conv
+        else:
+            raise ValueError
+
+    def obtain_bn(self, comp, counter: Counter):
+        layer, time = extract_l_and_t(comp)
+        if (not self.multi_path_separate_bn) or (counter[layer, time] == 0):
+            # use the original one.
+            bn_this = self.bn_layer_list[time * self.n_layer + layer]
+        else:
+            # use later one.
+            count_now = counter[layer, time]
+            bn_this = getattr(self, f'bn_layer_add_list_{layer}_{time}')[count_now]
+            count_now[layer, time] += 1
+        return bn_this
+
+    def evaluate_multi_path(self, b_input):
+        # counter tracks how many times a BN layer is used.
+        counter = Counter()
+        output_list = []
+        # I do this just to get typing.
+        multipath_source: List[LayerSourceAnalysis] = self.multipath_source
+        assert len(multipath_source) == self.n_timesteps
+        for timestep_idx, chain_list_this in enumerate(multipath_source):
+            output_list_this_time = []
+            for chain_this in chain_list_this.source_list:
+                # pairs of conv and BN
+                chain_this_raw = chain_this['conv'][1:]
+                # create sequence. note that BN has test vs train. this is encapsulated in BN itself.
+                # we don't need to handle it explicitly.
+                # check the implementatinon nn.Sequential. DO NOT use Sequential directly as the Sequential's
+                # train/test mode is inconsistent with BN's.
+                output_now = b_input
+                for idx, comp in enumerate(chain_this):
+                    # obtain the corresponding component.
+                    if idx % 2 == 0:
+                        mod = self.obtain_conv(comp)
+                    else:
+                        mod = self.obtain_bn(comp, counter)
+                    output_now = mod(output_now)
+                    if idx % 2 == 1:
+                        # end of a pair. apply act fn
+                        output_now = self.act_fn(output_now)
+                output_list_this_time.append(output_now)
+            # sum together all tensors in the current timestamp.
+            output_list.append(
+                torch.sum(torch.stack(output_list_this_time), 0)
+            )
+        return output_list
+
     def forward(self, b_input):
         # capture
         b_input = self.input_capture(b_input)
-        # main loop
-        last_out = [None for _ in range(self.n_layer)]
+        if not self.multi_path:
+            # main loop
+            last_out = [None for _ in range(self.n_layer)]
 
-        # cache first layer's first time output.
-        first_layer_first_time_output = None
+            # cache first layer's first time output.
+            first_layer_first_time_output = None
 
-        output_list = []
-
-        for t in range(self.n_timesteps):
-            for layer_idx in range(self.n_layer):
-                layer_this = self.layer_list[layer_idx]
-                bn_this = self.bn_layer_list[t * self.n_layer + layer_idx]
-                if layer_idx == 0:
-                    if t == 0:
-                        first_layer_first_time_output = layer_this(b_input, None)
-                        last_out[layer_idx] = first_layer_first_time_output
+            output_list = []
+            for t in range(self.n_timesteps):
+                for layer_idx in range(self.n_layer):
+                    layer_this = self.layer_list[layer_idx]
+                    bn_this = self.bn_layer_list[t * self.n_layer + layer_idx]
+                    if layer_idx == 0:
+                        if t == 0:
+                            first_layer_first_time_output = layer_this(b_input, None)
+                            last_out[layer_idx] = first_layer_first_time_output
+                        else:
+                            last_out[layer_idx] = layer_this(None, last_out[layer_idx], first_layer_first_time_output)
                     else:
-                        last_out[layer_idx] = layer_this(None, last_out[layer_idx], first_layer_first_time_output)
-                else:
-                    pooled_input: torch.Tensor = self.pool(last_out[layer_idx - 1])
-                    last_out[layer_idx] = layer_this(pooled_input, last_out[layer_idx])
+                        pooled_input: torch.Tensor = self.pool(last_out[layer_idx - 1])
+                        last_out[layer_idx] = layer_this(pooled_input, last_out[layer_idx])
 
-                # do batch norm
-                last_out[layer_idx] = bn_this(last_out[layer_idx])
+                    # do batch norm
+                    last_out[layer_idx] = bn_this(last_out[layer_idx])
 
-                # do act
-                last_out[layer_idx] = self.act_fn(last_out[layer_idx])
+                    # do act
+                    last_out[layer_idx] = self.act_fn(last_out[layer_idx])
 
-                # capture
-                last_out[layer_idx] = self.capture_list[layer_idx](last_out[layer_idx])
+                    # capture
+                    last_out[layer_idx] = self.capture_list[layer_idx](last_out[layer_idx])
 
-            output_list.append(last_out[self.n_layer - 1])
+                output_list.append(last_out[self.n_layer - 1])
+        else:
+            output_list = self.evaluate_multi_path(b_input)
 
         # return a tuple of Tensors, of length `self.n_timesteps`.
         return tuple(output_list)
@@ -266,6 +395,25 @@ def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
         bn_init_passthrough(
             mod.bn_layer_list[i], dict()
         )
+
+    if mod.add_bn_counter is not None:
+        # initialize all additional BN stuffs.
+        counter = mod.add_bn_counter
+        for (layer_idx, time_idx), ct in counter.items():
+            # not [BatchNorm2d]*(ct-1), which duplicates BN layers.
+            if ct > 1:
+                mod_list_name = f'bn_layer_add_list_{layer_idx}_{time_idx}'
+                mod_list = getattr(mod, mod_list_name)
+                left_out_attrs += (
+                        [f'{mod_list_name}.{x}.weight' for x in range(ct - 1)] +
+                        [f'{mod_list_name}.{x}.bias' for x in range(ct - 1)] +
+                        [f'{mod_list_name}.{x}.num_batches_tracked' for x in range(ct - 1)] +
+                        [f'{mod_list_name}.{x}.running_var' for x in range(ct - 1)] +
+                        [f'{mod_list_name}.{x}.running_mean' for x in range(ct - 1)]
+                )
+                # initialize
+                for ct_idx in range(ct-1):
+                    bn_init_passthrough(mod_list[ct_idx], dict())
 
     # all ff convs
     # all lateral convs

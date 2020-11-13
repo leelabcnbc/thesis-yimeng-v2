@@ -78,8 +78,18 @@ def get_average_source(source_list):
     # add them together
     return reduce((lambda x1, x2: x1.add(x2)), source_list)
 
+def verify(src: LayerSourceAnalysis):
+    for chain in src.source_list:
+        assert chain['scale'] == (1.0,)
+        assert chain['conv'][0] == 'I'
+        assert len(chain['conv']) % 2 == 1
+        for idx in range(0, len(chain['conv']) - 1, 2):
+            assert chain['conv'][1+idx][0] in {'B', 'R'}
+            assert chain['conv'][1+idx+1][0] == 's'
 
-def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, readout_type, return_raw=False):
+
+def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, readout_type, return_raw=False,
+                                           add_bn_in_chain=False):
     assert num_recurrent_layer >= 1
     assert num_cls >= 1
 
@@ -120,7 +130,19 @@ def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, read
                 # take last iteration's output and take R convolution, add the result
                 src_this = src_this.add(sources_this[-1].apply_conv((conv_symbol_r,)))
             # BN.
-            src_this = src_this.apply_scale((scale_this,))
+            # this add_bn_in_chain is for purely symbolic computation.
+            # to implement multi path version of RL block.
+            if add_bn_in_chain:
+                # it's a hack. in the original implementation of LayerSourceAnalysis,
+                # it's not supposed to capture the exact order of conv and BN layers,
+                # only the relative order among convs and order among BNs themselves.
+                src_this = src_this.apply_conv((scale_this,))
+
+                # check that it's always I + pairs of (B, s)
+                verify(src_this)
+            else:
+                src_this = src_this.apply_scale((scale_this,))
+
             sources_this.append(src_this)
         sources_list.append(sources_this)
 

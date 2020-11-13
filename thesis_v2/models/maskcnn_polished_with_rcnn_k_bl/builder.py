@@ -1,5 +1,5 @@
 """generates the config file needed for a mask CNN"""
-
+from typing import Optional
 from collections import OrderedDict
 
 # try to import torchnetjson and register
@@ -44,6 +44,11 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
         num_input_channel=1,
         blstack_norm_type='batchnorm',
         act_fn_inner='same',
+        # multi-path ensemble
+        multi_path: bool = False,
+        # if `multi_path_separate_bn` is true, each path has its own BNs;
+        # otherwise, they share some BNs.
+        multi_path_separate_bn: Optional[bool] = None,
 ):
     assert num_layer >= 1
     assert kernel_size_l1 % 2 == 1
@@ -84,6 +89,8 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      do_init=do_init,
                                      state_dict=input_size_dict,
                                      norm_type=blstack_norm_type,
+                                     multi_path=multi_path,
+                                     multi_path_separate_bn=multi_path_separate_bn,
                                  )
                                  )
     else:
@@ -112,6 +119,8 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      do_init=do_init,
                                      state_dict=input_size_dict,
                                      norm_type=blstack_norm_type,
+                                     multi_path=multi_path,
+                                     multi_path_separate_bn=multi_path_separate_bn,
                                  )
                                  )
 

@@ -17,6 +17,11 @@ def blstack(
         do_init: bool = True,
         state_dict: dict,
         norm_type: str,
+        # multi-path ensemble
+        multi_path: bool = False,
+        # if `multi_path_separate_bn` is true, each path has its own BNs;
+        # otherwise, they share some BNs.
+        multi_path_separate_bn: Optional[bool] = None,
 ):
     input_size = check_input_size(input_size, strict=True)
 
@@ -54,6 +59,8 @@ def blstack(
             'pool_type': pool_type,
             'act_fn': act_fn,
             'norm_type': norm_type,
+            'multi_path': multi_path,
+            'multi_path_separate_bn': multi_path_separate_bn,
         },
         'init': {
             'strategy': 'normal',
