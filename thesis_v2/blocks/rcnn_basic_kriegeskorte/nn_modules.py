@@ -176,10 +176,10 @@ class BLConvLayerStack(nn.Module):
             for (layer_idx, time_idx), ct in counter.items():
                 # not [BatchNorm2d]*(ct-1), which duplicates BN layers.
                 if ct > 1:
-                    bn_list_this = [
+                    bn_list_this = nn.ModuleList([
                         nn.BatchNorm2d(num_features=channel_list[layer_idx + 1], eps=bn_eps, momentum=bn_momentum) for _
                         in range(ct - 1)
-                    ]
+                    ])
                     setattr(self, f'bn_layer_add_list_{layer_idx}_{time_idx}', bn_list_this)
                 else:
                     # no need for additional. just use the original one.
@@ -241,9 +241,8 @@ class BLConvLayerStack(nn.Module):
             bn_this = self.bn_layer_list[time * self.n_layer + layer]
         else:
             # use later one.
-            count_now = counter[layer, time]
-            bn_this = getattr(self, f'bn_layer_add_list_{layer}_{time}')[count_now]
-            count_now[layer, time] += 1
+            bn_this = getattr(self, f'bn_layer_add_list_{layer}_{time}')[counter[layer, time]-1]
+        counter[layer, time] += 1
         return bn_this
 
     def evaluate_multi_path(self, b_input):
@@ -263,7 +262,7 @@ class BLConvLayerStack(nn.Module):
                 # check the implementatinon nn.Sequential. DO NOT use Sequential directly as the Sequential's
                 # train/test mode is inconsistent with BN's.
                 output_now = b_input
-                for idx, comp in enumerate(chain_this):
+                for idx, comp in enumerate(chain_this_raw):
                     # obtain the corresponding component.
                     if idx % 2 == 0:
                         mod = self.obtain_conv(comp)
