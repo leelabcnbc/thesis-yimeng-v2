@@ -52,6 +52,8 @@ def master(*,
            yhat_reduce_pick: int = -1,
            blstack_norm_type: str = 'batchnorm',
            act_fn_inner: str = 'same',
+           multi_path=False,
+           multi_path_separate_bn=None,
            ):
     assert yhat_reduce_pick in {-1, 'avg', 'none'}
 
@@ -83,6 +85,8 @@ def master(*,
         yhat_reduce_pick=yhat_reduce_pick,
         blstack_norm_type=blstack_norm_type,
         act_fn_inner=act_fn_inner,
+        multi_path=multi_path,
+        multi_path_separate_bn=multi_path_separate_bn,
     )
 
     print('key', key)
@@ -141,6 +145,8 @@ def master(*,
             num_input_channel=(1 if seq_length is None else seq_length),
             blstack_norm_type=blstack_norm_type,
             act_fn_inner=act_fn_inner,
+            multi_path=multi_path,
+            multi_path_separate_bn=multi_path_separate_bn,
         )
 
     opt_config_partial = partial(

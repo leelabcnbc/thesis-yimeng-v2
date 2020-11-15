@@ -1177,6 +1177,32 @@ def explored_models_20201012_generator(with_source=False):
             yield src, param_dict
 
 
+def explored_models_20201114_generator(with_source=False):
+    # inst-avg, inst-last models, trained using multi path
+    for x in chain(
+        explored_models_20200801_generator(with_source=with_source),
+        explored_models_20200801_2_generator(with_source=with_source),
+    ):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+
+        if param_dict['rcnn_bl_cls'] == 1:
+            continue
+
+        for separate_bn in (True, False):
+            param_dict_ret = deepcopy(param_dict)
+            param_dict_ret['multi_path'] = True
+            param_dict_ret['multi_path_separate_bn'] = separate_bn
+            assert len(param_dict_ret) == 28
+            if not with_source:
+                yield param_dict_ret
+            else:
+                yield src, param_dict_ret
+
+
 def explored_models_20201003_generator(with_source=False):
     # similar to explored_models_20200725_generator, with more channels.
     # combine all three above, and having consistent number of parameters
@@ -1689,6 +1715,8 @@ def keygen(*,
            yhat_reduce_pick: int = -1,
            blstack_norm_type: str = 'batchnorm',
            act_fn_inner: str = 'same',
+           multi_path=False,
+           multi_path_separate_bn=None,
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -1733,6 +1761,16 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'actin_{act_fn_inner}']
+
+    if not multi_path:
+        additional_list += []
+    else:
+        additional_list += [f'mp_{multi_path}']
+
+    if multi_path_separate_bn is None:
+        additional_list += []
+    else:
+        additional_list += [f'mpb_{multi_path_separate_bn}']
 
     if additional_key is None:
         additional_list += []
@@ -1804,6 +1842,16 @@ def keygen(*,
         added_param_size += 1
 
     if act_fn_inner == 'same':
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if not multi_path:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if multi_path_separate_bn is None:
         added_param_size += 0
     else:
         added_param_size += 1
