@@ -1177,11 +1177,13 @@ def explored_models_20201012_generator(with_source=False):
             yield src, param_dict
 
 
-def explored_models_20201114_generator(with_source=False):
+def explored_models_20201114_generator(with_source=False, separate_bn_list=None):
+    if separate_bn_list is None:
+        separate_bn_list = (True, False)
     # inst-avg, inst-last models, trained using multi path
     for x in chain(
-        explored_models_20200801_generator(with_source=with_source),
-        explored_models_20200801_2_generator(with_source=with_source),
+            explored_models_20200801_generator(with_source=with_source),
+            explored_models_20200801_2_generator(with_source=with_source),
     ):
         if not with_source:
             param_dict = x
@@ -1192,7 +1194,31 @@ def explored_models_20201114_generator(with_source=False):
         if param_dict['rcnn_bl_cls'] == 1:
             continue
 
-        for separate_bn in (True, False):
+        for separate_bn in separate_bn_list:
+            param_dict_ret = deepcopy(param_dict)
+            param_dict_ret['multi_path'] = True
+            param_dict_ret['multi_path_separate_bn'] = separate_bn
+            assert len(param_dict_ret) == 28
+            if not with_source:
+                yield param_dict_ret
+            else:
+                yield src, param_dict_ret
+
+
+def explored_models_20201118_generator(with_source=False, separate_bn_list=None):
+    if separate_bn_list is None:
+        separate_bn_list = (True, False)
+    for x in explored_models_20200725_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+
+        if param_dict['rcnn_bl_cls'] == 1:
+            continue
+
+        for separate_bn in separate_bn_list:
             param_dict_ret = deepcopy(param_dict)
             param_dict_ret['multi_path'] = True
             param_dict_ret['multi_path_separate_bn'] = separate_bn
