@@ -45,11 +45,15 @@ def collect_rcnn_k_bl_main_result(*,
                                   internal_dynamics_cls=None,
                                   skip_eval_json=False,
                                   no_missing_data=True,
+                                  key_override=None,
                                   ):
     rows_all = []
     rows_all_param_overwrite = []
 
     param_set = None
+
+    if key_override is None:
+        key_override = dict()
 
     if internal_dynamics_cls is not None:
         assert internal_dynamics_cls > 1
@@ -70,8 +74,11 @@ def collect_rcnn_k_bl_main_result(*,
         # act_fn': 'relu', 'loss_type': 'mse', 'out_channel': 8, 'num_layer': 2,
         # 'rcnn_bl_cls': 1,
         # 'rcnn_acc_type': 'cummean', 'ff_1st_bn_before_act': True}
-
+        # this can be useful for mind cluster, where I typically store results in different folders,
+        # suffixed by dates, such as `maskcnn_polished_with_rcnn_k_bl.20200208`
+        param.update(key_override)
         # load model to get param count
+
         key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
         # 10 to go.
         try:
