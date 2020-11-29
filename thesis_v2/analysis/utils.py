@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 from functools import reduce
 from copy import deepcopy
 
@@ -88,8 +88,43 @@ def verify(src: LayerSourceAnalysis):
             assert chain['conv'][1+idx+1][0] == 's'
 
 
+def extract_l_and_t(s):
+    assert s[0] == 's'
+    layer, time = s[1:].split(',')
+    return int(layer) - 1, int(time) - 1
+
+
+def separate_bn_rewrite(term_tuple, counter):
+    new_term_tuple = []
+    for term in term_tuple:
+        if type(term) is not str or term[0] != 's':
+            new_term_tuple.append(term)
+        else:
+            layer, time = extract_l_and_t(term)
+            current_ctr = counter[layer, time]
+            if current_ctr == 0:
+                # first one, no name change.
+                new_term_tuple.append(term)
+            else:
+                # append counter
+                new_term_tuple.append(term + f',{current_ctr}')
+            counter[layer, time] += 1
+    return tuple(new_term_tuple)
+
+def get_source_analysis_for_one_model_spec_separate_bn(sources_list_last):
+    assert type(sources_list_last) is list
+    counter = Counter()
+    for chain_list_this in sources_list_last:
+        assert type(chain_list_this) is LayerSourceAnalysis
+        for chain in chain_list_this.source_list:
+            # scale related terms should appear in EXACTLY ONE OF `conv` and `scale`.
+            # this is not formally checked, though
+            chain['conv'] = separate_bn_rewrite(chain['conv'], counter)
+            chain['scale'] = separate_bn_rewrite(chain['scale'], counter)
+    return
+
 def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, readout_type, return_raw=False,
-                                           add_bn_in_chain=False):
+                                           add_bn_in_chain=False, separate_bn=False):
     assert num_recurrent_layer >= 1
     assert num_cls >= 1
 
@@ -145,6 +180,11 @@ def get_source_analysis_for_one_model_spec(*, num_recurrent_layer, num_cls, read
 
             sources_this.append(src_this)
         sources_list.append(sources_this)
+
+    if separate_bn:
+        # this is needed so that I can evaluate the multi path models.
+        # the last layer is rewritten.
+        get_source_analysis_for_one_model_spec_separate_bn(sources_list[-1])
 
     if return_raw:
         return sources_list

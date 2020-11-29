@@ -1,6 +1,8 @@
 import json
 from os.path import join
 from copy import deepcopy
+from collections import Counter
+from typing import List
 
 import numpy as np
 from numpy.linalg import norm
@@ -24,13 +26,15 @@ from ..feature_extraction.extraction import (
     normalize_augment_config
 )
 
+from ..blocks.rcnn_basic_kriegeskorte.nn_modules import BLConvLayerStack
+
 from .hal_analysis_refactor.model_orientation_tuning import (
     model_orientation_tuning_one,
     get_bars,
     get_stimuli_dict
 )
 
-from .utils import get_source_analysis_for_one_model_spec
+from .utils import get_source_analysis_for_one_model_spec, LayerSourceAnalysis
 
 load_modules()
 
@@ -92,7 +96,6 @@ def collect_rcnn_k_bl_main_result(*,
             cc_native = np.full((num_neuron,), np.nan, dtype=np.float32)
             if no_missing_data:
                 raise e
-
 
         # replace 'yhat_reduce_pick' + 'rcnn_acc_type' with 'readout_type'
         readout_raw = param['yhat_reduce_pick'], param['rcnn_acc_type']
@@ -428,8 +431,7 @@ def compute_average_scale_of_weight(weight: np.ndarray):
     return np.asarray(norm_list).mean().item()
 
 
-def get_scale_and_conv_maps_for_a_model(model):
-    bl_stack = model.moduledict['bl_stack']
+def get_scale_and_conv_maps_regular(bl_stack):
     bn_list_global = bl_stack.bn_layer_list
     layer_list_global = bl_stack.layer_list
     assert len(layer_list_global) == bl_stack.n_layer
@@ -459,11 +461,57 @@ def get_scale_and_conv_maps_for_a_model(model):
     }
 
 
+def get_scale_and_conv_maps_multipath(bl_stack):
+    standard_one = get_scale_and_conv_maps_regular(bl_stack)
+    # then use the internal chain info to figure out the value of extra BN layers.
+    # copy code in `evaluate_multi_path`
+    counter = Counter()
+    # I do this just to get typing.
+    multipath_source: List[LayerSourceAnalysis] = bl_stack.multipath_source
+    assert len(multipath_source) == bl_stack.n_timesteps
+    for timestep_idx, chain_list_this in enumerate(multipath_source):
+        for chain_this in chain_list_this.source_list:
+            # pairs of conv and BN
+            chain_this_raw = chain_this['conv'][1:]
+            # create sequence. note that BN has test vs train. this is encapsulated in BN itself.
+            # we don't need to handle it explicitly.
+            # check the implementatinon nn.Sequential. DO NOT use Sequential directly as the Sequential's
+            # train/test mode is inconsistent with BN's.
+            for idx, comp in enumerate(chain_this_raw):
+                # obtain the corresponding component.
+                if idx % 2 == 0:
+                    pass
+                else:
+                    # here layer, time are 0-indexed
+                    mod, (layer, time) = bl_stack.obtain_bn(comp, counter, return_layer_time=True)
+                    c_this = counter[layer, time]
+                    # c_this will be 1,2,3,..., (1-indexed)
+                    k = f's{layer + 1},{time + 1},{c_this}'
+                    assert k not in standard_one['scale_map']
+                    standard_one['scale_map'][k] = compute_average_scale_of_weight(
+                        mod.weight.detach().numpy()
+                    )
+    return standard_one
+
+
+def non_multi_path_block(bl_stack):
+    return not bl_stack.multi_path or (bl_stack.multi_path and not bl_stack.multi_path_separate_bn)
+
+
+def get_scale_and_conv_maps_for_a_model(model):
+    bl_stack: BLConvLayerStack = model.moduledict['bl_stack']
+    if non_multi_path_block(bl_stack):
+        return get_scale_and_conv_maps_regular(bl_stack)
+    else:
+        return get_scale_and_conv_maps_multipath(bl_stack)
+
+
 def collect_rcnn_k_bl_source_analysis(*,
                                       fixed_keys,
                                       generator,
                                       total_num_param,
                                       train_size_mapping,
+                                      no_missing_data=True,
                                       ):
     rows_all = []
 
@@ -488,11 +536,18 @@ def collect_rcnn_k_bl_source_analysis(*,
 
         # load model to get param count
         key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
-        # 10 to go.
-        result = load_training_results(key, return_model=False)
-        # load twice, first time to get the model.
-        result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
-        num_param = count_params(result['model'])
+        try:
+            failed_before = False
+            result = load_training_results(key, return_model=False)
+            # load twice, first time to get the model.
+            result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
+            num_param = count_params(result['model'])
+        except FileNotFoundError as e:
+            if no_missing_data:
+                raise e
+            failed_before = True
+            num_param = -1
+
         # replace 'yhat_reduce_pick' + 'rcnn_acc_type' with 'readout_type'
         readout_raw = param['yhat_reduce_pick'], param['rcnn_acc_type']
         if readout_raw == (-1, 'cummean'):
@@ -524,15 +579,19 @@ def collect_rcnn_k_bl_source_analysis(*,
         }
         row_this['num_param'] = num_param
 
-        maps = get_scale_and_conv_maps_for_a_model(result['model'])
-        src_analysis_instance = get_source_analysis_for_one_model_spec(
-            num_recurrent_layer=param['num_layer'] - 1, num_cls=param['rcnn_bl_cls'],
-            readout_type=param['readout_type'],
-        )
-        # get the scales for everything of this model
-        row_this['source_analysis'] = src_analysis_instance.evaluate(
-            scale_map=maps['scale_map'], conv_map=maps['conv_map']
-        )
+        if not failed_before:
+            maps = get_scale_and_conv_maps_for_a_model(result['model'])
+            src_analysis_instance = get_source_analysis_for_one_model_spec(
+                num_recurrent_layer=param['num_layer'] - 1, num_cls=param['rcnn_bl_cls'],
+                readout_type=param['readout_type'],
+                separate_bn=(not non_multi_path_block(result['model'].moduledict['bl_stack'])),
+            )
+            # get the scales for everything of this model
+            row_this['source_analysis'] = src_analysis_instance.evaluate(
+                scale_map=maps['scale_map'], conv_map=maps['conv_map']
+            )
+        else:
+            row_this['source_analysis'] = None
 
         rows_all.append(row_this)
 

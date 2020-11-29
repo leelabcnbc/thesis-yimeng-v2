@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from .. import register_module, standard_init, bn_init_passthrough
-from ...analysis.utils import get_source_analysis_for_one_model_spec, LayerSourceAnalysis
+from ...analysis.utils import get_source_analysis_for_one_model_spec, LayerSourceAnalysis, extract_l_and_t
 
 
 class BLConvLayer(nn.Module):
@@ -55,12 +55,6 @@ class BLConvLayer(nn.Module):
             sum_output = sum_output + bias_output
 
         return sum_output
-
-
-def extract_l_and_t(s):
-    assert s[0] == 's'
-    layer, time = s[1:].split(',')
-    return int(layer) - 1, int(time) - 1
 
 
 def extract_l_and_type(s):
@@ -244,7 +238,7 @@ class BLConvLayerStack(nn.Module):
         else:
             raise ValueError
 
-    def obtain_bn(self, comp, counter: Counter):
+    def obtain_bn(self, comp, counter: Counter, return_layer_time=False):
         layer, time = extract_l_and_t(comp)
         if (not self.multi_path_separate_bn) or (counter[layer, time] == 0):
             # use the original one.
@@ -253,7 +247,10 @@ class BLConvLayerStack(nn.Module):
             # use later one.
             bn_this = getattr(self, f'bn_layer_add_list_{layer}_{time}')[counter[layer, time]-1]
         counter[layer, time] += 1
-        return bn_this
+        if not return_layer_time:
+            return bn_this
+        else:
+            return bn_this, (layer, time)
 
     def evaluate_multi_path(self, b_input):
         # counter tracks how many times a BN layer is used.
