@@ -77,6 +77,13 @@ def get_bn_counter(multipath_source: List[LayerSourceAnalysis]):
     return counter
 
 
+def verify_unique_path(multipath_source, n_timesteps):
+    assert len(multipath_source) == n_timesteps
+    for timestep_idx, chain_list_this in enumerate(multipath_source):
+        conv_list = [x['conv'] for x in chain_list_this.source_list]
+        assert len(conv_list) == len(set(conv_list))
+
+
 class BLConvLayerStack(nn.Module):
     def __init__(self,
                  *,
@@ -129,6 +136,9 @@ class BLConvLayerStack(nn.Module):
                 return_raw=True,
                 add_bn_in_chain=True
             )[-1]
+            # assert each each list has unique chains of convs
+            # THIS IS IMPORTANT, because it's possible that I double counted some path during eval.
+            verify_unique_path(self.multipath_source, self.n_timesteps)
             assert type(self.multi_path_separate_bn) is bool
         else:
             self.multipath_source = None
@@ -273,7 +283,7 @@ class BLConvLayerStack(nn.Module):
                         # end of a pair. apply act fn
                         output_now = self.act_fn(output_now)
                 output_list_this_time.append(output_now)
-            # sum together all tensors in the current timestamp.
+            # sum together all tensors in the currentcollect_rcnn_k_bl_main_result timestamp.
             output_list.append(
                 torch.sum(torch.stack(output_list_this_time), 0)
             )
