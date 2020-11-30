@@ -472,6 +472,7 @@ def get_scale_and_conv_maps_multipath(bl_stack):
     for timestep_idx, chain_list_this in enumerate(multipath_source):
         for chain_this in chain_list_this.source_list:
             # pairs of conv and BN
+            assert chain_this['conv'][0] == 'I'
             chain_this_raw = chain_this['conv'][1:]
             # create sequence. note that BN has test vs train. this is encapsulated in BN itself.
             # we don't need to handle it explicitly.
