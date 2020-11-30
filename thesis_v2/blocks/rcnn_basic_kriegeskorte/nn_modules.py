@@ -130,6 +130,7 @@ class BLConvLayerStack(nn.Module):
                 return_raw=True,
                 add_bn_in_chain=True
             )[-1]
+            # print([x.source_list for x in self.multipath_source])
             # assert each each list has unique chains of convs
             # THIS IS IMPORTANT, because it's possible that I double counted some path during eval.
             verify_unique_path(self.multipath_source, self.n_timesteps)

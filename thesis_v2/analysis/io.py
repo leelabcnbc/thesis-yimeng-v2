@@ -442,7 +442,8 @@ def get_scale_and_conv_maps_regular(bl_stack):
         layer_idx_human = layer_idx + 1
         bn_list = [bn_list_global[t * bl_stack.n_layer + layer_idx] for t in range(bl_stack.n_timesteps)]
         if layer_this.l_conv is None:
-            conv_map[f'R{layer_idx_human}'] = None
+            # conv_map[f'R{layer_idx_human}'] = None
+            pass
         else:
             conv_map[f'R{layer_idx_human}'] = compute_average_scale_of_weight(layer_this.l_conv.weight.detach().numpy())
 
@@ -451,24 +452,26 @@ def get_scale_and_conv_maps_regular(bl_stack):
             scale_map[f's{layer_idx_human},{idx}'] = compute_average_scale_of_weight(bn_layer.weight.detach().numpy())
 
     for vvv in conv_map.values():
-        assert vvv is None or vvv >= 0
+        assert vvv >= 0
     for vvvv in scale_map.values():
         assert vvvv >= 0
-
+    conv_map['I'] = 1.0
     return {
         'conv_map': conv_map,
         'scale_map': scale_map,
     }
 
 
-def get_scale_and_conv_maps_multipath(bl_stack):
+def get_scale_and_conv_maps_multipath(bl_stack, *, fetch_only_last_timestep):
     standard_one = get_scale_and_conv_maps_regular(bl_stack)
     # then use the internal chain info to figure out the value of extra BN layers.
     # copy code in `evaluate_multi_path`
+    scale_map_old = deepcopy(set(standard_one['scale_map'].keys()))
     counter = Counter()
     # I do this just to get typing.
     multipath_source: List[LayerSourceAnalysis] = bl_stack.multipath_source
     assert len(multipath_source) == bl_stack.n_timesteps
+    last_step_keep = set()
     for timestep_idx, chain_list_this in enumerate(multipath_source):
         for chain_this in chain_list_this.source_list:
             # pairs of conv and BN
@@ -486,12 +489,25 @@ def get_scale_and_conv_maps_multipath(bl_stack):
                     # here layer, time are 0-indexed
                     mod, (layer, time) = bl_stack.obtain_bn(comp, counter, return_layer_time=True)
                     c_this = counter[layer, time]
-                    # c_this will be 1,2,3,..., (1-indexed)
-                    k = f's{layer + 1},{time + 1},{c_this}'
-                    assert k not in standard_one['scale_map']
-                    standard_one['scale_map'][k] = compute_average_scale_of_weight(
-                        mod.weight.detach().numpy()
-                    )
+                    if c_this > 1:
+                        # first one has been counted before.
+                        # c_this will be 1,2,3,..., (1-indexed)
+                        k = f's{layer + 1},{time + 1},{c_this-1}'
+                        assert k not in standard_one['scale_map']
+                        if not fetch_only_last_timestep or (timestep_idx == bl_stack.n_timesteps-1):
+                            standard_one['scale_map'][k] = compute_average_scale_of_weight(
+                                mod.weight.detach().numpy()
+                            )
+                    else:
+                        # may want to remove them because they are not used in last step
+                        if fetch_only_last_timestep and (timestep_idx == bl_stack.n_timesteps-1):
+                            last_step_keep.add(f's{layer + 1},{time + 1}')
+
+    if fetch_only_last_timestep:
+        # remove all other ones.
+        assert scale_map_old >= last_step_keep
+        for k in scale_map_old - last_step_keep:
+            del standard_one['scale_map'][k]
     return standard_one
 
 
@@ -499,12 +515,13 @@ def non_multi_path_block(bl_stack):
     return not bl_stack.multi_path or (bl_stack.multi_path and not bl_stack.multi_path_separate_bn)
 
 
-def get_scale_and_conv_maps_for_a_model(model):
+def get_scale_and_conv_maps_for_a_model(model, *, fetch_only_last_timestep):
     bl_stack: BLConvLayerStack = model.moduledict['bl_stack']
     if non_multi_path_block(bl_stack):
         return get_scale_and_conv_maps_regular(bl_stack)
     else:
-        return get_scale_and_conv_maps_multipath(bl_stack)
+        return get_scale_and_conv_maps_multipath(bl_stack,
+                                                 fetch_only_last_timestep=fetch_only_last_timestep)
 
 
 def collect_rcnn_k_bl_source_analysis(*,
@@ -581,7 +598,13 @@ def collect_rcnn_k_bl_source_analysis(*,
         row_this['num_param'] = num_param
 
         if not failed_before:
-            maps = get_scale_and_conv_maps_for_a_model(result['model'])
+            maps = get_scale_and_conv_maps_for_a_model(
+                result['model'],
+                fetch_only_last_timestep=(
+                    (not non_multi_path_block(result['model'].moduledict['bl_stack']))
+                    and param['readout_type'] == 'inst-last'
+                )
+            )
             src_analysis_instance = get_source_analysis_for_one_model_spec(
                 num_recurrent_layer=param['num_layer'] - 1, num_cls=param['rcnn_bl_cls'],
                 readout_type=param['readout_type'],
@@ -589,7 +612,8 @@ def collect_rcnn_k_bl_source_analysis(*,
             )
             # get the scales for everything of this model
             row_this['source_analysis'] = src_analysis_instance.evaluate(
-                scale_map=maps['scale_map'], conv_map=maps['conv_map']
+                scale_map=maps['scale_map'], conv_map=maps['conv_map'],
+                check_all_used=True
             )
         else:
             row_this['source_analysis'] = None

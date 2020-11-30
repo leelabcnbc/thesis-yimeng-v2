@@ -24,7 +24,7 @@ class LayerSourceAnalysis:
         )
         return ret
 
-    def evaluate(self, scale_map=None, conv_map=None):
+    def evaluate(self, scale_map=None, conv_map=None, check_all_used=False):
         # each scale is assigned some float number.
         # output a conv->float dict
 
@@ -35,16 +35,29 @@ class LayerSourceAnalysis:
             conv_map = dict()
 
         output = defaultdict(float)
+
+        used_symbols = set()
+
         for x in self.source_list:
             conv, scale = x['conv'], x['scale']
-            scale_materialized = [scale_map.get(s, s) for s in scale]
-            conv_materialized = [conv_map.get(c, 1.0) for c in conv]
+            used_symbols.update({s for s in scale if type(s) is str})
+            used_symbols.update({c for c in conv})
+            scale_materialized = [scale_map[s] if type(s) is str else s for s in scale]
+            conv_materialized = [conv_map[c] for c in conv]
             for z in scale_materialized:
                 assert type(z) is float
             for c in conv_materialized:
                 assert type(c) is float
 
             output[conv] += reduce((lambda x1, x2: x1 * x2), scale_materialized + conv_materialized, 1.0)
+        if check_all_used:
+
+            if used_symbols != (scale_map.keys() | conv_map.keys()):
+                print(self.source_list)
+                print(used_symbols, (scale_map.keys() | conv_map.keys()))
+                print(scale_map, conv_map)
+            assert used_symbols == (scale_map.keys() | conv_map.keys())
+
         return dict(output)
 
     def apply_scale(self, scale):
