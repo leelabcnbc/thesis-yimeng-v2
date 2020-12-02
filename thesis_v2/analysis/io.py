@@ -492,15 +492,15 @@ def get_scale_and_conv_maps_multipath(bl_stack, *, fetch_only_last_timestep):
                     if c_this > 1:
                         # first one has been counted before.
                         # c_this will be 1,2,3,..., (1-indexed)
-                        k = f's{layer + 1},{time + 1},{c_this-1}'
+                        k = f's{layer + 1},{time + 1},{c_this - 1}'
                         assert k not in standard_one['scale_map']
-                        if not fetch_only_last_timestep or (timestep_idx == bl_stack.n_timesteps-1):
+                        if not fetch_only_last_timestep or (timestep_idx == bl_stack.n_timesteps - 1):
                             standard_one['scale_map'][k] = compute_average_scale_of_weight(
                                 mod.weight.detach().numpy()
                             )
                     else:
                         # may want to remove them because they are not used in last step
-                        if fetch_only_last_timestep and (timestep_idx == bl_stack.n_timesteps-1):
+                        if fetch_only_last_timestep and (timestep_idx == bl_stack.n_timesteps - 1):
                             last_step_keep.add(f's{layer + 1},{time + 1}')
 
     if fetch_only_last_timestep:
@@ -530,12 +530,20 @@ def collect_rcnn_k_bl_source_analysis(*,
                                       total_num_param,
                                       train_size_mapping,
                                       no_missing_data=True,
+                                      key_override=None,
+                                      debug=False,
                                       ):
     rows_all = []
 
-    param_set = None
+    if key_override is None:
+        key_override = dict()
 
+    param_set = None
+    counted = 0
     for idx, (src, param) in enumerate(generator):
+        if debug:
+            if counted >= 5:
+                break
         assert len(param) == total_num_param
         total_param_to_explain = len(param)
 
@@ -547,6 +555,8 @@ def collect_rcnn_k_bl_source_analysis(*,
             assert param[k_fix] == v_fix
             total_param_to_explain -= 1
 
+        param.update(key_override)
+
         # {'yhat_reduce_pick': 'none', 'train_keep': 1280, 'model_seed': 0,
         # act_fn': 'relu', 'loss_type': 'mse', 'out_channel': 8, 'num_layer': 2,
         # 'rcnn_bl_cls': 1,
@@ -554,6 +564,22 @@ def collect_rcnn_k_bl_source_analysis(*,
 
         # load model to get param count
         key = keygen(**{k: v for k, v in param.items() if k not in {'scale', 'smoothness'}})
+
+        if debug:
+            if (
+                    param['rcnn_bl_cls'] != 7
+                    or (param['yhat_reduce_pick'], param['rcnn_acc_type']) != ('none', 'cummean')
+                    or param['act_fn'] != 'relu'
+                    or param['ff_1st_bn_before_act']
+                    or param['loss_type'] != 'mse'
+                    or param['model_seed'] != 0
+                    or param['num_layer'] != 2
+                    or param['out_channel'] != 8
+            ):
+                continue
+            else:
+                counted += 1
+
         try:
             failed_before = False
             result = load_training_results(key, return_model=False)
@@ -590,6 +616,8 @@ def collect_rcnn_k_bl_source_analysis(*,
         del param['rcnn_acc_type']
         total_param_to_explain -= 1
 
+        print(key)
+
         param['train_keep'] = train_size_mapping.get(param['train_keep'], param['train_keep'])
         # add result
         row_this = {
@@ -601,15 +629,19 @@ def collect_rcnn_k_bl_source_analysis(*,
             maps = get_scale_and_conv_maps_for_a_model(
                 result['model'],
                 fetch_only_last_timestep=(
-                    (not non_multi_path_block(result['model'].moduledict['bl_stack']))
-                    and param['readout_type'] == 'inst-last'
+                        (not non_multi_path_block(result['model'].moduledict['bl_stack']))
+                        and param['readout_type'] == 'inst-last'
                 )
             )
+            if debug:
+                print(maps)
             src_analysis_instance = get_source_analysis_for_one_model_spec(
                 num_recurrent_layer=param['num_layer'] - 1, num_cls=param['rcnn_bl_cls'],
                 readout_type=param['readout_type'],
                 separate_bn=(not non_multi_path_block(result['model'].moduledict['bl_stack'])),
             )
+            if debug:
+                print(src_analysis_instance.source_list)
             # get the scales for everything of this model
             row_this['source_analysis'] = src_analysis_instance.evaluate(
                 scale_map=maps['scale_map'], conv_map=maps['conv_map'],
