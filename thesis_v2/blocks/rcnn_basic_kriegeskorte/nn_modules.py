@@ -78,6 +78,51 @@ def verify_unique_path(multipath_source, n_timesteps):
         assert len(conv_list) == len(set(conv_list))
 
 
+def get_depths(multipath_source, n_timesteps, num_recurrent_layer):
+    depth_set = set()
+    assert len(multipath_source) == n_timesteps
+    for chain_list_this in multipath_source:
+        for conv in chain_list_this.source_list:
+            assert conv['conv'][0] == 'I'
+            assert len(conv['conv'][1:]) > 0
+            assert len(conv['conv'][1:]) % 2 == 0
+            depth_set.add(len(conv['conv'][1:]) // 2)
+
+    assert num_recurrent_layer in {1,2}
+    assert depth_set == set(range(num_recurrent_layer, n_timesteps+num_recurrent_layer))
+    return depth_set
+
+
+def update_allowed_depth(allowed_depth: set, spec):
+    # first type of hack spec: leDX
+    # where le means <=, D means depth X is layer depth.
+    # second type: geDX
+    # ge means >=
+    # third type (not implemented yet)
+    # onlyDX1,X2,X3,...
+    # only keeps paths of depth X1,X2,X3,....
+
+    # note that leDX is NOT the same as reducing number of time steps to X.
+    # because each time step has paths of depths shorter than the time.
+    # therefore, for a 7-iteration model, leD3 will still emit results across 7 iterations.
+
+    # I need to check that the depth makes sense.
+    if spec.startswith('leD'):
+        depth_threshold = int(spec[3:])
+        assert depth_threshold in allowed_depth
+        ret = {d for d in allowed_depth if d <= depth_threshold}
+    elif spec.startswith('geD'):
+        depth_threshold = int(spec[3:])
+        assert depth_threshold in allowed_depth
+        ret = {d for d in allowed_depth if d >= depth_threshold}
+    elif spec.startswith('onlyD'):
+        raise NotImplementedError
+    else:
+        raise ValueError
+
+    return ret
+
+
 class BLConvLayerStack(nn.Module):
     def __init__(self,
                  *,
@@ -100,6 +145,7 @@ class BLConvLayerStack(nn.Module):
                  # if `multi_path_separate_bn` is true, each path has its own BNs;
                  # otherwise, they share some BNs.
                  multi_path_separate_bn: Optional[bool] = None,
+                 multi_path_hack: Optional[str] = None,
                  ):
         # channel_list should be of length 1+number of layers.
         # channel_list[0] being the number of channels for input
@@ -121,6 +167,7 @@ class BLConvLayerStack(nn.Module):
 
         self.multi_path = multi_path
         self.multi_path_separate_bn = multi_path_separate_bn
+        self.multi_path_hack = multi_path_hack
 
         if self.multi_path:
             self.multipath_source = get_source_analysis_for_one_model_spec(
@@ -135,9 +182,20 @@ class BLConvLayerStack(nn.Module):
             # THIS IS IMPORTANT, because it's possible that I double counted some path during eval.
             verify_unique_path(self.multipath_source, self.n_timesteps)
             assert type(self.multi_path_separate_bn) is bool
+            self.allowed_depth = get_depths(
+                self.multipath_source,
+                n_timesteps=n_timesteps,
+                num_recurrent_layer=n_layer,
+            )
+            # check multi_path_hack's value makes sense
+            if self.multi_path_hack is not None:
+                assert type(self.multi_path_hack) is str
+                self.allowed_depth = update_allowed_depth(self.allowed_depth, self.multi_path_hack)
+
         else:
             self.multipath_source = None
             assert self.multi_path_separate_bn is None
+            assert self.multi_path_hack is None
 
         # BN layers.
         self.bn_layer_list = []
@@ -246,7 +304,7 @@ class BLConvLayerStack(nn.Module):
             bn_this = self.bn_layer_list[time * self.n_layer + layer]
         else:
             # use later one.
-            bn_this = getattr(self, f'bn_layer_add_list_{layer}_{time}')[counter[layer, time]-1]
+            bn_this = getattr(self, f'bn_layer_add_list_{layer}_{time}')[counter[layer, time] - 1]
         counter[layer, time] += 1
         if not return_layer_time:
             return bn_this
@@ -265,6 +323,11 @@ class BLConvLayerStack(nn.Module):
             for chain_this in chain_list_this.source_list:
                 # pairs of conv and BN
                 chain_this_raw = chain_this['conv'][1:]
+
+                depth_this = len(chain_this_raw) // 2
+                if depth_this not in self.allowed_depth:
+                    continue
+
                 # create sequence. note that BN has test vs train. this is encapsulated in BN itself.
                 # we don't need to handle it explicitly.
                 # check the implementatinon nn.Sequential. DO NOT use Sequential directly as the Sequential's
@@ -282,9 +345,11 @@ class BLConvLayerStack(nn.Module):
                         output_now = self.act_fn(output_now)
                 output_list_this_time.append(output_now)
             # sum together all tensors in the currentcollect_rcnn_k_bl_main_result timestamp.
-            output_list.append(
-                torch.sum(torch.stack(output_list_this_time), 0)
-            )
+            if len(output_list_this_time) > 0:
+                output_list.append(
+                    torch.sum(torch.stack(output_list_this_time), 0)
+                )
+        assert len(output_list) > 0
         return output_list
 
     def forward(self, b_input):
@@ -419,7 +484,7 @@ def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
                         [f'{mod_list_name}.{x}.running_mean' for x in range(ct - 1)]
                 )
                 # initialize
-                for ct_idx in range(ct-1):
+                for ct_idx in range(ct - 1):
                     bn_init_passthrough(mod_list[ct_idx], dict())
 
     # all ff convs

@@ -22,6 +22,7 @@ def blstack(
         # if `multi_path_separate_bn` is true, each path has its own BNs;
         # otherwise, they share some BNs.
         multi_path_separate_bn: Optional[bool] = None,
+        multi_path_hack: Optional[str] = None,
 ):
     input_size = check_input_size(input_size, strict=True)
 
@@ -61,6 +62,7 @@ def blstack(
             'norm_type': norm_type,
             'multi_path': multi_path,
             'multi_path_separate_bn': multi_path_separate_bn,
+            'multi_path_hack': multi_path_hack,
         },
         'init': {
             'strategy': 'normal',
