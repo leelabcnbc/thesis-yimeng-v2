@@ -576,18 +576,18 @@ def collect_rcnn_k_bl_source_analysis(*,
                         or param['loss_type'] != 'mse'
                         or param['model_seed'] != 0
                         or param['num_layer'] != 3
-                        or param['out_channel'] != 8
+                        or param['out_channel'] != 32
                 )
             else:
                 cond = (
-                        param['rcnn_bl_cls'] != 7
+                        param['rcnn_bl_cls'] != 5
                         or (param['yhat_reduce_pick'], param['rcnn_acc_type']) != ('none', 'cummean')
                         or param['act_fn'] != 'relu'
                         or param['ff_1st_bn_before_act']
                         or param['loss_type'] != 'mse'
                         or param['model_seed'] != 0
                         or param['num_layer'] != 2
-                        or param['out_channel'] != 8
+                        or param['out_channel'] != 32
                 )
             if cond:
                 continue
