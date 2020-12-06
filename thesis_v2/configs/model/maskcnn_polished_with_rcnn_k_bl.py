@@ -1229,6 +1229,38 @@ def explored_models_20201118_generator(with_source=False, separate_bn_list=None)
                 yield src, param_dict_ret
 
 
+def explored_models_20201205_generator(with_source=False, separate_bn_list=None):
+    if separate_bn_list is None:
+        separate_bn_list = (True,)
+    for x in explored_models_20200725_generator(with_source=True):
+        src, param_dict = x
+
+        if param_dict['rcnn_bl_cls'] not in range(2, 7 + 1):
+            continue
+
+        # only study those good models in `maskcnn_polished_with_rcnn_k_bl/20201118_collect-separatebn.ipynb`
+        if not (
+                src == 'cm-avg' and param_dict['num_layer'] == 2 and
+                param_dict['out_channel'] in {16, 32} and
+                param_dict['train_keep'] in {None, 5120}
+        ):
+            continue
+
+        for separate_bn in separate_bn_list:
+            # then add geDX variants and leDX variants.
+            for depth_this in range(1, param_dict['rcnn_bl_cls'] + 1):
+                for prefix in ['leD', 'geD']:
+                    param_dict_ret = deepcopy(param_dict)
+                    param_dict_ret['multi_path'] = True
+                    param_dict_ret['multi_path_separate_bn'] = separate_bn
+                    param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
+                    assert len(param_dict_ret) == 29
+                    if not with_source:
+                        yield param_dict_ret
+                    else:
+                        yield src, param_dict_ret
+
+
 def explored_models_20201003_generator(with_source=False):
     # similar to explored_models_20200725_generator, with more channels.
     # combine all three above, and having consistent number of parameters
@@ -1743,6 +1775,7 @@ def keygen(*,
            act_fn_inner: str = 'same',
            multi_path=False,
            multi_path_separate_bn=None,
+           multi_path_hack: Optional[str] = None,
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -1797,6 +1830,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'mpb_{multi_path_separate_bn}']
+
+    if multi_path_hack is None:
+        additional_list += []
+    else:
+        additional_list += [f'mph_{multi_path_hack}']
 
     if additional_key is None:
         additional_list += []
@@ -1878,6 +1916,11 @@ def keygen(*,
         added_param_size += 1
 
     if multi_path_separate_bn is None:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if multi_path_hack is None:
         added_param_size += 0
     else:
         added_param_size += 1

@@ -54,6 +54,7 @@ def master(*,
            act_fn_inner: str = 'same',
            multi_path=False,
            multi_path_separate_bn=None,
+           multi_path_hack=None,
            ):
     assert yhat_reduce_pick in {-1, 'avg', 'none'}
 
@@ -87,6 +88,7 @@ def master(*,
         act_fn_inner=act_fn_inner,
         multi_path=multi_path,
         multi_path_separate_bn=multi_path_separate_bn,
+        multi_path_hack=multi_path_hack,
     )
 
     print('key', key)
@@ -147,6 +149,7 @@ def master(*,
             act_fn_inner=act_fn_inner,
             multi_path=multi_path,
             multi_path_separate_bn=multi_path_separate_bn,
+            multi_path_hack=multi_path_hack,
         )
 
     opt_config_partial = partial(
