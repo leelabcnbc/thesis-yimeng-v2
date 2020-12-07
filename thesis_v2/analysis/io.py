@@ -447,9 +447,15 @@ def get_scale_and_conv_maps_regular(bl_stack):
         else:
             conv_map[f'R{layer_idx_human}'] = compute_average_scale_of_weight(layer_this.l_conv.weight.detach().numpy())
 
-        conv_map[f'B{layer_idx_human}'] = compute_average_scale_of_weight(layer_this.b_conv.weight.detach().numpy())
+        conv_map[f'B{layer_idx_human}'] = compute_average_scale_of_weight(
+            layer_this.b_conv.weight.detach().numpy()
+        )
         for idx, bn_layer in enumerate(bn_list, start=1):
-            scale_map[f's{layer_idx_human},{idx}'] = compute_average_scale_of_weight(bn_layer.weight.detach().numpy())
+            scale_map[f's{layer_idx_human},{idx}'] = compute_average_scale_of_weight(
+                bn_layer.weight.detach().numpy() / np.sqrt(
+                    bn_layer.running_var.numpy() + bn_layer.eps
+                )
+            )
 
     for vvv in conv_map.values():
         assert vvv >= 0
@@ -496,7 +502,9 @@ def get_scale_and_conv_maps_multipath(bl_stack, *, fetch_only_last_timestep):
                         assert k not in standard_one['scale_map']
                         if not fetch_only_last_timestep or (timestep_idx == bl_stack.n_timesteps - 1):
                             standard_one['scale_map'][k] = compute_average_scale_of_weight(
-                                mod.weight.detach().numpy()
+                                mod.weight.detach().numpy() / np.sqrt(
+                                    mod.running_var.numpy() + mod.eps
+                                )
                             )
                     else:
                         # may want to remove them because they are not used in last step
@@ -630,7 +638,8 @@ def collect_rcnn_k_bl_source_analysis(*,
         del param['rcnn_acc_type']
         total_param_to_explain -= 1
 
-        print(key)
+        if debug:
+            print(key)
 
         param['train_keep'] = train_size_mapping.get(param['train_keep'], param['train_keep'])
         # add result
