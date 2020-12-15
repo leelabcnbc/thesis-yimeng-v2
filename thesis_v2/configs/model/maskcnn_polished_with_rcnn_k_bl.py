@@ -1229,6 +1229,26 @@ def explored_models_20201118_generator(with_source=False, separate_bn_list=None)
                 yield src, param_dict_ret
 
 
+def explored_models_20201215_tang_generator(with_source=False, separate_bn_list=None):
+    if separate_bn_list is None:
+        separate_bn_list = (True,)
+    for src, param_dict in chain(
+            explored_models_20201002_tang_generator(with_source=True, additional_keys=('0,500',)),
+            explored_models_20201018_tang_generator(with_source=True, additional_keys=('0,500',))
+    ):
+        if param_dict['rcnn_bl_cls'] == 1:
+            continue
+        for separate_bn in separate_bn_list:
+            param_dict_ret = deepcopy(param_dict)
+            param_dict_ret['multi_path'] = True
+            param_dict_ret['multi_path_separate_bn'] = separate_bn
+            assert len(param_dict_ret) == 29
+            if not with_source:
+                yield param_dict_ret
+            else:
+                yield src, param_dict_ret
+
+
 def explored_models_20201205_generator(with_source=False, separate_bn_list=None):
     if separate_bn_list is None:
         separate_bn_list = (True,)

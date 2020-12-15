@@ -52,6 +52,9 @@ def master(*,
            show_every: int = 100,
            yhat_reduce_pick: int = -1,
            additional_key: Optional[str] = None,
+           multi_path=False,
+           multi_path_separate_bn=None,
+           multi_path_hack=None,
            ):
     key = keygen(
         split_seed=split_seed,
@@ -80,6 +83,9 @@ def master(*,
         seq_length=seq_length,
         yhat_reduce_pick=yhat_reduce_pick,
         additional_key=additional_key,
+        multi_path=multi_path,
+        multi_path_separate_bn=multi_path_separate_bn,
+        multi_path_hack=multi_path_hack,
     )
 
 
@@ -146,7 +152,10 @@ def master(*,
             factored_constraint=None,
             ff_1st_block=ff_1st_block,
             ff_1st_bn_before_act=ff_1st_bn_before_act,
-            num_input_channel=(1 if seq_length is None else seq_length)
+            num_input_channel=(1 if seq_length is None else seq_length),
+            multi_path=multi_path,
+            multi_path_separate_bn=multi_path_separate_bn,
+            multi_path_hack=multi_path_hack,
         )
 
     opt_config_partial = partial(
