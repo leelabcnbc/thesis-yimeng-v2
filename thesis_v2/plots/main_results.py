@@ -1,6 +1,7 @@
 from os.path import join, dirname
 from os import makedirs
 from typing import List
+from itertools import zip_longest, chain
 
 from scipy.stats import pearsonr
 import numpy as np
@@ -8,8 +9,148 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from .util import savefig
+from .basic import scatter
 from .. import dir_dict
-from .main_results_tables import get_perf_over_cls_data, get_ff_vs_best_r_data
+from .main_results_tables import get_perf_over_cls_data, get_ff_vs_best_r_data, preprocess, merge_thin_and_wide
+
+metric_dict = {
+    'cc2_normed_avg': '''average ${\\mathrm{CC}}_{\\mathrm{norm}}^2$''',
+    'cc2_raw_avg': '''average ${\\mathrm{CC}}^2$''',
+    'cc_raw_avg': '''average $\\mathrm{CC}$''',
+}
+
+def get_r_vs_ff_scatter_inner(
+        ax, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
+        remove_x_axis_labels=False, remove_y_axis_labels=False
+):
+    if prefix is None:
+        prefix = ''
+    merged_main = merge_thin_and_wide(df_fewer_columns=perf_r_main, df_more_columns=perf_ff, fewer_suffix='')
+    scatter(
+        ax=ax,
+        x=merged_main['perf_ff'].values, y=merged_main['perf_r'].values,
+        xlabel=xlabel, ylabel=ylabel,
+        xlim=limit,
+        ylim=limit,
+        remove_x_axis_labels=remove_x_axis_labels,
+        remove_y_axis_labels=remove_y_axis_labels,
+        set_axis_equal=False,
+        scatter_s=0.5,
+    )
+    ax.text(
+        0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
+        transform=ax.transAxes,
+    )
+
+
+def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric,
+                        limit=None,
+                        ):
+
+    xlabel = metric_dict[metric] + ', FF'
+    ylabel = metric_dict[metric] + ', recurrent'
+
+    _, df_ff, df_r = preprocess(df_in, max_cls=max_cls, axes_to_reduce=axes_to_reduce)
+
+    perf_ff = df_ff['perf_mean'].to_frame(name='perf_ff')
+    perf_r = df_r['perf_mean']
+    # main plot, best R vs FF
+    total_levels = ('readout_type', 'rcnn_bl_cls')
+    perf_r_main = perf_r.unstack(total_levels).max(axis=1).to_frame(name='perf_r')
+
+    if limit is None:
+        limit_max, limit_min = max(
+            df_r['perf_mean'].quantile(0.975), perf_ff['perf_ff'].quantile(0.975)
+        ), min(
+            df_r['perf_mean'].quantile(0.025), perf_ff['perf_ff'].quantile(0.025)
+        )
+        assert limit_max > limit_min
+        limit_diff = limit_max - limit_min
+        limit_max = limit_max + 0.1*limit_diff
+        limit_min = limit_min - 0.1 * limit_diff
+        limit = (limit_min, limit_max)
+
+    plt.close('all')
+    fig, ax = plt.subplots(1,1,squeeze=True,figsize=(4, 4))
+    get_r_vs_ff_scatter_inner(
+        ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main, xlabel=xlabel, ylabel=ylabel, limit=limit,
+        prefix='all # of iterations and readout\n'
+    )
+    fig.subplots_adjust(left=0.2, right=0.95, bottom=0.2, top=0.95)
+    suptitle = f'scatter_r_vs_ff_{metric}'
+    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
+
+    plt.show()
+    plt.close('all')
+    # secondary plot, R vs FF, grouped by readout type or number of iterations
+    # this only works when we EXACTLY have 4 readout types and 6 iterations.
+    fig, axes = plt.subplots(2, 5, squeeze=False, figsize=(10, 4), sharex=True, sharey=True)
+    axes = axes.ravel()
+
+    for idx, (key, level) in enumerate(chain(
+            zip_longest(perf_r.index.get_level_values('rcnn_bl_cls').unique(),
+                        ('rcnn_bl_cls',), fillvalue='rcnn_bl_cls'),
+            zip_longest(perf_r.index.get_level_values('readout_type').unique(),
+                        ('readout_type',), fillvalue='readout_type'),
+    )):
+        # print((key, level))
+        # get that r.
+        other_level = tuple(set(total_levels) - {level})
+        assert len(other_level) == 1
+        perf_r_main = perf_r.xs(key, level=level).unstack(other_level).max(axis=1).to_frame(name='perf_r')
+        ax = axes[idx]
+        get_r_vs_ff_scatter_inner(
+            ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main,
+            xlabel=xlabel if idx >= 5 else None,
+            ylabel=ylabel if idx == 5 else None,
+            limit=limit,
+            prefix={'rcnn_bl_cls': '# of iterations', 'readout_type': 'readout'}[level] + f' = {key}' + '\n',
+            # remove_x_axis_labels=not (idx >= 5),
+            # remove_y_axis_labels=not (idx == 5),
+        )
+    suptitle = f'scatter_r_vs_ff_{metric}_2nd'
+    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    fig.subplots_adjust(left=0.125, right=0.875, bottom=0.125, top=0.875, wspace=0.225, hspace=0.225)
+    savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
+    plt.show()
+    # third plot, R vs FF, for every combination of readout type or number of iterations
+
+    plt.close('all')
+    # secondary plot, R vs FF, grouped by readout type or number of iterations
+    # this only works when we EXACTLY have 4 readout types and 6 iterations.
+    fig, axes = plt.subplots(4, 6, squeeze=False, figsize=(12, 8), sharex=True, sharey=True)
+    axes = axes.ravel()
+
+    index_num_cls = perf_r.index.get_level_values('rcnn_bl_cls').values
+    index_readout_type = perf_r.index.get_level_values('readout_type').values
+
+    index_readout_cls = np.asarray(
+        [index_readout_type, index_num_cls]
+    ).T.tolist()
+    index_readout_cls = [tuple(x) for x in index_readout_cls]
+    index_readout_cls = sorted(set(index_readout_cls))
+    assert len(index_readout_cls) <= 24
+    for idx, key_this in enumerate(index_readout_cls):
+        perf_r_main = perf_r.xs(
+            key_this, level=('readout_type', 'rcnn_bl_cls')
+        ).to_frame(name='perf_r')
+        ax = axes[idx]
+        get_r_vs_ff_scatter_inner(
+            ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main,
+            xlabel=xlabel if idx >= 18 else None,
+            ylabel=ylabel if idx == 18 else None,
+            limit=limit,
+            prefix=f'{key_this[0]},{key_this[1]}' + '\n',
+        )
+
+    suptitle = f'scatter_r_vs_ff_{metric}_3rd'
+    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    fig.subplots_adjust(left=0.125, right=0.875, bottom=0.125, top=0.875, wspace=0.225, hspace=0.225)
+    savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
+    plt.show()
+
+
 
 
 def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
@@ -24,6 +165,13 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
         print(metric)
         assert metric in df_in.columns
         df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
+
+        get_r_vs_ff_scatter(
+            df_this, max_cls=max_cls,
+            axes_to_reduce=['model_seed'],
+            metric=metric,
+            dir_plot=dir_key,
+        )
 
         get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
                                axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'])
@@ -393,11 +541,7 @@ def process_one_case(df_in, *, metric, train_keep,
         max_cls=max_cls,
         num_seed=num_seed,
         suptitle=f'train size={train_keep}, {metric}',
-        ylabel={
-            'cc2_normed_avg': '''average ${\\mathrm{CC}}_{\\mathrm{norm}}^2$''',
-            'cc2_raw_avg': '''average ${\\mathrm{CC}}^2$''',
-            'cc_raw_avg': '''average $\\mathrm{CC}$''',
-        }[metric],
+        ylabel=metric_dict[metric],
         check_no_missing_data=check_no_missing_data,
         dir_plot=dir_plot,
         display=display,

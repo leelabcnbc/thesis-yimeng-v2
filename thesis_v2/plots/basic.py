@@ -14,17 +14,29 @@ def scatter(
         scatter_s=1,
         xlim=(0, 1),
         ylim=(0, 1),
+        set_axis_equal=True,
+        remove_x_axis_labels=False,
+        remove_y_axis_labels=False,
 ):
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
     assert x.ndim == y.ndim == 1
     assert x.shape == y.shape
     ax.scatter(x, y, s=scatter_s)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.axis('equal')
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    if set_axis_equal:
+        ax.axis('equal')
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)
+
+    if remove_x_axis_labels:
+        ax.axes.xaxis.set_ticklabels([])
+    if remove_y_axis_labels:
+        ax.axes.yaxis.set_ticklabels([])
+
     ax.plot([0, 1], [0, 1], linestyle='--')
 
 
