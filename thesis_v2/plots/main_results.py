@@ -7,6 +7,7 @@ from scipy.stats import pearsonr
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 
 from .util import savefig
 from .basic import scatter
@@ -19,24 +20,31 @@ metric_dict = {
     'cc_raw_avg': '''average $\\mathrm{CC}$''',
 }
 
+
 def get_r_vs_ff_scatter_inner(
-        ax, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
-        remove_x_axis_labels=False, remove_y_axis_labels=False
+        ax: Axes, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
+        remove_x_axis_labels=False, remove_y_axis_labels=False,
+        show_diff_hist=False,
 ):
     if prefix is None:
         prefix = ''
     merged_main = merge_thin_and_wide(df_fewer_columns=perf_r_main, df_more_columns=perf_ff, fewer_suffix='')
-    scatter(
-        ax=ax,
-        x=merged_main['perf_ff'].values, y=merged_main['perf_r'].values,
-        xlabel=xlabel, ylabel=ylabel,
-        xlim=limit,
-        ylim=limit,
-        remove_x_axis_labels=remove_x_axis_labels,
-        remove_y_axis_labels=remove_y_axis_labels,
-        set_axis_equal=False,
-        scatter_s=0.5,
-    )
+    if not show_diff_hist:
+        scatter(
+            ax=ax,
+            x=merged_main['perf_ff'].values, y=merged_main['perf_r'].values,
+            xlabel=xlabel, ylabel=ylabel,
+            xlim=limit,
+            ylim=limit,
+            remove_x_axis_labels=remove_x_axis_labels,
+            remove_y_axis_labels=remove_y_axis_labels,
+            set_axis_equal=False,
+            scatter_s=0.5,
+        )
+    else:
+        ax.hist(merged_main['perf_r'].values - merged_main['perf_ff'].values,
+                bins=20)
+        ax.axvline(x=0, linestyle='--', color='r')
     ax.text(
         0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
         transform=ax.transAxes,
@@ -44,26 +52,32 @@ def get_r_vs_ff_scatter_inner(
 
 
 def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric,
-                        limit=None, deeper_ff=False,
+                        limit=None, deeper_ff=None, show_diff_hist=False
                         ):
-
-    xlabel = metric_dict[metric] + (', FF' if not deeper_ff else ', deeper FF')
+    xlabel = metric_dict[metric] + (
+        ', FF' if deeper_ff is None else ', deeper FF {}'.format(
+            ','.join([str(x) for x in deeper_ff])
+        )
+    )
     ylabel = metric_dict[metric] + ', recurrent'
 
     _, df_ff, df_r = preprocess(df_in, max_cls=max_cls, axes_to_reduce=axes_to_reduce)
 
     perf_ff = df_ff['perf_mean'].to_frame(name='perf_ff')
 
-    if deeper_ff:
+    if deeper_ff is not None:
         perf_ff = perf_ff[perf_ff.index.get_level_values('num_layer').isin(
-            [4, 5, 6]
+            deeper_ff
         )]['perf_ff'].unstack('num_layer').max(axis=1)
         perf_ff = perf_ff.to_frame(name='perf_ff')
         perf_ff['num_layer'] = 3
         perf_ff = perf_ff.set_index('num_layer', append=True)
-        suptitle_suffix = '_deeper'
+        suptitle_suffix = '_deeper' + ','.join([str(x) for x in deeper_ff])
     else:
         suptitle_suffix = ''
+
+    if show_diff_hist:
+        suptitle_suffix += 'hist'
 
     perf_r = df_r['perf_mean']
     # main plot, best R vs FF
@@ -78,15 +92,15 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
         )
         assert limit_max > limit_min
         limit_diff = limit_max - limit_min
-        limit_max = limit_max + 0.1*limit_diff
+        limit_max = limit_max + 0.1 * limit_diff
         limit_min = limit_min - 0.1 * limit_diff
         limit = (limit_min, limit_max)
 
     plt.close('all')
-    fig, ax = plt.subplots(1,1,squeeze=True,figsize=(4, 4))
+    fig, ax = plt.subplots(1, 1, squeeze=True, figsize=(4, 4))
     get_r_vs_ff_scatter_inner(
         ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main, xlabel=None, ylabel=None, limit=limit,
-        prefix='all # of iterations and readout\n'
+        prefix='all # of iterations and readout\n', show_diff_hist=show_diff_hist,
     )
     fig.subplots_adjust(left=0.125, right=0.99, bottom=0.125, top=0.99)
     # https://stackoverflow.com/a/26892326
@@ -123,6 +137,7 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
             prefix={'rcnn_bl_cls': '# of iterations', 'readout_type': 'readout'}[level] + f' = {key}' + '\n',
             # remove_x_axis_labels=not (idx >= 5),
             # remove_y_axis_labels=not (idx == 5),
+            show_diff_hist=show_diff_hist,
         )
     suptitle = f'scatter_r_vs_ff_{metric}_2nd' + suptitle_suffix
     # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
@@ -159,6 +174,7 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
             ylabel=None,
             limit=limit,
             prefix=f'{key_this[0]},{key_this[1]}' + '\n',
+            show_diff_hist=show_diff_hist,
         )
 
     suptitle = f'scatter_r_vs_ff_{metric}_3rd' + suptitle_suffix
@@ -168,8 +184,6 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
     fig.subplots_adjust(left=0.1, right=0.99, bottom=0.1, top=0.99, wspace=0.1, hspace=0.1)
     savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
     plt.show()
-
-
 
 
 def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
@@ -197,8 +211,26 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
             axes_to_reduce=['model_seed'],
             metric=metric,
             dir_plot=dir_key,
-            deeper_ff=True,
+            show_diff_hist=True,
         )
+
+        for deep_l in [[4], [5], [6], [4, 5, 6]]:
+            get_r_vs_ff_scatter(
+                df_this, max_cls=max_cls,
+                axes_to_reduce=['model_seed'],
+                metric=metric,
+                dir_plot=dir_key,
+                deeper_ff=deep_l,
+            )
+
+            get_r_vs_ff_scatter(
+                df_this, max_cls=max_cls,
+                axes_to_reduce=['model_seed'],
+                metric=metric,
+                dir_plot=dir_key,
+                deeper_ff=deep_l,
+                show_diff_hist=True,
+            )
 
         get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
                                axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'])
