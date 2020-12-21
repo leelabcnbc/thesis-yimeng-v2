@@ -44,15 +44,27 @@ def get_r_vs_ff_scatter_inner(
 
 
 def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric,
-                        limit=None,
+                        limit=None, deeper_ff=False,
                         ):
 
-    xlabel = metric_dict[metric] + ', FF'
+    xlabel = metric_dict[metric] + (', FF' if not deeper_ff else ', deeper FF')
     ylabel = metric_dict[metric] + ', recurrent'
 
     _, df_ff, df_r = preprocess(df_in, max_cls=max_cls, axes_to_reduce=axes_to_reduce)
 
     perf_ff = df_ff['perf_mean'].to_frame(name='perf_ff')
+
+    if deeper_ff:
+        perf_ff = perf_ff[perf_ff.index.get_level_values('num_layer').isin(
+            [4, 5, 6]
+        )]['perf_ff'].unstack('num_layer').max(axis=1)
+        perf_ff = perf_ff.to_frame(name='perf_ff')
+        perf_ff['num_layer'] = 3
+        perf_ff = perf_ff.set_index('num_layer', append=True)
+        suptitle_suffix = '_deeper'
+    else:
+        suptitle_suffix = ''
+
     perf_r = df_r['perf_mean']
     # main plot, best R vs FF
     total_levels = ('readout_type', 'rcnn_bl_cls')
@@ -73,14 +85,17 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
     plt.close('all')
     fig, ax = plt.subplots(1,1,squeeze=True,figsize=(4, 4))
     get_r_vs_ff_scatter_inner(
-        ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main, xlabel=xlabel, ylabel=ylabel, limit=limit,
+        ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main, xlabel=None, ylabel=None, limit=limit,
         prefix='all # of iterations and readout\n'
     )
-    fig.subplots_adjust(left=0.2, right=0.95, bottom=0.2, top=0.95)
-    suptitle = f'scatter_r_vs_ff_{metric}'
-    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
-    savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
+    fig.subplots_adjust(left=0.125, right=0.99, bottom=0.125, top=0.99)
+    # https://stackoverflow.com/a/26892326
 
+    suptitle = f'scatter_r_vs_ff_{metric}' + suptitle_suffix
+    # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    fig.text(0.5, 0.0, xlabel, ha='center', va='bottom')
+    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+    savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
     plt.show()
     plt.close('all')
     # secondary plot, R vs FF, grouped by readout type or number of iterations
@@ -102,16 +117,18 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
         ax = axes[idx]
         get_r_vs_ff_scatter_inner(
             ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main,
-            xlabel=xlabel if idx >= 5 else None,
-            ylabel=ylabel if idx == 5 else None,
+            xlabel=None,
+            ylabel=None,
             limit=limit,
             prefix={'rcnn_bl_cls': '# of iterations', 'readout_type': 'readout'}[level] + f' = {key}' + '\n',
             # remove_x_axis_labels=not (idx >= 5),
             # remove_y_axis_labels=not (idx == 5),
         )
-    suptitle = f'scatter_r_vs_ff_{metric}_2nd'
-    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
-    fig.subplots_adjust(left=0.125, right=0.875, bottom=0.125, top=0.875, wspace=0.225, hspace=0.225)
+    suptitle = f'scatter_r_vs_ff_{metric}_2nd' + suptitle_suffix
+    # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    fig.text(0.5, 0.0, xlabel, ha='center', va='bottom')
+    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+    fig.subplots_adjust(left=0.1, right=0.99, bottom=0.1, top=0.99, wspace=0.1, hspace=0.1)
     savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
     plt.show()
     # third plot, R vs FF, for every combination of readout type or number of iterations
@@ -138,15 +155,17 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
         ax = axes[idx]
         get_r_vs_ff_scatter_inner(
             ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main,
-            xlabel=xlabel if idx >= 18 else None,
-            ylabel=ylabel if idx == 18 else None,
+            xlabel=None,
+            ylabel=None,
             limit=limit,
             prefix=f'{key_this[0]},{key_this[1]}' + '\n',
         )
 
-    suptitle = f'scatter_r_vs_ff_{metric}_3rd'
-    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
-    fig.subplots_adjust(left=0.125, right=0.875, bottom=0.125, top=0.875, wspace=0.225, hspace=0.225)
+    suptitle = f'scatter_r_vs_ff_{metric}_3rd' + suptitle_suffix
+    # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    fig.text(0.5, 0.0, xlabel, ha='center', va='bottom')
+    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+    fig.subplots_adjust(left=0.1, right=0.99, bottom=0.1, top=0.99, wspace=0.1, hspace=0.1)
     savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
     plt.show()
 
@@ -171,6 +190,14 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
             axes_to_reduce=['model_seed'],
             metric=metric,
             dir_plot=dir_key,
+        )
+
+        get_r_vs_ff_scatter(
+            df_this, max_cls=max_cls,
+            axes_to_reduce=['model_seed'],
+            metric=metric,
+            dir_plot=dir_key,
+            deeper_ff=True,
         )
 
         get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
