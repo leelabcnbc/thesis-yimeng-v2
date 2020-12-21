@@ -66,7 +66,11 @@ def merge_thin_and_wide(*, df_fewer_columns, df_more_columns, fewer_suffix):
 from scipy.stats import sem
 
 
-def mean_generalized(x: pd.Series):
+def mean_generalized(x: pd.Series, *, drop_na=False):
+    if drop_na:
+        x = x.dropna()
+    if x.size == 0:
+        return None
     data = np.asarray([x for x in x.values])
     assert data.ndim in {1, 2}
     return data.mean(axis=0)

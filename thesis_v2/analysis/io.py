@@ -663,6 +663,7 @@ def collect_rcnn_k_bl_source_analysis(*,
                 readout_type=param['readout_type'],
                 separate_bn=(not non_multi_path_block(result['model'].moduledict['bl_stack'])),
             )
+
             if debug:
                 print(src_analysis_instance.source_list)
             # get the scales for everything of this model
@@ -670,6 +671,12 @@ def collect_rcnn_k_bl_source_analysis(*,
                 scale_map=maps['scale_map'], conv_map=maps['conv_map'],
                 check_all_used=True
             )
+            # remove useless path
+            if hasattr(result['model'].moduledict['bl_stack'], 'allowed_depth'):
+                allowed_depth = result['model'].moduledict['bl_stack'].allowed_depth
+                row_this['source_analysis'] = {
+                    k: v for k, v in row_this['source_analysis'].items() if len(k)-1 in allowed_depth
+                }
         else:
             row_this['source_analysis'] = None
 
