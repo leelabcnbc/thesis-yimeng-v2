@@ -1276,6 +1276,33 @@ def explored_models_20201218_tang_generator(with_source=False):
                 else:
                     yield src, param_dict_ret
 
+# 16/32 ch, 2 layer ablation models, only certain length
+def explored_models_20201221_tang_generator(with_source=False):
+    for src, param_dict in explored_models_20201215_tang_generator(
+            with_source=True
+    ):
+        if param_dict['rcnn_bl_cls'] not in range(2, 7 + 1):
+            continue
+
+        # only study those good models in `maskcnn_polished_with_rcnn_k_bl/20201118_collect-separatebn.ipynb`
+        if not (
+                param_dict['num_layer'] == 2 and
+                param_dict['out_channel'] in {16, 32} and
+                param_dict['train_keep'] in {None, 1400}
+        ):
+            continue
+
+        for depth_this in range(1, param_dict['rcnn_bl_cls'] + 1):
+            for prefix in ['onlyD',]:
+                param_dict_ret = deepcopy(param_dict)
+                assert param_dict_ret['multi_path']
+                param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
+                assert len(param_dict_ret) == 30
+                if not with_source:
+                    yield param_dict_ret
+                else:
+                    yield src, param_dict_ret
+
 
 def explored_models_20201205_generator(with_source=False, separate_bn_list=None):
     if separate_bn_list is None:

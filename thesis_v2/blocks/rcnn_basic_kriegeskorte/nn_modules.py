@@ -116,7 +116,8 @@ def update_allowed_depth(allowed_depth: set, spec):
         assert depth_threshold in allowed_depth
         ret = {d for d in allowed_depth if d >= depth_threshold}
     elif spec.startswith('onlyD'):
-        raise NotImplementedError
+        ret = set([int(x) for x in spec[5:].split(',')])
+        assert ret <= allowed_depth
     else:
         raise ValueError
 
