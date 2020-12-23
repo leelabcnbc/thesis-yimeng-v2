@@ -740,17 +740,19 @@ def plot_one_case(
             r_name_list=r_name_list,
             num_seed=num_seed,
             title_override=None,
-            ylabel=ylabel if idx % 2 == 0 else None,
-            xlabel='# of iterations' if idx // 2 == 2 else None,
+            ylabel=None,
+            xlabel=None,
             check_no_missing_data=check_no_missing_data,
-            xticklabels_off=False if idx // 2 == 2 else True,
+            xticklabels_off=False if idx // 2 == nrows - 1 else True,
             display=display,
         ))
-    fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+    fig.text(0.5, 0.0, '# of iterations', ha='center', va='bottom')
+    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+    # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
 
     savefig(fig, join(dir_plot, suptitle.replace(' ', '+') + 'detailed.pdf'))
-    fig_main, axes_main = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.5), squeeze=False, dpi=300)
-    fig_main.subplots_adjust(left=0.1, right=0.975, hspace=0.2)
+    fig_main, axes_main = plt.subplots(nrows=1, ncols=1, figsize=(4, 3.5), squeeze=False, dpi=300)
+    fig_main.subplots_adjust(left=0.2, right=0.975, hspace=0.2)
     axes_main = axes_main.ravel()
     # collect everything together.
     tbl_data_all.append(plot_one_case_inner(
@@ -778,14 +780,18 @@ def plot_one_case(
         xticklabels_off=False,
         display=display,
     ))
+    savefig(fig_main, join(dir_plot, suptitle.replace(' ', '+') + 'main.pdf'))
 
     # only FF.
     # for FF, let's ignore saving to CSV, because the format is a bit different,
     # and it's not a huge amount of work anyway.
     # maybe I can do it later.
 
+    fig_ff, axes_ff = plt.subplots(nrows=1, ncols=1, figsize=(4, 3.5), squeeze=False, dpi=300)
+    fig_ff.subplots_adjust(left=0.2, right=0.975, hspace=0.2)
+    axes_ff = axes_ff.ravel()
     tbl_data_ff = plot_only_ff(
-        ax=axes_main[1],
+        ax=axes_ff[0],
         data=pd.concat(
             list(data_ff.values()),
             axis=0,
@@ -796,8 +802,10 @@ def plot_one_case(
         check_no_missing_data=check_no_missing_data,
         display=display,
     )
-    fig_main.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
-    savefig(fig_main, join(dir_plot, suptitle.replace(' ', '+') + 'main.pdf'))
+    # not to be used.
+    savefig(fig_ff, join(dir_plot, suptitle.replace(' ', '+') + 'ff.pdf'))
+    # fig_main.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
+
 
     # plot perf vs num_param scatter.
     # for cls = 1, 3, 5, 7, cm-avg. because this is most apparent.
