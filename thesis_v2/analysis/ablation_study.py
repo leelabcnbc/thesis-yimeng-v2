@@ -6,6 +6,7 @@ from itertools import chain
 
 import numpy as np
 import pandas as pd
+from scipy.stats import sem
 
 
 def get_perf(df, perf_col):
@@ -154,6 +155,7 @@ def collect_all_data(
 
     # collect data for every type.
     result_all = []
+    data_source_all = []
     for data_source_this, data_source_data in data_all.items():
         result_all.append(
             collect_all_data_inner(
@@ -162,6 +164,13 @@ def collect_all_data(
                 reference_index=reference_index,
             )
         )
+        data_source_all.append(data_source_this)
+
+    return pd.concat(result_all, axis=0,
+                     keys=data_source_all,
+                     verify_integrity=True,
+                     names=['data_source']).sort_index()
+
 
 def collect_all_data_inner(
         *,
@@ -174,6 +183,8 @@ def collect_all_data_inner(
 
     df_combined = pd.concat(list(v.to_frame(k) for k, v in data.items()), axis=1)
     assert df_combined.columns.tolist() == ['perf', 'depth']
+
+    aggregate_level_all = []
 
     for readout_type in chain(reference_index.get_level_values('readout_type').unique(), [None]):
         # get data in this slice.
@@ -192,6 +203,14 @@ def collect_all_data_inner(
                 reference_index=reference_index_this,
             )
         )
+        aggregate_level_all.append(
+            f'readout_type={readout_type}' if readout_type is not None else ''
+        )
+
+    return pd.concat(result_all, axis=0,
+                     keys=aggregate_level_all,
+                     verify_integrity=True,
+                     names=['aggregate_level'])
 
 
 def collect_all_data_inner_helper(
@@ -210,6 +229,12 @@ def collect_all_data_inner_helper(
                 rcnn_bl_cls=rcnn_bl_cls,
             )
         )
+        result_all[-1]['rcnn_bl_cls'] = rcnn_bl_cls
+
+    ret = pd.DataFrame(
+        result_all, columns=sorted(result_all[0].keys()),
+    ).set_index(['rcnn_bl_cls'], verify_integrity=True)
+    return ret
 
 
 def collect_all_data_inner_per_cls(
@@ -217,8 +242,80 @@ def collect_all_data_inner_per_cls(
         data_source,
         df_combined,
         reference_index,
-        # this is needed for leDXgeDX
+        # this is needed for leDXgeDX, onlyDX
         rcnn_bl_cls,
 ):
-    # print(df_combined.shape)
-    print(reference_index.shape)
+    data = []
+    if data_source == 'onlyDX':
+        for d in range(1, rcnn_bl_cls + 1):
+            data.append(
+                collect_one_cls(
+                    df_combined=df_combined.xs(
+                        f'onlyD{d}', level='multi_path_hack'
+                    ),
+                    reference_index=reference_index,
+                )
+            )
+    elif data_source == 'leDXgeDX':
+        for d_lower in range(1, rcnn_bl_cls):
+            data.append(
+                collect_one_cls(
+                    df_combined=df_combined.xs(
+                        f'leD{d_lower}', level='multi_path_hack'
+                    ),
+                    reference_index=reference_index,
+                )
+            )
+        for d_higher in range(2, rcnn_bl_cls + 1):
+            data.append(
+                collect_one_cls(
+                    df_combined=df_combined.xs(
+                        f'geD{d_higher}', level='multi_path_hack'
+                    ),
+                    reference_index=reference_index,
+                )
+            )
+    else:
+        # simple. just collect.
+        data.append(collect_one_cls(
+            df_combined=df_combined,
+            reference_index=reference_index,
+        ))
+
+    ret = {
+        'perf_mean': [],
+        'perf_sem': [],
+        'depth_mean': [],
+        'depth_sem': [],
+        'n': None,
+    }
+    for v in data:
+        assert ret.keys() == v.keys()
+        if ret['n'] is None:
+            ret['n'] = v['n']
+        assert ret['n'] == v['n']
+        for k1, v1 in v.items():
+            if k1 == 'n':
+                continue
+            ret[k1].append(v1)
+    return ret
+
+
+def collect_one_cls(
+        *,
+        df_combined, reference_index,
+):
+    assert df_combined.index.names == reference_index.names
+    assert reference_index.isin(df_combined.index).all()
+    data = df_combined.loc[reference_index]
+
+    ret = dict()
+    ret['n'] = reference_index.size
+    for col in data:
+        values = data[col].values
+        assert values.ndim == 1
+        assert np.all(np.isfinite(values))
+        ret[col + '_mean'] = values.mean()
+        ret[col + '_sem'] = sem(values, ddof=0)
+
+    return ret
