@@ -1,116 +1,119 @@
 # thesis-yimeng-v2
-good parts of thesis-yimeng-v1, better refactoring.
+
+This file is a revision of the [original doc](./README.old.md).
+
+The current version only contains doc related to reproducing results
+in the [paper draft](https://www.overleaf.com/read/cpkywzzdhrsj).
 
 `$ROOT` refers to repo root.
 
 ## dependencies
 
-you also need those dependencies specified in `$ROOT/setup_env_variables.sh`. Those packages
-are mostly available in lab GitHub.
-
-## set up toolchain (only once)
-
-On May 16, 2019 (Eastern Time), I ran this on my MacBook Pro (steps 1-3), and
-`yimengzh2080ti.cnbc.cmu.edu` (steps 3-6).
-
-1. under `$ROOT/toolchain/standard`, run
-    ~~~
-    docker build . -t leelabcnbc/yimeng-thesis-v2:standard
-    ~~~
-2. then run `docker save --output yimeng-thesis-v2.tar leelabcnbc/yimeng-thesis-v2:standard` to save the image to a tar file.
-   last time I ran it, MD5 was `20640abe170a90a7d323165ed8de0c5b`
-3. then upload that file to somewhere with singularity
-   (tested on 2.6.1, which is compatible with 2.5.0 on CNBC psych-o cluster)
-4. run `sudo docker load -i yimeng-thesis-v2.tar` to get it.
-5. check <https://github.com/sylabs/singularity/issues/1537#issuecomment-388642244>
-   and <https://github.com/sylabs/singularity/issues/1537#issuecomment-402823767>
-    ~~~
-    # Start a docker registry
-    docker run -d -p 5000:5000 --restart=always --name registry registry:2
-    # Push local docker container to it
-    docker tag leelabcnbc/yimeng-thesis-v2:standard localhost:5000/yimeng-thesis-v2:standard
-    docker push localhost:5000/yimeng-thesis-v2:standard
-    # build to get `yimeng-thesis-v2.simg`
-    sudo SINGULARITY_NOHTTPS=1 /opt/singularity-2.6.1/bin/singularity build yimeng-thesis-v2.simg docker://localhost:5000/yimeng-thesis-v2:standard
-    ~~~
-   last time I ran this, I get md5 of `34da8d5eac5297d9fafa5e8be3c635f0`.
-6. rename the file according to the MD5. For me, it's
-   `yimeng-thesis-v2_34da8d5eac5297d9fafa5e8be3c635f0.simg`.
-
-## run toolchain
-
-### `yimengzh2080ti.cnbc.cmu.edu`
-
-```
-/opt/singularity-2.6.1/bin/singularity shell --nv -B /data2:/my_data -B /data1:/my_data_2 -B /run:/run ~/toolchain/yimeng-thesis-v2_34da8d5eac5297d9fafa5e8be3c635f0.simg
-```
-
-### CNBC cluster
-
-```
-singularity shell --nv -B /data2/yimengzh:/my_data -B /scratch:/my_data_2 ~/toolchain/yimeng-thesis-v2_34da8d5eac5297d9fafa5e8be3c635f0.simg
-```
-
-## toolchain 20200106
-
-This is a new toolchain image with PyTorch 1.3.1 and TensorFlow 1.14.0. Check  `$ROOT/toolchain/20200106`.
-At late night January 6, 2020 (Pacific Time), I generated both the Docker image and the Singularity image on `yimengzh2080ti.cnbc.cmu.edu`
-
-* The Singularity image name `yimeng-thesis-v2-20200106_2c0c603d8a871cd40d99848371ad443a.simg`
-
-## download some data set
-
-run `./setup_private_data.sh` OUTSIDE the container.
-
+* `yimeng-thesis-v2-20200106_2c0c603d8a871cd40d99848371ad443a.simg` under `~/toolchain/`. it can be obtained
+  by converting the docker image available at
+  [`docker pull leelabcnbc/yimeng-thesis-v2:20200106`](https://hub.docker.com/layers/leelabcnbc/yimeng-thesis-v2/20200106/images/sha256-6aa6babb9241a06839f0da8c4290c13677354eae796adfc2edb4177d5d7d9e15?context=repo).
+  Check Section *toolchain 20200106* in the old README.
+* [Singularity](https://github.com/hpcng/singularity). should work on 2.6.1 as well as 3.0 version.
+* you need those some of the dependencies specified in `$ROOT/setup_env_variables.sh`. Those packages
+are mostly available in lab GitHub. Only the following of them are needed to reproduce the results in the paper.
+Click each link below for each dependency's commit that worked with this repo. Newer commits in theory should do as well.
+    * [`pytorch-module-in-json`](https://github.com/leelabcnbc/pytorch-module-in-json/tree/083cef7d2dc688b0889b16c5085625d421dfa8a1)
+      which implements the DSL for model definition.
+    * [`strflab-python`](https://github.com/leelabcnbc/strflab-python/tree/34d6fbe1e79f07a9469ab86fb6a57a6a99fded79)
+      for computing ccnorm.
+    * [`gaya-data`](https://github.com/leelabcnbc/gaya-data/tree/761ae2aa88e37d8da9eeb5a09ad0b249a324a0c0) needed to obtain NS 2250 data.
+      Check with [Hal](https://github.com/hal-rock) on the location of the data.
 
 ## reproduce results
 
-unless otherwise mentioned, scripts should be run **IN** the container
-(check **run toolchain** above), and
-after `. $ROOT/setup_env_variables.sh` (notice the leading dot, which
-is equivalent to `source` in `bash`) has been run.
+The steps should work on the CNBC cluster (mind) and will work with single machine
+with some small adaptations.
 
-### preprocess image and neural data
+All the actual computation is done inside the Singularity container.
 
-#### preprocess raw data
+* For model training, explicit invocation of Singularity is not needed, as my code
+already handles that.
+* For everything else, the code has to run after doing the following steps.
+    1. open the container.
+       ```
+       singularity shell --nv -B /data2/yimengzh:/my_data -B /scratch:/my_data_2 ~/toolchain/yimeng-thesis-v2-20200106_2c0c603d8a871cd40d99848371ad443a.simg
+       ```
+    2. set up environment variables
+       ```
+       cd /my_data
+       # note the starting `.` you can also do `source ./setup_env_variables.sh`
+       . ./setup_env_variables.sh
+       ```
+    3. this is only needed for Jupyter notebooks.
+       ```
+       # XXXX should be replaced by an appropriate port number.
+       jupyter notebook --no-browser --port=XXXX
+       ```
 
-`python $ROOT/scripts/preprocessing/raw_data.py`
+### preprocess neural data
 
-#### preprocess prepared data
+#### ImageNet 8K
 
-`python $ROOT/scripts/preprocessing/prepared_data.py`
+1. first, you need to download ImageNet 8K data. Run the command OUTSIDE the container.
+   ```
+   $ROOT/setup_private_data.sh
+   ```
+2. run the following inside the container
+   ```
+   python $ROOT/scripts/preprocessing/raw_data.py
+   python $ROOT/scripts/preprocessing/prepared_data.py
+   ```
 
-### CNN feature extraction
+#### NS 2250
 
-#### 8k (a) data set, VGG networks
+Ask Hal about it. This code repo uses Hal's code under the hood
+to obtain the data.
 
-`python $ROOT/scripts/feature_extraction/yuanyuan_8k_a/vgg.py`
+### model training
 
-### CNN training
+All commands should run outside the container, with a basic Python 3.6+ environment
+without any additional dependency needed. On the CNBC cluster, such an environment
+can be established using `scl enable rh-python36 bash`.
 
-these code has been mostly has been designed to work on CNBC cluster, via Slurm job scheduler.
-To work on a standard machine, you need do the following steps.
+#### main models (recurent and feed-forward, no ablation)
 
-1. `ctrl+c` when the program prompts `press enter to optionally sbatch all scripts`.
-2. run all shell scripts indicated by the (partially finished) program one by one.
-    * use some script like <https://github.com/leelabcnbc/thesis-yimeng-v1/blob/master/gen_single_machine_batch_script.py>
-      to generate some wrapper scripts, one for each GPU on the machine.
+##### ImageNet 8K
+
+Run the following files under `$ROOT/scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl`.
+These files in total will train some extra models. But these form the minimal set
+of files required to cover all models used in the paper.
+
+* `submit_20200530.py`
+* `submit_20200530_2.py`
+* `submit_20200617.py`
+* `submit_20200704.py`
+* `submit_20200705.py`
+* `submit_20200707.py`
+* `submit_20200708.py`
+* `submit_20200709.py`
+* `submit_20200731.py`
+* `submit_20201001.py`
+* `submit_20201012.py`
+
+##### NS 2250
 
 
-Unless otherwise indicated, the training scripts (those `submit.py` files) should be run **OUTSIDE** the container, in an
-environment with 1) `h5py` and 2) `python 3.6+`. However, you still need to run `. $ROOT/setup_env_variables.sh` before
-running these `submit.py` files. The reason for running OUTSIDE is because these training scripts interact
-with Slurm on the host.
+Run the following files under `$ROOT/scripts/training/gaya/maskcnn_polished_with_rcnn_k_bl`.
+These files in total will train some extra models. But these form the minimal set
+of files required to cover all models used in the paper.
 
+* `submit_20201002_tang.py`
+* `submit_20201018_tang.py`
 
-#### CNN 8k (a) dataset transfer learning, VGG networks.
+#### multi path models that correspond to recurrent models
 
+Only 8/16/32 ch models were considered; higher ch will result
+in a higher frequency of OOM, making the results not very useful.
 
+##### ImageNet 8K
 
-`python $ROOT/scripts/training/yuanyuan_8k_a_3day/transfer_learning_factorized_vgg/submit.py`
+TBD
 
-##### analysis
+##### NS 2250
 
-check <https://github.com/leelabcnbc/thesis-yimeng-v2/blob/master/results_processed/yuanyuan_8k_a_3day/transfer_learning_factorized_vgg/vgg.ipynb>;
-basically, the results matched those in <https://github.com/leelabcnbc/cnn-model-leelab-8000/blob/master/slides/20190107_Wei_ConvolutionalNeuralNetwork_2019a.pdf> (model 3, 3 day data);
-the key to make performance match is using 2x downsampled images rather than 4x. Check some notes [here](https://github.com/leelabcnbc/thesis-yimeng-v1/issues/28#issuecomment-500072420) as well.
+TBD
