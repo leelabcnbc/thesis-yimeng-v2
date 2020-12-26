@@ -80,7 +80,7 @@ can be established using `scl enable rh-python36 bash`.
 ##### ImageNet 8K
 
 Run the following files under `$ROOT/scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl`.
-These files in total will train some extra models. But these form the minimal set
+These files in total may train some extra models. But these form the minimal set
 of files required to cover all models used in the paper.
 
 * `submit_20200530.py`
@@ -100,7 +100,7 @@ of files required to cover all models used in the paper.
 
 
 Run the following files under `$ROOT/scripts/training/gaya/maskcnn_polished_with_rcnn_k_bl`.
-These files in total will train some extra models. But these form the minimal set
+These files in total may train some extra models. But these form the minimal set
 of files required to cover all models used in the paper.
 
 * `submit_20201002_tang.py`
@@ -113,8 +113,44 @@ in a higher frequency of OOM, making the results not very useful.
 
 ##### ImageNet 8K
 
-TBD
+Run the following files under `$ROOT/scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl`.
+These files in total may train some extra models. But these form the minimal set
+of files required to cover all models used in the paper.
+
+* `submit_20201114.py`
+* `submit_20201118.py`
 
 ##### NS 2250
 
-TBD
+Run the following files under `$ROOT/scripts/training/gaya/maskcnn_polished_with_rcnn_k_bl`.
+These files in total may train some extra models. But these form the minimal set
+of files required to cover all models used in the paper.
+
+* `submit_20201215_tang.py`
+
+
+#### ablated multi path models
+
+Only 16/32 ch, 2 L models trained using all data were considered, as these models had lowest
+memory requirement and matched recurrent models the best.
+
+##### ImageNet 8K
+
+Run the following files under `$ROOT/scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl`.
+These files in total may train some extra models. But these form the minimal set
+of files required to cover all models used in the paper.
+
+* `submit_20201205.py`
+* `submit_20201205_2.py`
+* `submit_20201213.py`
+* `submit_20201213_2.py`
+* `submit_20201221.py`
+
+##### NS 2250
+
+Run the following files under `$ROOT/scripts/training/gaya/maskcnn_polished_with_rcnn_k_bl`.
+These files in total may train some extra models. But these form the minimal set
+of files required to cover all models used in the paper.
+
+* `submit_20201218_tang.py`
+* `submit_20201221_tang.py`

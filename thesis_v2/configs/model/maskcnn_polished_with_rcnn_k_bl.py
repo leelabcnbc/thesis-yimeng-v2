@@ -2400,6 +2400,7 @@ def main_models_8k_validate():
     # check that scripts specified in the README can indeed cover all
     # the cases.
     key_all_2nd = set()
+    key_all_2nd_full = set()
     for y in chain(
             explored_models_20200530().generate(),
             explored_models_20200530_2().generate(),
@@ -2421,21 +2422,25 @@ def main_models_8k_validate():
         }
         y_full.update(y)
 
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd_full
+        key_all_2nd_full.add(key_y)
+
         # remove some extra models.
         if y_full['rcnn_bl_cls'] > 7:
             continue
         if y_full['out_channel'] not in {8, 16, 32, 48, 64}:
             continue
 
-        key_y = keygen(
-            # skip these two because they are of float
-            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
-        )
-
         assert key_y not in key_all_2nd
         key_all_2nd.add(key_y)
 
     assert key_all_2nd == key_all
+    assert key_all_2nd_full >= key_all_2nd
 
 
 def multipath_models_8k_generator(with_source):
@@ -2530,6 +2535,7 @@ def multipath_models_8k_validate():
     # check that scripts specified in the README can indeed cover all
     # the cases.
     key_all_2nd = set()
+    key_all_2nd_full = set()
     for y in chain(
             explored_models_20201114_generator(),
             explored_models_20201118_generator(),
@@ -2540,6 +2546,13 @@ def multipath_models_8k_validate():
             'yhat_reduce_pick': -1,
         }
         y_full.update(y)
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd_full
+        key_all_2nd_full.add(key_y)
 
         # remove some extra models.
         if y_full['rcnn_bl_cls'] > 7:
@@ -2549,15 +2562,11 @@ def multipath_models_8k_validate():
         if not y_full['multi_path_separate_bn']:
             continue
 
-        key_y = keygen(
-            # skip these two because they are of float
-            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
-        )
-
         assert key_y not in key_all_2nd
         key_all_2nd.add(key_y)
 
     assert key_all_2nd == key_all
+    assert key_all_2nd_full >= key_all_2nd
 
 
 def add_common_part_ns2250(param_iterator_obj):
@@ -2785,6 +2794,7 @@ def main_models_ns2250_validate():
     # check that scripts specified in the README can indeed cover all
     # the cases.
     key_all_2nd = set()
+    key_all_2nd_full = set()
     for y in chain(
             explored_models_20201002_tang_generator(),
             explored_models_20201018_tang_generator(),
@@ -2796,6 +2806,16 @@ def main_models_ns2250_validate():
         }
         y_full.update(y)
 
+
+
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd_full
+        key_all_2nd_full.add(key_y)
+
         # remove some extra models.
         if y_full['rcnn_bl_cls'] > 7:
             continue
@@ -2804,15 +2824,11 @@ def main_models_ns2250_validate():
         if y_full['additional_key'] != '0,500':
             continue
 
-        key_y = keygen(
-            # skip these two because they are of float
-            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
-        )
-
         assert key_y not in key_all_2nd
         key_all_2nd.add(key_y)
 
     assert key_all_2nd == key_all
+    assert key_all_2nd_full >= key_all_2nd
 
 
 def multipath_models_ns2250_generator(with_source):
@@ -2907,6 +2923,7 @@ def multipath_models_ns2250_validate():
     # check that scripts specified in the README can indeed cover all
     # the cases.
     key_all_2nd = set()
+    key_all_2nd_full = set()
     for y in chain(
             explored_models_20201215_tang_generator(),
     ):
@@ -2916,6 +2933,15 @@ def multipath_models_ns2250_validate():
             'yhat_reduce_pick': -1,
         }
         y_full.update(y)
+
+
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key_y not in key_all_2nd_full
+        key_all_2nd_full.add(key_y)
+
         # remove some extra models.
         if y_full['rcnn_bl_cls'] > 7:
             continue
@@ -2924,12 +2950,288 @@ def multipath_models_ns2250_validate():
         if not y_full['multi_path_separate_bn']:
             continue
 
+        assert key_y not in key_all_2nd
+        key_all_2nd.add(key_y)
+
+    assert key_all_2nd == key_all
+    assert key_all_2nd_full >= key_all_2nd
+
+
+def ablation_models_8k_generator(with_source):
+    # 2L, 16/32 ch models,
+    # cls 2 through 7
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_8k(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'train_keep',
+            (None,),
+            replace=True
+        )
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (16, 32,),
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, )
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(2, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'yuanyuan_8k_a_3day'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+
+        for prefix in ['onlyD', 'geD', 'leD']:
+            for depth_this in range(1, x['rcnn_bl_cls']+1):
+                param_dict_ret = deepcopy(x)
+                param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
+                assert len(param_dict_ret) == 29
+                if not with_source:
+                    yield param_dict_ret
+                else:
+                    yield source, param_dict_ret
+
+
+def ablation_models_8k_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in ablation_models_8k_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 4 readout
+    # (2+3+4+5+6+7) per ablation
+    # 2 ch
+    # 1 layer
+    # 1 training size
+    # 3 ablation (onlyD, geD, leD)
+    assert len(key_all) == 16 * 4 * (2+3+4+5+6+7) * 2 * 1 * 1 * 3
+
+    # check that scripts specified in the README can indeed cover all
+    # the cases.
+    key_all_2nd = set()
+    key_all_2nd_full = set()
+    for y in chain(
+            explored_models_20201205_generator(),
+            explored_models_20201205_2_generator(),
+            explored_models_20201213_generator(),
+            explored_models_20201213_2_generator(),
+            explored_models_20201221_generator(),
+    ):
+        y_full = {
+            'dataset_prefix': 'yuanyuan_8k_a_3day',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        y_full.update(y)
+
         key_y = keygen(
             # skip these two because they are of float
             **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
         )
 
+        assert key_y not in key_all_2nd_full
+        key_all_2nd_full.add(key_y)
+
+        # remove some extra models.
+        if y_full['rcnn_bl_cls'] > 7:
+            continue
+        if y_full['out_channel'] not in {16, 32}:
+            continue
+        if not y_full['multi_path_separate_bn']:
+            continue
+
         assert key_y not in key_all_2nd
         key_all_2nd.add(key_y)
 
     assert key_all_2nd == key_all
+    assert key_all_2nd_full >= key_all_2nd
+
+
+def ablation_models_ns2250_generator(with_source):
+    # 2L, 16/32 ch models,
+    # cls 2 through 7
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_ns2250(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'train_keep',
+            (1400,),
+            replace=True
+        )
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (16, 32,),
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, )
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(2, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'tang'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+        x['additional_key'] = '0,500'
+
+        for prefix in ['onlyD', 'geD', 'leD']:
+            for depth_this in range(1, x['rcnn_bl_cls']+1):
+                param_dict_ret = deepcopy(x)
+                param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
+                assert len(param_dict_ret) == 30
+                if not with_source:
+                    yield param_dict_ret
+                else:
+                    yield source, param_dict_ret
+
+
+def ablation_models_ns2250_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in ablation_models_ns2250_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 4 readout
+    # (2+3+4+5+6+7) per ablation
+    # 2 ch
+    # 1 layer
+    # 1 training size
+    # 3 ablation (onlyD, geD, leD)
+    assert len(key_all) == 16 * 4 * (2+3+4+5+6+7) * 2 * 1 * 1 * 3
+
+    # check that scripts specified in the README can indeed cover all
+    # the cases.
+    key_all_2nd = set()
+    key_all_2nd_full = set()
+    for y in chain(
+            explored_models_20201218_tang_generator(),
+            explored_models_20201221_tang_generator(),
+    ):
+        y_full = {
+            'dataset_prefix': 'tang',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        y_full.update(y)
+
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd_full
+        key_all_2nd_full.add(key_y)
+
+        # remove some extra models.
+        if y_full['rcnn_bl_cls'] > 7:
+            continue
+        if y_full['out_channel'] not in {16, 32}:
+            continue
+        if not y_full['multi_path_separate_bn']:
+            continue
+
+        assert key_y not in key_all_2nd
+        key_all_2nd.add(key_y)
+
+    assert key_all_2nd == key_all
+    assert key_all_2nd_full >= key_all_2nd
