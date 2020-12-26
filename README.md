@@ -92,6 +92,7 @@ of files required to cover all models used in the paper.
 * `submit_20200708.py`
 * `submit_20200709.py`
 * `submit_20200731.py`
+* `submit_20200801.py`
 * `submit_20201001.py`
 * `submit_20201012.py`
 
