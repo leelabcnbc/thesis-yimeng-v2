@@ -2449,7 +2449,7 @@ def multipath_models_8k_generator(with_source):
 
         param_iterator_obj.add_pair(
             'out_channel',
-            (16, 32,)
+            (8, 16, 32,)
         )
 
         param_iterator_obj.add_pair(
@@ -2522,10 +2522,10 @@ def multipath_models_8k_validate():
     # 16 variants per size.
     # 4 readout
     # 6 cls
-    # 2 ch
+    # 3 ch
     # 2 layer
     # 3 training size
-    assert len(key_all) == 16 * 4 * 6 * 2 * 2 * 3
+    assert len(key_all) == 16 * 4 * 6 * 3 * 2 * 3
 
     # check that scripts specified in the README can indeed cover all
     # the cases.
@@ -2544,7 +2544,7 @@ def multipath_models_8k_validate():
         # remove some extra models.
         if y_full['rcnn_bl_cls'] > 7:
             continue
-        if y_full['out_channel'] not in {16, 32}:
+        if y_full['out_channel'] not in {8, 16, 32}:
             continue
         if not y_full['multi_path_separate_bn']:
             continue
@@ -2802,6 +2802,126 @@ def main_models_ns2250_validate():
         if y_full['out_channel'] not in {8, 16, 32}:
             continue
         if y_full['additional_key'] != '0,500':
+            continue
+
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd
+        key_all_2nd.add(key_y)
+
+    assert key_all_2nd == key_all
+
+
+def multipath_models_ns2250_generator(with_source):
+    # 2L, 16/32 ch models,
+    # cls 2 through 7
+    def model_r():
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_ns2250(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32,)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, 3,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(2, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'tang'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+        x['additional_key'] = '0,500'
+
+        assert len(x) == 29
+        if with_source:
+            yield source, x
+        else:
+            yield x
+
+
+def multipath_models_ns2250_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in multipath_models_ns2250_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 4 readout
+    # 6 cls
+    # 3 ch
+    # 2 layer
+    # 3 training size
+    assert len(key_all) == 16 * 4 * 6 * 3 * 2 * 3
+
+    # check that scripts specified in the README can indeed cover all
+    # the cases.
+    key_all_2nd = set()
+    for y in chain(
+            explored_models_20201215_tang_generator(),
+    ):
+        y_full = {
+            'dataset_prefix': 'tang',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        y_full.update(y)
+        # remove some extra models.
+        if y_full['rcnn_bl_cls'] > 7:
+            continue
+        if y_full['out_channel'] not in {8, 16, 32}:
+            continue
+        if not y_full['multi_path_separate_bn']:
             continue
 
         key_y = keygen(
