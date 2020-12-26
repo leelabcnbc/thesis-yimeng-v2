@@ -1276,6 +1276,7 @@ def explored_models_20201218_tang_generator(with_source=False):
                 else:
                     yield src, param_dict_ret
 
+
 # 16/32 ch, 2 layer ablation models, only certain length
 def explored_models_20201221_tang_generator(with_source=False):
     for src, param_dict in explored_models_20201215_tang_generator(
@@ -1293,7 +1294,7 @@ def explored_models_20201221_tang_generator(with_source=False):
             continue
 
         for depth_this in range(1, param_dict['rcnn_bl_cls'] + 1):
-            for prefix in ['onlyD',]:
+            for prefix in ['onlyD', ]:
                 param_dict_ret = deepcopy(param_dict)
                 assert param_dict_ret['multi_path']
                 param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
@@ -1452,7 +1453,7 @@ def explored_models_20201221_generator(with_source=False, separate_bn_list=None)
         for separate_bn in separate_bn_list:
             # then add geDX variants and leDX variants.
             for depth_this in range(1, param_dict['rcnn_bl_cls'] + 1):
-                for prefix in ['onlyD',]:
+                for prefix in ['onlyD', ]:
                     param_dict_ret = deepcopy(param_dict)
                     param_dict_ret['multi_path'] = True
                     param_dict_ret['multi_path_separate_bn'] = separate_bn
@@ -1462,8 +1463,6 @@ def explored_models_20201221_generator(with_source=False, separate_bn_list=None)
                         yield param_dict_ret
                     else:
                         yield src, param_dict_ret
-
-
 
 
 def explored_models_20201003_generator(with_source=False):
@@ -2177,108 +2176,109 @@ def script_keygen(**kwargs):
     return '+'.join(key.split('/')[2:])
 
 
-def main_models_8k_generator(with_readout_type):
+def add_common_part_8k(param_iterator_obj):
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1280, 2560, None),
+    )
+
+    param_iterator_obj.add_pair(
+        'split_seed',
+        # also try some other splits, with each class represented equally.
+        ('legacy',),
+    )
+
+    param_iterator_obj.add_pair(
+        'model_seed',
+        # range(5),
+        range(2),  # otherwise too long.
+    )
+
+    param_iterator_obj.add_pair(
+        'act_fn',
+        # should try relu later
+        ('relu', 'softplus'),
+    )
+
+    param_iterator_obj.add_pair(
+        'loss_type',
+        ('mse', 'poisson')  # should try mse later
+    )
+
+    param_iterator_obj.add_pair(
+        'input_size',
+        (50,
+         # 100,  # should also try 100 later
+         )
+    )
+
+    # inherited from _with_local_pcn
+    param_iterator_obj.add_pair(
+        'kernel_size_l1',
+        (9,)
+    )
+
+    # try different kernel sizes.
+    param_iterator_obj.add_pair(
+        'kernel_size_l23',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_ksize',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_type',
+        ('avg',)
+    )
+
+    param_iterator_obj.add_pair(
+        'bn_after_fc',
+        (False,)  # should try True later
+    )
+
+    param_iterator_obj.add_pair(
+        ('scale_name', 'scale'),
+        [('0.01', '0.01')],
+    )
+
+    param_iterator_obj.add_pair(
+        ('smoothness_name', 'smoothness'),
+        [('0.000005', '0.000005')],
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_psize',
+        (1,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_ptype',
+        (None,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_block',
+        (True,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_bn_before_act',
+        (True, False)
+    )
+
+
+def main_models_8k_generator(with_source):
     # this only contains models
     # presented in the thesis paper.
-
-    def add_common_part(param_iterator_obj):
-        param_iterator_obj.add_pair(
-            'train_keep',
-            (1280, 2560, None),
-        )
-
-        param_iterator_obj.add_pair(
-            'split_seed',
-            # also try some other splits, with each class represented equally.
-            ('legacy',),
-        )
-
-        param_iterator_obj.add_pair(
-            'model_seed',
-            # range(5),
-            range(2),  # otherwise too long.
-        )
-
-        param_iterator_obj.add_pair(
-            'act_fn',
-            # should try relu later
-            ('relu', 'softplus'),
-        )
-
-        param_iterator_obj.add_pair(
-            'loss_type',
-            ('mse', 'poisson')  # should try mse later
-        )
-
-        param_iterator_obj.add_pair(
-            'input_size',
-            (50,
-             # 100,  # should also try 100 later
-             )
-        )
-
-        # inherited from _with_local_pcn
-        param_iterator_obj.add_pair(
-            'kernel_size_l1',
-            (9,)
-        )
-
-        # try different kernel sizes.
-        param_iterator_obj.add_pair(
-            'kernel_size_l23',
-            (3,)
-        )
-
-        param_iterator_obj.add_pair(
-            'pooling_ksize',
-            (3,)
-        )
-
-        param_iterator_obj.add_pair(
-            'pooling_type',
-            ('avg',)
-        )
-
-        param_iterator_obj.add_pair(
-            'bn_after_fc',
-            (False,)  # should try True later
-        )
-
-        param_iterator_obj.add_pair(
-            ('scale_name', 'scale'),
-            [('0.01', '0.01')],
-        )
-
-        param_iterator_obj.add_pair(
-            ('smoothness_name', 'smoothness'),
-            [('0.000005', '0.000005')],
-        )
-
-        param_iterator_obj.add_pair(
-            'rcnn_bl_psize',
-            (1,)
-        )
-
-        param_iterator_obj.add_pair(
-            'rcnn_bl_ptype',
-            (None,)
-        )
-
-        param_iterator_obj.add_pair(
-            'ff_1st_block',
-            (True,)
-        )
-
-        param_iterator_obj.add_pair(
-            'ff_1st_bn_before_act',
-            (True, False)
-        )
 
     def model_r():
         """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
         param_iterator_obj = utils.ParamIterator()
 
-        add_common_part(param_iterator_obj)
+        add_common_part_8k(param_iterator_obj)
 
         param_iterator_obj.add_pair(
             'out_channel',
@@ -2322,7 +2322,7 @@ def main_models_8k_generator(with_readout_type):
 
     def model_additional_ff():
         param_iterator_obj = utils.ParamIterator()
-        add_common_part(param_iterator_obj)
+        add_common_part_8k(param_iterator_obj)
 
         param_iterator_obj.add_pair(
             'out_channel',
@@ -2349,32 +2349,32 @@ def main_models_8k_generator(with_readout_type):
         return param_iterator_obj
 
     for x in chain(
-        model_r().generate(),
-        model_additional_ff().generate(),
+            model_r().generate(),
+            model_additional_ff().generate(),
     ):
-        readout_type = {
+        source = {
             ('none', 'cummean'): 'cm-avg',
             (-1, 'cummean_last'): 'cm-last',
             ('none', 'instant'): 'inst-avg',
             (-1, 'last'): 'inst-last',
-            # legacy means ff
-            (-1, 'cummean'): 'legacy',
+            (-1, 'cummean'): 'deep-ff',
         }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
 
         x['dataset_prefix'] = 'yuanyuan_8k_a_3day'
         x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
 
         assert len(x) == 26
-        if with_readout_type:
-            yield readout_type, x
+        if with_source:
+            yield source, x
         else:
             yield x
+
 
 def main_models_8k_validate():
     # check that the list of scripts
     # in the README covers all main models.
     key_all = set()
-    for x in main_models_8k_generator(with_readout_type=False):
+    for x in main_models_8k_generator(with_source=False):
         key = keygen(
             # skip these two because they are of float
             **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
@@ -2382,19 +2382,19 @@ def main_models_8k_validate():
         assert key not in key_all
         key_all.add(key)
     assert len(key_all) == (
-            # 480 + # 3,5 layer ff models to compare with R
-            # 480 2, 3 layer FF models are actually computed
-            # by avergaing multiple R=1 cases.
-            480*24 + # corresponding recurrent models
+        # 480 + # 3,5 layer ff models to compare with R
+        # 480 2, 3 layer FF models are actually computed
+        # by avergaing multiple R=1 cases.
+            480 * 24 +  # corresponding recurrent models
             # redundant r models that are the same as 3-layer FF models.
             # their performance are averaged with ff models
-            240*4 +
+            240 * 4 +
             # 4,5,6 layer FF models.
             # this might be used in appendix.
             720 +
             # redundant r models that are the same as 2-layer FF models.
             # their performance are averaged with ff models
-            240*4
+            240 * 4
     )
 
     # check that scripts specified in the README can indeed cover all
@@ -2414,10 +2414,10 @@ def main_models_8k_validate():
             explored_models_20201001_generator(),
             explored_models_20201012_generator(),
     ):
-        y_full={
-                'dataset_prefix': 'yuanyuan_8k_a_3day',
-                'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
-                'yhat_reduce_pick': -1,
+        y_full = {
+            'dataset_prefix': 'yuanyuan_8k_a_3day',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
         }
         y_full.update(y)
 
@@ -2425,6 +2425,128 @@ def main_models_8k_validate():
         if y_full['rcnn_bl_cls'] > 7:
             continue
         if y_full['out_channel'] not in {8, 16, 32, 48, 64}:
+            continue
+
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd
+        key_all_2nd.add(key_y)
+
+    assert key_all_2nd == key_all
+
+
+def multipath_models_8k_generator(with_source):
+    # 2L, 16/32 ch models,
+    # cls 2 through 7
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_8k(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (16, 32,)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, 3,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(2, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'yuanyuan_8k_a_3day'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+
+        assert len(x) == 28
+        if with_source:
+            yield source, x
+        else:
+            yield x
+
+
+def multipath_models_8k_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in multipath_models_8k_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 4 readout
+    # 6 cls
+    # 2 ch
+    # 2 layer
+    # 3 training size
+    assert len(key_all) == 16 * 4 * 6 * 2 * 2 * 3
+
+    # check that scripts specified in the README can indeed cover all
+    # the cases.
+    key_all_2nd = set()
+    for y in chain(
+            explored_models_20201114_generator(),
+            explored_models_20201118_generator(),
+    ):
+        y_full = {
+            'dataset_prefix': 'yuanyuan_8k_a_3day',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        y_full.update(y)
+
+        # remove some extra models.
+        if y_full['rcnn_bl_cls'] > 7:
+            continue
+        if y_full['out_channel'] not in {16, 32}:
+            continue
+        if not y_full['multi_path_separate_bn']:
             continue
 
         key_y = keygen(
