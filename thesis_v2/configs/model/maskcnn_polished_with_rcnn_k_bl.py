@@ -2558,3 +2558,258 @@ def multipath_models_8k_validate():
         key_all_2nd.add(key_y)
 
     assert key_all_2nd == key_all
+
+
+def add_common_part_ns2250(param_iterator_obj):
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (350, 700, 1400),
+    )
+
+    param_iterator_obj.add_pair(
+        'split_seed',
+        # also try some other splits, with each class represented equally.
+        ('legacy',),
+    )
+
+    param_iterator_obj.add_pair(
+        'model_seed',
+        # range(5),
+        range(2),  # otherwise too long.
+    )
+
+    param_iterator_obj.add_pair(
+        'act_fn',
+        # should try relu later
+        ('relu', 'softplus'),
+    )
+
+    param_iterator_obj.add_pair(
+        'loss_type',
+        ('mse', 'poisson')  # should try mse later
+    )
+
+    param_iterator_obj.add_pair(
+        'input_size',
+        (37,
+         # 100,  # should also try 100 later
+         )
+    )
+
+    # inherited from _with_local_pcn
+    param_iterator_obj.add_pair(
+        'kernel_size_l1',
+        (9,)
+    )
+
+    # try different kernel sizes.
+    param_iterator_obj.add_pair(
+        'kernel_size_l23',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_ksize',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_type',
+        ('avg',)
+    )
+
+    param_iterator_obj.add_pair(
+        'bn_after_fc',
+        (False,)  # should try True later
+    )
+
+    param_iterator_obj.add_pair(
+        ('scale_name', 'scale'),
+        [('0.01', '0.01')],
+    )
+
+    param_iterator_obj.add_pair(
+        ('smoothness_name', 'smoothness'),
+        [('0.000005', '0.000005')],
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_psize',
+        (1,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_ptype',
+        (None,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_block',
+        (True,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_bn_before_act',
+        (True, False)
+    )
+
+
+def main_models_ns2250_generator(with_source):
+    # this only contains models
+    # presented in the thesis paper.
+
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_ns2250(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32,)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, 3)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(1, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    def model_additional_ff():
+        param_iterator_obj = utils.ParamIterator()
+        add_common_part_ns2250(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32,)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (4, 5, 6)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(1, 2),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                ('cummean', -1),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in chain(
+            model_r().generate(),
+            model_additional_ff().generate(),
+    ):
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+            (-1, 'cummean'): 'deep-ff',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'tang'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['additional_key'] = '0,500'
+
+        assert len(x) == 27
+        if with_source:
+            yield source, x
+        else:
+            yield x
+
+
+def main_models_ns2250_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in main_models_ns2250_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+    assert len(key_all) == (
+        # 480 + # 3,5 layer ff models to compare with R
+        # 480 2, 3 layer FF models are actually computed
+        # by avergaing multiple R=1 cases.
+            288 * 24 +  # corresponding recurrent models
+            # redundant r models that are the same as 3-layer FF models.
+            # their performance are averaged with ff models
+            144 * 4 +
+            # 4,5,6 layer FF models.
+            # this might be used in appendix.
+            432 +
+            # redundant r models that are the same as 2-layer FF models.
+            # their performance are averaged with ff models
+            144 * 4
+    )
+
+    # check that scripts specified in the README can indeed cover all
+    # the cases.
+    key_all_2nd = set()
+    for y in chain(
+            explored_models_20201002_tang_generator(),
+            explored_models_20201018_tang_generator(),
+    ):
+        y_full = {
+            'dataset_prefix': 'tang',
+            'model_prefix': 'maskcnn_polished_with_rcnn_k_bl',
+            'yhat_reduce_pick': -1,
+        }
+        y_full.update(y)
+
+        # remove some extra models.
+        if y_full['rcnn_bl_cls'] > 7:
+            continue
+        if y_full['out_channel'] not in {8, 16, 32}:
+            continue
+        if y_full['additional_key'] != '0,500':
+            continue
+
+        key_y = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
+        )
+
+        assert key_y not in key_all_2nd
+        key_all_2nd.add(key_y)
+
+    assert key_all_2nd == key_all
