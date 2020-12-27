@@ -2806,8 +2806,6 @@ def main_models_ns2250_validate():
         }
         y_full.update(y)
 
-
-
         key_y = keygen(
             # skip these two because they are of float
             **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
@@ -2934,7 +2932,6 @@ def multipath_models_ns2250_validate():
         }
         y_full.update(y)
 
-
         key_y = keygen(
             # skip these two because they are of float
             **{k: v for k, v in y_full.items() if k not in {'scale', 'smoothness'}}
@@ -2979,7 +2976,7 @@ def ablation_models_8k_generator(with_source):
 
         param_iterator_obj.add_pair(
             'num_layer',
-            (2, )
+            (2,)
         )
 
         param_iterator_obj.add_pair(
@@ -3026,7 +3023,7 @@ def ablation_models_8k_generator(with_source):
         x['multi_path_separate_bn'] = True
 
         for prefix in ['onlyD', 'geD', 'leD']:
-            for depth_this in range(1, x['rcnn_bl_cls']+1):
+            for depth_this in range(1, x['rcnn_bl_cls'] + 1):
                 param_dict_ret = deepcopy(x)
                 param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
                 assert len(param_dict_ret) == 29
@@ -3055,7 +3052,7 @@ def ablation_models_8k_validate():
     # 1 layer
     # 1 training size
     # 3 ablation (onlyD, geD, leD)
-    assert len(key_all) == 16 * 4 * (2+3+4+5+6+7) * 2 * 1 * 1 * 3
+    assert len(key_all) == 16 * 4 * (2 + 3 + 4 + 5 + 6 + 7) * 2 * 1 * 1 * 3
 
     # check that scripts specified in the README can indeed cover all
     # the cases.
@@ -3120,7 +3117,7 @@ def ablation_models_ns2250_generator(with_source):
 
         param_iterator_obj.add_pair(
             'num_layer',
-            (2, )
+            (2,)
         )
 
         param_iterator_obj.add_pair(
@@ -3168,7 +3165,7 @@ def ablation_models_ns2250_generator(with_source):
         x['additional_key'] = '0,500'
 
         for prefix in ['onlyD', 'geD', 'leD']:
-            for depth_this in range(1, x['rcnn_bl_cls']+1):
+            for depth_this in range(1, x['rcnn_bl_cls'] + 1):
                 param_dict_ret = deepcopy(x)
                 param_dict_ret['multi_path_hack'] = prefix + str(depth_this)
                 assert len(param_dict_ret) == 30
@@ -3197,7 +3194,7 @@ def ablation_models_ns2250_validate():
     # 1 layer
     # 1 training size
     # 3 ablation (onlyD, geD, leD)
-    assert len(key_all) == 16 * 4 * (2+3+4+5+6+7) * 2 * 1 * 1 * 3
+    assert len(key_all) == 16 * 4 * (2 + 3 + 4 + 5 + 6 + 7) * 2 * 1 * 1 * 3
 
     # check that scripts specified in the README can indeed cover all
     # the cases.
@@ -3235,3 +3232,75 @@ def ablation_models_ns2250_validate():
 
     assert key_all_2nd == key_all
     assert key_all_2nd_full >= key_all_2nd
+
+
+def ablation_ff_models_8k_generator(with_source):
+    # inst-last, only last iteration kept. basically deep models.
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_8k(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32, 48, 64),
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, 3,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(2, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # inst-last
+                ('last', -1),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'yuanyuan_8k_a_3day'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+
+        x['multi_path_hack'] = 'onlyD' + str(x['rcnn_bl_cls'])
+        assert len(x) == 29
+        if not with_source:
+            yield x
+        else:
+            yield source, x
+
+
+def ablation_ff_models_8k_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in ablation_ff_models_8k_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 1 readout
+    # 6 cls
+    # 5 ch
+    # 2 layer
+    # 3 training size
+    assert len(key_all) == 16 * 1 * 6 * 5 * 2 * 3
