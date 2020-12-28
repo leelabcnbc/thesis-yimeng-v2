@@ -4,7 +4,7 @@ a rewrite of `main_results.py`, in more idiomatic Pandas, and directly output wh
 from typing import List
 from copy import deepcopy
 from itertools import product
-from functools import partial
+from functools import partial, reduce
 import pandas as pd
 import numpy as np
 
@@ -25,9 +25,16 @@ def avg_inner(df, *, key_and_possible_values, strict):
 
 
 def reduce_df(df_this, key_and_possible_values, reduce_fn, strict):
-    return df_this.groupby(level=[x for x in df_this.index.names if x not in key_and_possible_values]).apply(
-        partial(reduce_fn, key_and_possible_values=key_and_possible_values, strict=strict)
-    )
+    group_by_level =[x for x in df_this.index.names if x not in key_and_possible_values]
+    if len(group_by_level) > 0:
+        groupby_obj = df_this.groupby(level=group_by_level)
+        return groupby_obj.apply(
+            partial(reduce_fn, key_and_possible_values=key_and_possible_values, strict=strict)
+        )
+    else:
+        # this will be a series.
+        # fxxK pandas' auto conversion.
+        return reduce_fn(df_this, key_and_possible_values=key_and_possible_values, strict=strict)
 
 
 def process_ff(df_ff_this: pd.DataFrame, key_and_possible_values, reduce_fn, ff_reduce_fn, strict):
@@ -35,10 +42,14 @@ def process_ff(df_ff_this: pd.DataFrame, key_and_possible_values, reduce_fn, ff_
     readout_type_parsed: pd.DataFrame = df_ff_this.groupby(
         level=[x for x in df_ff_this.index.names if x != 'readout_type']).apply(ff_reduce_fn)
     # then average out seeds
+    if len(key_and_possible_values) == 0:
+        return readout_type_parsed.sort_index()
     return reduce_df(readout_type_parsed, key_and_possible_values, reduce_fn, strict=strict)
 
 
 def process_r(df_r_this, key_and_possible_values, reduce_fn, strict):
+    if len(key_and_possible_values) == 0:
+        return df_r_this.sort_index()
     return reduce_df(df_r_this, key_and_possible_values, reduce_fn, strict=strict)
 
 
@@ -84,7 +95,7 @@ def sem_generalized(x: pd.Series):
 
 def preprocess(df_in, *,
                max_cls, axes_to_reduce, override_ff_num_layer=None,
-               reduce_fn=None, ff_reduce_fn=None, strict=True):
+               reduce_fn=None, ff_reduce_fn=None, strict=True, return_n=False):
     if reduce_fn is None:
         reduce_fn = avg_inner
 
@@ -108,6 +119,14 @@ def preprocess(df_in, *,
     df_r['num_layer'] = (df_r['num_layer'] - 1) * 2 + 1
     df_r = df_r.set_index('num_layer', append=True)
 
+    # make sure df_r and df_ff will have same order of index levels
+    # on their shared columns
+    df_r = df_r.reset_index('rcnn_bl_cls')
+    df_r = df_r.set_index('rcnn_bl_cls', append=True)
+
+    df_ff = df_ff.reset_index('num_layer')
+    df_ff = df_ff.set_index('num_layer', append=True)
+
     # then check the possible values taken over axes_to_reduce
     # I use r's values.
     key_and_possible_values = {
@@ -116,6 +135,7 @@ def preprocess(df_in, *,
 
     key_and_possible_values_ff = deepcopy(key_and_possible_values)
     if 'num_layer' in key_and_possible_values_ff and override_ff_num_layer is not None:
+        raise RuntimeError('should not come here')
         key_and_possible_values_ff['num_layer'] = override_ff_num_layer
 
     # filter ff table
@@ -123,7 +143,16 @@ def preprocess(df_in, *,
         df_ff = df_ff[df_ff.index.get_level_values(kk).isin(vv)]
     df_ff = process_ff(df_ff, key_and_possible_values_ff, reduce_fn, ff_reduce_fn, strict=strict)
     df_r = process_r(df_r, key_and_possible_values, reduce_fn, strict=strict)
-    return columns, df_ff, df_r
+    if not return_n:
+        return columns, df_ff, df_r
+    else:
+        assert strict
+        assert key_and_possible_values == key_and_possible_values_ff
+        return columns, df_ff, df_r, reduce(
+            lambda x, y: x* y,
+            (len(x) for x in key_and_possible_values.values()),
+            1
+        )
 
 
 def get_perf_over_cls_data(df_in: pd.DataFrame, *,

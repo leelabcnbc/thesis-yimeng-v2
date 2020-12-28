@@ -3247,9 +3247,12 @@ def ablation_ff_models_8k_generator(with_source):
             (8, 16, 32, 48, 64),
         )
 
+        # only for 2 layer models can I find exact corresponding one conv_f + multiple conv_lateral
+        # models.
+        # it's also consistent with my multi path analysis.
         param_iterator_obj.add_pair(
             'num_layer',
-            (2, 3,)
+            (2,)
         )
 
         param_iterator_obj.add_pair(
@@ -3301,6 +3304,6 @@ def ablation_ff_models_8k_validate():
     # 1 readout
     # 6 cls
     # 5 ch
-    # 2 layer
+    # 1 layer
     # 3 training size
-    assert len(key_all) == 16 * 1 * 6 * 5 * 2 * 3
+    assert len(key_all) == 16 * 1 * 6 * 5 * 1 * 3

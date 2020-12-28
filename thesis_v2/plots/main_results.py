@@ -405,147 +405,6 @@ def avg_out_seed(df_in):
     return ret
 
 
-def process_ff_models(df_in):
-    # for each combination of (num_channel, num_layer)
-    # generate a sub data frame
-    # indexed by ('act_fn', 'ff_1st_bn_before_act', 'loss_type')
-    # with columns (perf, num_param)
-
-    data = df_in.xs(1, level='rcnn_bl_cls', drop_level=False)
-
-    #     index_names = data.index.name
-
-    index_out_channel = data.index.get_level_values('out_channel').values
-    index_num_layer = data.index.get_level_values('num_layer').values
-
-    data_channel_layer = np.asarray([index_out_channel, index_num_layer]).T
-    #     print(data_channel_layer.dtype, data_channel_layer.shape)
-    unique_channel_layer = np.unique(data_channel_layer, axis=0).tolist()
-
-    data_dict = dict()
-
-    for key_this in unique_channel_layer:
-        key_this = tuple(key_this)
-        (c_this, l_this) = key_this
-        df_this = data.xs(key=(c_this, l_this), level=('out_channel', 'num_layer'), drop_level=False)
-        #         print(df_this.shape)
-        # average out over readout_type
-        df_this = df_this.unstack('readout_type')
-        perf = df_this['perf']
-        num_param = df_this['num_param']
-        assert perf.shape == num_param.shape
-        # num_readout = perf.shape[1]
-
-        #     assert data.shape[1] == 3
-
-        #     print()
-
-        #     for idx, case in data.iterrows():
-        #         case_val = case.values
-        #         assert case_val.shape == (3,)
-        # get non nan values
-        #         case_non_nan = case_val[~np.isnan(case)]
-        #         assert case_non_nan.size > 0
-        #         case_non_nan_debug = np.full_like(case_non_nan, fill_value=case_non_nan[0])
-        #         if not np.allclose(case_non_nan, case_non_nan_debug, atol=1e-3):
-        #             print(idx, case)
-        #             print(case_non_nan, case_non_nan_debug)
-        #         assert np.allclose(case_non_nan, case_non_nan_debug, atol=1e-3)
-
-        # actually, probably due to card-to-card variance, difference can appear.
-        # I checked one of them.
-
-        # 5120, cc_mean_avg
-        # (relu, False, poisson, 2, 32)
-        # cm-avg     0.499929
-        # cm-last    0.496784
-        # legacy          NaN
-        # Name: (relu, False, poisson, 2, 32), dtype: float64
-        # [0.49992943 0.49678396] [0.49992943 0.49992943]
-
-        # for cm-avg
-        # check files
-        # models/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/
-        # s_selegacy/in_sz50/out_ch32/num_l2/k_l19/k_p3/ptavg/bn_a_fcFalse/actrelu/r_c1/r_psize1/r_ptypeNone/
-        # r_acccummean/ff1st_True/ff1stbba_False/rp_none/sc0.01/sm0.000005/lpoisson/m_se0/stats_best.json
-        #
-        # corr_mean: 0.5004660408667474
-        # "best_phase": 2, "best_epoch": 50, "early_stopping_loss": 0.813396155834198
-        #
-        # and
-        #
-        # models/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/
-        # s_selegacy/in_sz50/out_ch32/num_l2/k_l19/k_p3/ptavg/bn_a_fcFalse/actrelu/r_c1/r_psize1/r_ptypeNone/
-        # r_acccummean/ff1st_True/ff1stbba_False/rp_none/sc0.01/sm0.000005/lpoisson/m_se1/stats_best.json
-        #
-        # corr_mean: 0.49939281448219086
-        # "best_phase": 1, "best_epoch": 1150, "early_stopping_loss": 0.8130963444709778
-
-        # for cm-last
-        # check files
-        # .... r_acccummean_last/ff1st_True/ff1stbba_False/sc0.01/sm0.000005/lpoisson/m_se0/stats_best.json
-        #
-        # "corr_mean": 0.49417510516371543
-        # "best_phase": 2, "best_epoch": 150, "early_stopping_loss": 0.8139971494674683
-        #
-        # and
-        #
-        # .... r_acccummean_last/ff1st_True/ff1stbba_False/sc0.01/sm0.000005/lpoisson/m_se1/stats_best.json
-        #
-        # corr_mean: 0.49939281448219086
-        # {"best_phase": 1, "best_epoch": 1150, "early_stopping_loss": 0.8130963444709778
-
-        # in this case, when seed=1, results are same; when seed=0, they are different.
-
-        # take average to remove card-to-card variance.
-        # remove NAs due to incomplete configs.
-        # this is very small.
-
-        # print(perf.max(axis=1, skipna=True)-perf.min(axis=1, skipna=True))
-        perf = perf.mean(axis=1, skipna=True)
-        for _, row_this in num_param.iterrows():
-            assert row_this.nunique(dropna=True) == 1
-
-        num_param = num_param.mean(axis=1, skipna=True)
-        assert perf.index.equals(num_param.index)
-
-        perf.name = 'perf'
-        num_param.name = 'num_param'
-        #         print(perf.name, num_param.name)
-        ret = pd.concat([perf, num_param], axis='columns')
-        #         print(ret.columns)
-        #         assert ret.columns == ['perf', 'num_param']
-        assert ret.index.equals(perf.index)
-        assert ret.index.equals(num_param.index)
-
-        data_dict[key_this] = ret
-    return data_dict
-
-
-def process_recurrent_models(df_in, readout_type):
-    data = df_in.xs(readout_type, level='readout_type')
-    data = data.iloc[data.index.get_level_values('rcnn_bl_cls') != 1]
-    print(data.shape)
-
-    index_out_channel = data.index.get_level_values('out_channel').values
-    index_num_layer = data.index.get_level_values('num_layer').values
-
-    data_channel_layer = np.asarray([index_out_channel, index_num_layer]).T
-    #     print(data_channel_layer.dtype, data_channel_layer.shape)
-    unique_channel_layer = np.unique(data_channel_layer, axis=0).tolist()
-
-    data_dict = dict()
-
-    for key_this in unique_channel_layer:
-        key_this = tuple(key_this)
-        (c_this, l_this) = key_this
-        df_this = data.xs(key=(c_this, l_this), level=('out_channel', 'num_layer'), drop_level=False)
-        #         print(df_this.shape)
-        # average out over readout_type
-        data_dict[key_this] = df_this
-    return data_dict
-
-
 def process_one_case(df_in, *, metric, train_keep,
                      readout_types_to_handle,
                      max_cls=None,
@@ -560,43 +419,29 @@ def process_one_case(df_in, *, metric, train_keep,
     # the larger the training size is, the more stable across seeds.
     num_seed = check_model_seeds(df_in)
 
-    # 2. take average of model seeds.
-    df_in = avg_out_seed(df_in)
-    print(df_in.shape)
+    # # 2. take average of model seeds.
+    # df_in = avg_out_seed(df_in)
+    # print(df_in.shape)
+    #
+    # # 3. for each combination (ff, PROPER cm-avg x num_layer, PROPER cm-last x num_layer) x (out_channel, num_layer)
+    # #    compute average. make sure each one has SAME number of settings (handle cm-avg/cm-last ambiguity for ff)
+    # data_ff = process_ff_models(df_in)
+    #
+    # data_r_list = [
+    #     process_recurrent_models(df_in, x) for x in readout_types_to_handle
+    # ]
 
-    # 3. for each combination (ff, PROPER cm-avg x num_layer, PROPER cm-last x num_layer) x (out_channel, num_layer)
-    #    compute average. make sure each one has SAME number of settings (handle cm-avg/cm-last ambiguity for ff)
-    data_ff = process_ff_models(df_in)
-
-    data_r_list = [
-        process_recurrent_models(df_in, x) for x in readout_types_to_handle
-    ]
 
     #     data_r_cm_avg = process_recurrent_models(df_in, 'cm-avg')
     #     data_r_cm_last = process_recurrent_models(df_in, 'cm-last')
 
     #     data_r_inst_avg = process_recurrent_models(df_in, 'inst-avg')
     #     data_r_inst_last = process_recurrent_models(df_in, 'inst-last')
-
-    recurrent_setups = data_r_list[0].keys()
-    for rr in data_r_list:
-        assert rr.keys() == recurrent_setups
-
-    # 4. create a mapping between ff (out, num_layer) to similarly sized PROPER recurrents.
-    recurrent_to_ff_setup_mapping = dict()
-    for setup_r in recurrent_setups:
-        recurrent_to_ff_setup_mapping[setup_r] = (setup_r[0], (setup_r[1] - 1) * 2 + 1)
-        # we have matching ff models of similar parameters
-        assert recurrent_to_ff_setup_mapping[setup_r] in data_ff
-    #     print(recurrent_to_ff_setup_mapping)
-
     # 5. plot/table! maybe have both combined / separate results.
 
     return plot_one_case(
-        data_ff=data_ff,
-        data_r_list=data_r_list,
+        df_in=df_in,
         r_name_list=readout_types_to_handle,
-        recurrent_to_ff_setup_mapping=recurrent_to_ff_setup_mapping,
         max_cls=max_cls,
         num_seed=num_seed,
         suptitle=f'train size={train_keep}, {metric}',
@@ -607,25 +452,16 @@ def process_one_case(df_in, *, metric, train_keep,
     )
 
 
-def plot_only_ff(*, ax, data, num_seed, ylabel, check_no_missing_data, display):
+def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display):
     # only show data with >=8 channels. if needed by reviewers, will do a separate plot.
     # >=8 channel data is enough to illustrate my point, and data for <8 channels are not complete.
     data = data.iloc[data.index.get_level_values('out_channel') >= 8, :].sort_index()
 
-    perf = data['perf'].sort_index()
-    num_param = data['num_param'].sort_index()
-    perf = perf.unstack(['out_channel', 'num_layer'])
-    num_variant = num_seed * perf.shape[0]
-    assert np.all(np.isfinite(perf.values))
-    num_param = num_param.unstack(['out_channel', 'num_layer'])
-    assert num_variant == num_seed * num_param.shape[0]
-    assert np.all(np.isfinite(num_param.values))
+    perf_mean = data['perf_mean']
+    perf_sem = data['perf_sem']
 
-    perf_mean = perf.mean(axis=0)
-    perf_sem = perf.std(axis=0, ddof=0) / np.sqrt(num_variant)
-
-    num_param_mean = num_param.mean(axis=0)
-    num_param_sem = num_param.std(axis=0, ddof=0) / np.sqrt(num_variant)
+    num_param_mean = data['num_param_mean']
+    num_param_sem = data['num_param_sem']
 
     perf_mean = perf_mean.unstack('num_layer')
     perf_sem = perf_sem.unstack('num_layer')
@@ -687,13 +523,31 @@ def plot_only_ff(*, ax, data, num_seed, ylabel, check_no_missing_data, display):
         'perf_mean_t_diff': perf_mean_t_diff,
     }
 
+def get_data_helper(*, df_in, r_name_list, max_cls, axes_to_reduce):
+    _, data_ff, df_r_single, num_variant = preprocess(
+        df_in, max_cls=max_cls, axes_to_reduce=axes_to_reduce,
+        return_n=True
+    )
+    data_r_list = [df_r_single.xs(x, level='readout_type').sort_index() for x in r_name_list]
+    # check index.
+    if isinstance(data_ff, pd.DataFrame):
+        index_reference_r: pd.MultiIndex = data_r_list[0].index
+        index_reference_ff = index_reference_r.get_loc_level(2, level='rcnn_bl_cls')[1]
+        for cls_this in index_reference_r.get_level_values('rcnn_bl_cls').unique():
+            assert index_reference_ff.equals(index_reference_r.get_loc_level(cls_this, level='rcnn_bl_cls')[1])
+        for data_r_this in data_r_list:
+            assert data_r_this.index.equals(index_reference_r)
+        assert index_reference_ff.isin(data_ff.index).all()
+        assert index_reference_ff.names == data_ff.index.names
+        # data_ff = data_ff.loc[index_reference_ff].sort_index()
+        return data_ff, data_r_list, num_variant, index_reference_ff
+    else:
+        return data_ff, data_r_list, num_variant, None
 
 def plot_one_case(
         *,
-        data_ff,
-        data_r_list,
+        df_in,
         r_name_list,
-        recurrent_to_ff_setup_mapping,
         max_cls=None,
         num_seed,
         suptitle=None,
@@ -702,12 +556,27 @@ def plot_one_case(
         dir_plot,
         display,
 ):
-    # 1 for everything
-    for zzz in data_r_list:
-        assert len(zzz) == len(data_r_list[0])
-        assert zzz.keys() == data_r_list[0].keys()
 
-    num_setup = len(data_r_list[0])
+    # get per num_layer, out_channel data
+    data_ff, data_r_list, num_variant, index_reference = get_data_helper(
+        df_in=df_in, r_name_list=r_name_list, max_cls=max_cls,
+        axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed']
+    )
+    # get overall data
+
+    data_ff_overall, data_r_list_overall, num_variant_overall, _ = get_data_helper(
+        df_in=df_in, r_name_list=r_name_list, max_cls=max_cls,
+        axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type',
+                        'model_seed', 'num_layer', 'out_channel']
+    )
+    # get overall data
+
+    index_out_channel = index_reference.get_level_values('out_channel').values
+    index_num_layer = index_reference.get_level_values('num_layer').values
+
+    unique_channel_layer = sorted(set(zip(index_out_channel.tolist(), index_num_layer.tolist())))
+
+    num_setup = len(unique_channel_layer)
     nrows = (num_setup - 1) // 2 + 1
     ncols = 2
 
@@ -727,18 +596,16 @@ def plot_one_case(
 
     tbl_data_all = []
 
-    for idx, setup_this in enumerate(data_r_list[0]):
+    for idx, setup_this in enumerate(unique_channel_layer):
         ax = axes[idx]
-        setup_this_ff = recurrent_to_ff_setup_mapping[setup_this]
         tbl_data_all.append(plot_one_case_inner(
             ax=ax,
-            data_ff=data_ff[setup_this_ff],
-            data_r_list=[x[setup_this] for x in data_r_list],
-            setup_ff=setup_this_ff,
-            setup_r=setup_this,
+            data_ff=data_ff.loc[index_reference].sort_index().xs(setup_this, level=('out_channel', 'num_layer')),
+            data_r_list=[x.xs(setup_this, level=('out_channel', 'num_layer')) for x in data_r_list],
+            setup=setup_this,
             max_cls=max_cls,
             r_name_list=r_name_list,
-            num_seed=num_seed,
+            num_variant=num_variant,
             title_override=None,
             ylabel=None,
             xlabel=None,
@@ -757,23 +624,13 @@ def plot_one_case(
     # collect everything together.
     tbl_data_all.append(plot_one_case_inner(
         ax=axes_main[0],
-        data_ff=pd.concat(
-            [data_ff[recurrent_to_ff_setup_mapping[s]] for s in data_r_list[0]],
-            axis=0,
-        ).sort_index(),
-        data_r_list=[
-            pd.concat(
-                [x[s] for s in data_r_list[0]],
-                axis=0,
-            ).sort_index()
-            for x in data_r_list
-        ],
-        setup_ff=None,
-        setup_r=None,
+        data_ff=data_ff_overall,
+        data_r_list=data_r_list_overall,
+        setup=None,
         title_override='FF vs. recurrent models',
         max_cls=max_cls,
         r_name_list=r_name_list,
-        num_seed=num_seed,
+        num_variant=num_variant_overall,
         ylabel=ylabel,
         xlabel='# of iterations',
         check_no_missing_data=check_no_missing_data,
@@ -792,13 +649,9 @@ def plot_one_case(
     axes_ff = axes_ff.ravel()
     tbl_data_ff = plot_only_ff(
         ax=axes_ff[0],
-        data=pd.concat(
-            list(data_ff.values()),
-            axis=0,
-
-        ).sort_index(),
+        # do not filter.
+        data=data_ff,
         ylabel=None,
-        num_seed=num_seed,
         check_no_missing_data=check_no_missing_data,
         display=display,
     )
@@ -806,23 +659,21 @@ def plot_one_case(
     savefig(fig_ff, join(dir_plot, suptitle.replace(' ', '+') + 'ff.pdf'))
     # fig_main.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
 
-
     # plot perf vs num_param scatter.
     # for cls = 1, 3, 5, 7, cm-avg. because this is most apparent.
     cm_avg_idx = r_name_list.index('cm-avg')
+
+    data_ff_for_scatter, data_r_list_for_scatter, num_variant_for_scatter, index_reference_scatter = get_data_helper(
+        df_in=df_in, r_name_list=r_name_list, max_cls=max_cls,
+        axes_to_reduce=['model_seed']
+    )
     plot_scatter_plot(
-        data_ff=pd.concat(
-            [data_ff[recurrent_to_ff_setup_mapping[s]] for s in data_r_list[cm_avg_idx]],
-            axis=0,
-        ).sort_index(),
-        data_r=pd.concat(
-            list(data_r_list[cm_avg_idx].values()),
-            axis=0,
-        ).sort_index(),
+        data_ff=data_ff_for_scatter.loc[index_reference_scatter].sort_index(),
+        data_r=data_r_list_for_scatter[cm_avg_idx],
         ylabel=ylabel,
         title=f"model performance vs. model size for different # of iterations, 'cm-avg' readout type",
         suptitle=suptitle,
-        num_seed=num_seed,
+        num_seed=num_variant_for_scatter,
         dir_plot=dir_plot,
     )
 
@@ -850,8 +701,8 @@ def plot_scatter_plot_inner_mean(*,
         key_this = tuple(key_this)
         (c_this, l_this) = key_this
         df_this = data.xs(key=(c_this, l_this), level=('out_channel', 'num_layer'))
-        perf_mean = df_this['perf'].mean()
-        num_param_mean = df_this['num_param'].mean()
+        perf_mean = df_this['perf_mean'].mean()
+        num_param_mean = df_this['num_param_mean'].mean()
         ax_scatter.plot([num_param_mean - 500, num_param_mean + 500], [perf_mean, perf_mean], color=color,
                         linestyle='--')
 
@@ -865,15 +716,15 @@ def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, sup
     color_to_show_r = ['r', 'g', 'b']
     assert len(cls_to_show_r) == len(color_to_show_r)
     num_variant = data_ff.shape[0] * num_seed
-    ax_scatter.scatter(data_ff['num_param'], data_ff['perf'], color='k', s=6, label='1')
-    ymin, ymax = data_ff['perf'].min(), data_ff['perf'].max()
+    ax_scatter.scatter(data_ff['num_param_mean'], data_ff['perf_mean'], color='k', s=6, label='1')
+    ymin, ymax = data_ff['perf_mean'].min(), data_ff['perf_mean'].max()
     plot_scatter_plot_inner_mean(ax_scatter=ax_scatter, data=data_ff, color='k')
 
     for cls_this, color in zip(cls_to_show_r, color_to_show_r):
         data_r_this = data_r.xs(cls_this, level='rcnn_bl_cls')
         assert num_variant == data_r_this.shape[0] * num_seed
-        ax_scatter.scatter(data_r_this['num_param'], data_r_this['perf'], color=color, s=6, label=str(cls_this))
-        ymin, ymax = min(ymin, data_r_this['perf'].min()), max(ymax, data_r_this['perf'].max())
+        ax_scatter.scatter(data_r_this['num_param_mean'], data_r_this['perf_mean'], color=color, s=6, label=str(cls_this))
+        ymin, ymax = min(ymin, data_r_this['perf_mean'].min()), max(ymax, data_r_this['perf_mean'].max())
         plot_scatter_plot_inner_mean(ax_scatter=ax_scatter, data=data_r_this, color=color)
 
     margin = (ymax - ymin) * 0.05
@@ -889,41 +740,15 @@ def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, sup
     savefig(fig_scatter, join(dir_plot, suptitle.replace(' ', '+') + 'scatter.pdf'))
 
 
-def construct_frame(*, df_list, name_list, num_seed):
-    assert len(df_list) == len(name_list)
-    series_list = []
-    series_sem_list = []
-    num_variant = df_list[0].shape[0] * num_seed
-    for df, n in zip(df_list, name_list):
-        #         display(df)
-        assert np.all(np.isfinite(df.values))
-        assert df.shape[0] * num_seed == num_variant
-        s = df.mean(axis=0)
-        s.name = n
-
-        s_sem = df.std(axis=0, ddof=0) / np.sqrt(num_variant)
-        s_sem.name = n
-
-        series_list.append(s)
-        series_sem_list.append(s_sem)
-
-    return {
-        'df_mean': pd.concat(series_list, axis=1).sort_index(),
-        'df_sem': pd.concat(series_sem_list, axis=1).sort_index(),
-        'num_variant': num_variant,
-    }
-
-
 def plot_one_case_inner(
         *,
         ax,
         data_ff: pd.DataFrame,
         data_r_list: List[pd.DataFrame],
-        setup_ff,
-        setup_r,
+        setup,
         max_cls,
         r_name_list,
-        num_seed,
+        num_variant,
         title_override,
         ylabel,
         xlabel,
@@ -934,49 +759,60 @@ def plot_one_case_inner(
     # remap data_r_list's num layer to be compatible with ff
     # otherwise, when I do `.unstack('rcnn_bl_cls')` later,
     # I won't get a nice N x 7 table with all entries filled.
-    data_r_list_new = []
-    for data_r_this in data_r_list:
-        data_r_this = data_r_this.copy(deep=True)
-        num_layer_idx = data_r_this.index.names.index('num_layer')
-        data_r_this.index = data_r_this.index.set_levels(
-            data_r_this.index.levels[num_layer_idx].map(lambda z: (z - 1) * 2 + 1),
-            level=num_layer_idx
-        )
-        data_r_list_new.append(data_r_this)
-    data_r_list = data_r_list_new
+
     #     raise RuntimeError
 
     #     print(data_r.columns)
     #     print(data_ff.columns)
+    if isinstance(data_ff, pd.DataFrame):
+        assert data_ff.shape[0] == 1
+        data_ff = data_ff.iloc[0]
 
-    perf_ff = data_ff['perf']
-    num_param_ff = data_ff['num_param']
+    assert isinstance(data_ff, pd.Series)
+    data_ff = data_ff.to_frame().T
+    data_ff = data_ff.copy(deep=True)
+    data_ff['rcnn_bl_cls'] = 1
+    # no append.
+    data_ff = data_ff.set_index('rcnn_bl_cls')
+    for data_r in data_r_list:
+        assert data_r.shape[0] == data_r.index.get_level_values('rcnn_bl_cls').unique().size
+        assert data_r.index.name == 'rcnn_bl_cls'
+        assert data_r.index.names == ['rcnn_bl_cls']
 
     if max_cls is not None:
         data_r_list = [x.iloc[x.index.get_level_values('rcnn_bl_cls') <= max_cls].sort_index() for x in data_r_list]
+    augmented_data_r_list = [
+        pd.concat(
+            [data_ff, x],
+            axis=0
+        ) for x in data_r_list
+    ]
+    assert len(r_name_list) == len(data_r_list)
+    assert len(r_name_list) == len(augmented_data_r_list)
 
-    perf_r = [x['perf'] for x in data_r_list]
-    num_param_r = [x['num_param'] for x in data_r_list]
+    def get_one_small_df(col):
+        # rcnn_bl_cls rows
+        # len(data_r_list) columns
+        data_inner = [
+            x[col].rename(y) for x, y in zip(
+                augmented_data_r_list,
+                r_name_list
+            )
+        ]
+        return pd.concat(
+            data_inner, axis=1
+        )
 
-    num_param_list = [pd.concat([num_param_ff, x], axis=0).sort_index().unstack('rcnn_bl_cls').sort_index() for x in
-                      num_param_r]
-    perf_list = [pd.concat([perf_ff, x], axis=0).sort_index().unstack('rcnn_bl_cls').sort_index() for x in perf_r]
-
-    num_param_ret = construct_frame(df_list=num_param_list, name_list=r_name_list, num_seed=num_seed)
-    num_param_df: pd.DataFrame = num_param_ret['df_mean']
-    num_param_sem_df: pd.DataFrame = num_param_ret['df_sem']
-    perf_ret = construct_frame(df_list=perf_list, name_list=r_name_list, num_seed=num_seed)
-    perf_df: pd.DataFrame = perf_ret['df_mean']
-    perf_sem_df: pd.DataFrame = perf_ret['df_sem']
+    num_param_df: pd.DataFrame = get_one_small_df('num_param_mean')
+    num_param_sem_df: pd.DataFrame = get_one_small_df('num_param_sem')
+    perf_df: pd.DataFrame = get_one_small_df('perf_mean')
+    perf_sem_df: pd.DataFrame = get_one_small_df('perf_sem')
 
     if check_no_missing_data:
         assert np.all(np.isfinite(perf_sem_df.values))
         assert np.all(np.isfinite(perf_df.values))
         assert np.all(np.isfinite(num_param_df.values))
         assert np.all(np.isfinite(num_param_sem_df.values))
-
-    num_variant = num_param_ret['num_variant']
-    assert num_variant == perf_ret['num_variant']
 
     #     display(num_param.mean(axis=0).to_frame().T)
     # #     display(perf)
@@ -989,20 +825,24 @@ def plot_one_case_inner(
 
     #     print(num_param)
     #     print(perf)
-
-    perf_df.plot(ax=ax, kind='bar', yerr=perf_sem_df, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0)
+    # first one is ff.
+    perf_df.iloc[1:].plot(
+        ax=ax, kind='bar', yerr=perf_sem_df, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0
+    )
     ax.legend(loc='upper left', ncol=perf_df.shape[1], bbox_to_anchor=(0.01, 0.99),
               borderaxespad=0., fontsize='x-small', handletextpad=0,
               #               title='readout type',
               )
-    if not (setup_ff is None and setup_r is None):
+    ax.axhline(y=perf_df.iloc[0,0], linestyle='-', color='k')
+    ax.axhline(y=perf_df.iloc[0,0]+perf_sem_df.iloc[0, 0], linestyle='--', color='k')
+    ax.axhline(y=perf_df.iloc[0,0]-perf_sem_df.iloc[0, 0], linestyle='--', color='k')
+    if setup is not None:
         assert title_override is None
-        assert len(setup_ff) == len(setup_r) == 2
-        assert setup_ff[0] == setup_r[0]
-        num_c = setup_ff[0]
-        num_l_ff = setup_ff[1]
-        num_l_r = setup_r[1]
-        title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r - 1} RC), n={num_variant}'
+        assert len(setup) == 2
+        num_c = setup[0]
+        num_l_ff = setup[1]
+        num_l_r = (setup[1] - 1) // 2
+        title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r} RC), n={num_variant}'
 
     else:
         assert title_override is not None
@@ -1019,11 +859,11 @@ def plot_one_case_inner(
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
 
-    xticklabels = ax.get_xticklabels()
-    # first one should be replaced from 1 to 1 (FF)
-    assert xticklabels[0].get_text() == '1'
-    xticklabels[0].set_text('1 (FF)')
-    ax.set_xticklabels(xticklabels)
+    # xticklabels = ax.get_xticklabels()
+    # # first one should be replaced from 1 to 1 (FF)
+    # assert xticklabels[0].get_text() == '1'
+    # xticklabels[0].set_text('1 (FF)')
+    # ax.set_xticklabels(xticklabels)
 
     if xticklabels_off:
         ax.set_xticklabels([])
