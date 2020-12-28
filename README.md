@@ -144,7 +144,6 @@ of files required to cover all models used in the paper.
 * `submit_20201205_2.py`
 * `submit_20201213.py`
 * `submit_20201213_2.py`
-* `submit_20201221.py`
 
 ##### NS 2250
 
@@ -153,4 +152,3 @@ These files in total may train some extra models. But these form the minimal set
 of files required to cover all models used in the paper.
 
 * `submit_20201218_tang.py`
-* `submit_20201221_tang.py`

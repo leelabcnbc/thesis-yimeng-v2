@@ -11,7 +11,10 @@ from thesis_v2.configs.model.maskcnn_polished_with_rcnn_k_bl import (
     multipath_models_ns2250_generator,
     ablation_models_8k_generator,
     ablation_models_ns2250_generator,
-    ablation_ff_models_8k_validate
+    ablation_ff_models_8k_validate,
+    ablation_ff_models_8k_generator,
+    ablation_ff_models_ns2250_generator,
+    ablation_ff_models_ns2250_validate,
 )
 
 from thesis_v2.configs.model.maskcnn_polished_with_rcnn_k_bl import keygen
@@ -40,6 +43,7 @@ if __name__ == '__main__':
     ablation_models_8k_validate()
     ablation_models_ns2250_validate()
     ablation_ff_models_8k_validate()
+    ablation_ff_models_ns2250_validate()
     check_no_overlap(
         main_models_8k_generator,
         main_models_ns2250_generator,
@@ -50,4 +54,6 @@ if __name__ == '__main__':
         # there is some overlap between
         # ablation_ff_models and
         # ablation_models_8k
+        ablation_ff_models_8k_generator,
+        ablation_ff_models_ns2250_generator,
     )
