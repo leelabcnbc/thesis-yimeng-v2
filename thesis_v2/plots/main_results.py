@@ -20,6 +20,8 @@ metric_dict = {
     'cc_raw_avg': '''average $\\mathrm{CC}$''',
 }
 
+readout_type_order = ['inst-last', 'cm-last', 'inst-avg', 'cm-avg']
+
 
 def get_r_vs_ff_scatter_inner(
         ax: Axes, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
@@ -353,7 +355,7 @@ def loop_over_train_size(df_in, *, metric, dir_plot, display, max_cls, check_no_
             list(set(df_in.index.get_level_values('readout_type').unique()) - {'legacy'}),
             # simpler models (inst-, -last) first,
             # complicated models (cm-, -avg) later.
-            key=lambda x: ['inst-last', 'cm-last', 'inst-avg', 'cm-avg'].index(x)
+            key=lambda x: readout_type_order.index(x)
         )
         print(readout_types_to_handle)
         df_this = df_in.xs(train_keep, level='train_keep').sort_index()
@@ -417,7 +419,7 @@ def process_one_case(df_in, *, metric, train_keep,
 
     # 1. compare seed=0 and seed=1. make sure things are ok.
     # the larger the training size is, the more stable across seeds.
-    num_seed = check_model_seeds(df_in)
+    check_model_seeds(df_in)
 
     # # 2. take average of model seeds.
     # df_in = avg_out_seed(df_in)
@@ -431,7 +433,6 @@ def process_one_case(df_in, *, metric, train_keep,
     #     process_recurrent_models(df_in, x) for x in readout_types_to_handle
     # ]
 
-
     #     data_r_cm_avg = process_recurrent_models(df_in, 'cm-avg')
     #     data_r_cm_last = process_recurrent_models(df_in, 'cm-last')
 
@@ -443,7 +444,6 @@ def process_one_case(df_in, *, metric, train_keep,
         df_in=df_in,
         r_name_list=readout_types_to_handle,
         max_cls=max_cls,
-        num_seed=num_seed,
         suptitle=f'train size={train_keep}, {metric}',
         ylabel=metric_dict[metric],
         check_no_missing_data=check_no_missing_data,
@@ -523,6 +523,7 @@ def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display):
         'perf_mean_t_diff': perf_mean_t_diff,
     }
 
+
 def get_data_helper(*, df_in, r_name_list, max_cls, axes_to_reduce):
     _, data_ff, df_r_single, num_variant = preprocess(
         df_in, max_cls=max_cls, axes_to_reduce=axes_to_reduce,
@@ -544,19 +545,18 @@ def get_data_helper(*, df_in, r_name_list, max_cls, axes_to_reduce):
     else:
         return data_ff, data_r_list, num_variant, None
 
+
 def plot_one_case(
         *,
         df_in,
         r_name_list,
         max_cls=None,
-        num_seed,
         suptitle=None,
         ylabel,
         check_no_missing_data,
         dir_plot,
         display,
 ):
-
     # get per num_layer, out_channel data
     data_ff, data_r_list, num_variant, index_reference = get_data_helper(
         df_in=df_in, r_name_list=r_name_list, max_cls=max_cls,
@@ -569,7 +569,13 @@ def plot_one_case(
         axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type',
                         'model_seed', 'num_layer', 'out_channel']
     )
-    # get overall data
+    # get per num_layer data
+    data_ff_per_layer, data_r_list_per_layer, num_variant_per_layer, index_reference_per_layer = get_data_helper(
+        df_in=df_in, r_name_list=r_name_list, max_cls=max_cls,
+        axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type',
+                        'model_seed', 'out_channel']
+    )
+    data_ff_per_layer = data_ff_per_layer.loc[index_reference_per_layer].sort_index()
 
     index_out_channel = index_reference.get_level_values('out_channel').values
     index_num_layer = index_reference.get_level_values('num_layer').values
@@ -627,7 +633,7 @@ def plot_one_case(
         data_ff=data_ff_overall,
         data_r_list=data_r_list_overall,
         setup=None,
-        title_override='FF vs. recurrent models',
+        title_override=f'FF vs. recurrent models, n={num_variant_overall}',
         max_cls=max_cls,
         r_name_list=r_name_list,
         num_variant=num_variant_overall,
@@ -677,6 +683,36 @@ def plot_one_case(
         dir_plot=dir_plot,
     )
 
+    # per layer
+    fig_per_layer, axes_per_layer = plt.subplots(
+        nrows=1, ncols=2, figsize=(8, 3.5), squeeze=True,
+    )
+    fig_per_layer.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.2, hspace=0.2)
+    for idx_per_layer, num_layer in enumerate(index_reference_per_layer.get_level_values('num_layer').unique()):
+        plot_one_case_inner(
+            ax=axes_per_layer[idx_per_layer],
+            data_ff=data_ff_per_layer.xs(
+                # must be None here because it's a single index, not multiindex
+                num_layer, level=None
+            ),
+            data_r_list=[
+                x.xs(num_layer, level='num_layer') for x in data_r_list_per_layer
+            ],
+            setup=(num_layer,),
+            max_cls=max_cls,
+            r_name_list=r_name_list,
+            num_variant=num_variant_per_layer,
+            title_override=None,
+            ylabel=None,
+            xlabel=None,
+            check_no_missing_data=check_no_missing_data,
+            xticklabels_off=False,
+            display=display,
+        )
+    fig_per_layer.text(0.5, 0.0, '# of iterations', ha='center', va='bottom')
+    fig_per_layer.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+    savefig(fig_per_layer, join(dir_plot, suptitle.replace(' ', '+') + '_per_layer.pdf'))
+
     return {
         'non-ff': tbl_data_all,
         'ff': tbl_data_ff,
@@ -723,7 +759,8 @@ def plot_scatter_plot(*, data_ff, data_r, title, ylabel, num_seed, dir_plot, sup
     for cls_this, color in zip(cls_to_show_r, color_to_show_r):
         data_r_this = data_r.xs(cls_this, level='rcnn_bl_cls')
         assert num_variant == data_r_this.shape[0] * num_seed
-        ax_scatter.scatter(data_r_this['num_param_mean'], data_r_this['perf_mean'], color=color, s=6, label=str(cls_this))
+        ax_scatter.scatter(data_r_this['num_param_mean'], data_r_this['perf_mean'], color=color, s=6,
+                           label=str(cls_this))
         ymin, ymax = min(ymin, data_r_this['perf_mean'].min()), max(ymax, data_r_this['perf_mean'].max())
         plot_scatter_plot_inner_mean(ax_scatter=ax_scatter, data=data_r_this, color=color)
 
@@ -827,27 +864,35 @@ def plot_one_case_inner(
     #     print(perf)
     # first one is ff.
     perf_df.iloc[1:].plot(
-        ax=ax, kind='bar', yerr=perf_sem_df, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0
+        ax=ax, kind='line', yerr=perf_sem_df,
+        ylim=(perf_min - margin, perf_max + 4 * margin),
+        xlim=(perf_df.iloc[1:].index.values.min()-0.1, perf_df.iloc[1:].index.values.max()+0.1),
+        xticks=perf_df.iloc[1:].index.values,
+        rot=0
     )
     ax.legend(loc='upper left', ncol=perf_df.shape[1], bbox_to_anchor=(0.01, 0.99),
               borderaxespad=0., fontsize='x-small', handletextpad=0,
               #               title='readout type',
               )
-    ax.axhline(y=perf_df.iloc[0,0], linestyle='-', color='k')
-    ax.axhline(y=perf_df.iloc[0,0]+perf_sem_df.iloc[0, 0], linestyle='--', color='k')
-    ax.axhline(y=perf_df.iloc[0,0]-perf_sem_df.iloc[0, 0], linestyle='--', color='k')
+    ax.axhline(y=perf_df.iloc[0, 0], linestyle='-', color='k')
+    ax.axhline(y=perf_df.iloc[0, 0] + perf_sem_df.iloc[0, 0], linestyle='--', color='k')
+    ax.axhline(y=perf_df.iloc[0, 0] - perf_sem_df.iloc[0, 0], linestyle='--', color='k')
     if setup is not None:
         assert title_override is None
-        assert len(setup) == 2
-        num_c = setup[0]
-        num_l_ff = setup[1]
-        num_l_r = (setup[1] - 1) // 2
-        title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r} RC), n={num_variant}'
-
+        if len(setup) == 2:
+            num_c = setup[0]
+            num_l_ff = setup[1]
+            num_l_r = (setup[1] - 1) // 2
+            title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r} RC), n={num_variant}'
+        elif len(setup) == 1:
+            num_l_ff = setup[0]
+            num_l_r = (setup[0] - 1) // 2
+            title = f'{num_l_ff}L FF vs. {num_l_r+1}L R, n={num_variant}'
+        else:
+            raise RuntimeError
     else:
         assert title_override is not None
-        title = f'{title_override}' + f', n={num_variant}'
-    print(title)
+        title = title_override
     display(num_param_df)
     num_param_df_diff = (num_param_df / num_param_df.loc[1] - 1)
     display(num_param_df_diff.style.format("{:.3%}"))

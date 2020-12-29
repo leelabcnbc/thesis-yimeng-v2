@@ -7,6 +7,7 @@ from itertools import chain
 import numpy as np
 import pandas as pd
 from scipy.stats import sem
+from scipy.stats import entropy
 
 
 def get_perf(df, perf_col):
@@ -21,6 +22,14 @@ def get_depth(df):
     df['source_analysis_vec'] = df['source_analysis'].map(lambda x: get_normalized_vec(x))
     df['source_analysis_vec_scalar'] = df['source_analysis_vec'].map(lambda x: get_weighted_avg(x))
     return df['source_analysis_vec_scalar']
+
+
+def get_depth_entropy(df):
+    df = remove_high_cls(df).dropna().sort_index()
+    assert df.index.unique
+    df['source_analysis_vec'] = df['source_analysis'].map(lambda x: get_normalized_vec(x))
+    df['source_analysis_vec_entropy'] = df['source_analysis_vec'].map(lambda x: entropy(x))
+    return df['source_analysis_vec_entropy']
 
 
 def remove_high_cls(df_this):
