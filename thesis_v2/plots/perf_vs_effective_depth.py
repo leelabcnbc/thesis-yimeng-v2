@@ -1,0 +1,261 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from ..analysis.ablation_study import (
+    get_depth,
+    get_perf,
+    get_depth_entropy,
+)
+
+from .main_results_tables import preprocess
+from .main_results import readout_type_order, metric_dict
+from .util import savefig
+
+from os.path import join
+from os import makedirs
+
+
+def get_perf_and_depth(*, df_perf, df_source_analysis, perf_col):
+    series_perf = get_perf(df_perf, perf_col)
+    series_depth = get_depth(df_source_analysis)
+    series_depth_entropy = get_depth_entropy(df_source_analysis)
+    series_perf = series_perf.rename('perf')
+    series_depth = series_depth.rename('depth')
+    series_depth_entropy = series_depth_entropy.rename('entropy')
+    assert series_perf.index.equals(series_depth.index)
+    assert series_perf.index.equals(series_depth_entropy.index)
+    assert np.all(np.isfinite(series_perf.values))
+    assert np.all(np.isfinite(series_depth.values))
+    assert np.all(np.isfinite(series_depth_entropy.values))
+    df_combined = pd.concat(
+        [series_perf, series_depth, series_depth_entropy], axis=1
+    )
+    # everything.
+
+    # across number of layers. this is not available in main results.
+
+    # across channel and number of layers
+
+    ret = dict()
+
+    for agg_type, axes_to_reduce in {
+        'all': ['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed',
+                'num_layer', 'out_channel'],
+        'num_layer': ['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed', 'out_channel'],
+        'model_size': ['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'],
+    }.items():
+        _dummy, df_ff, df_r, n = preprocess(
+            df_in=df_combined,
+            axes_to_reduce=axes_to_reduce,
+            return_n=True,
+            max_cls=None,
+        )
+        if isinstance(df_ff, pd.DataFrame):
+            index_reference_ff = df_r.index.get_loc_level(
+                key=(2, 'cm-avg'),
+                level=('rcnn_bl_cls', 'readout_type')
+            )[1]
+            #             print(index_reference_ff)
+            assert index_reference_ff.isin(df_ff.index).all()
+            df_ff = df_ff.loc[index_reference_ff].sort_index().copy()
+        #         print(df_ff)
+        # get common index
+        ret[agg_type] = {
+            'df_ff': df_ff,
+            'df_r': df_r,
+            'n': n,
+        }
+
+    return ret
+
+
+def plot_perf_vs_effective_depth(
+        *,
+        df_perf,
+        df_source_analysis,
+        perf_col='cc2_normed_avg',
+        df_perf_deep_ff_2layer,
+        save_dir,
+):
+    makedirs(save_dir, exist_ok=True)
+    if df_perf_deep_ff_2layer is not None:
+        df_perf_deep_ff_2layer.index = df_perf_deep_ff_2layer.index.droplevel('multi_path_hack')
+        df_perf_deep_ff_2layer = df_perf_deep_ff_2layer[perf_col]
+
+    assert df_perf.index.equals(df_source_analysis.index)
+    for train_keep in df_perf.index.get_level_values('train_keep').unique():
+        print(train_keep)
+
+        data = get_perf_and_depth(
+            df_perf=df_perf.xs(train_keep, level='train_keep'),
+            df_source_analysis=df_source_analysis.xs(train_keep, level='train_keep'),
+            perf_col=perf_col
+        )
+
+        if df_perf_deep_ff_2layer is not None:
+            df_perf_deep_ff_2layer_this = df_perf_deep_ff_2layer.xs(train_keep, level='train_keep')
+        xlabel = 'average path length'
+        for data_name, data_values in data.items():
+
+            # first time, draw perf,
+            # second time, draw entropy
+            #             print(data_name)
+
+            for y_col in ['perf', 'entropy']:
+
+                if y_col == 'perf':
+                    ylabel = metric_dict[perf_col]
+                elif y_col == 'entropy':
+                    ylabel = 'path diversity'
+                else:
+                    raise ValueError
+
+                plt.close('all')
+                if data_name == 'all':
+                    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(4, 3.5), squeeze=True)
+                    fig.subplots_adjust(left=0.2, right=0.975, hspace=0.2)
+                    # just plot this.
+                    plot_one_ax(
+                        ax=ax,
+                        **data_values,
+                        xlabel=xlabel,
+                        y_col=y_col,
+                        ylabel=ylabel,
+                    )
+                    ax.set_title('All FF vs. R, n={}'.format(data_values['n']))
+                else:
+                    #                 return data_values
+                    if data_name == 'num_layer':
+                        # exactly the same layout as in main_tables.py
+                        # number of cases should be the same as number of unique pairs in ff's index
+                        cases = data_values['df_ff'].index.get_level_values('num_layer').unique().tolist()
+                        # it has to be None
+                        #
+                        level = 'num_layer'
+                        assert len(cases) == 2
+                        fig, axes = plt.subplots(
+                            nrows=1, ncols=2, figsize=(8, 3.5), squeeze=True,
+                            sharex=False, sharey=False
+                        )
+                        fig.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.2,
+                                            hspace=0.2)
+                    elif data_name == 'model_size':
+                        cases = sorted(
+                            set(
+                                zip(
+                                    data_values['df_ff'].index.get_level_values('out_channel').values.tolist(),
+                                    data_values['df_ff'].index.get_level_values('num_layer').tolist()
+                                )
+                            )
+                        )
+                        # exactly the same layout as in main_results.py
+                        level = ('out_channel', 'num_layer')
+                        nrows = (len(cases) - 1) // 2 + 1
+                        ncols = 2
+                        fig_h = (8 / 3 * nrows) if (nrows != 3) else 8
+                        fig, axes = plt.subplots(
+                            nrows=nrows, ncols=ncols, figsize=(8, fig_h), squeeze=False,
+                            sharex=False, sharey=False
+                        )
+                        fig.subplots_adjust(
+                            left=0.1, right=0.975, bottom=0.05, top=0.95, wspace=0.2, hspace=0.2
+                        )
+                        axes = axes.ravel()
+                    else:
+                        raise ValueError
+
+                    fig.text(0.5, 0.0, xlabel, ha='center', va='bottom')
+                    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+
+                    for idx, setup_this in enumerate(cases):
+                        num_variant = data_values['n']
+
+                        if isinstance(setup_this, tuple):
+                            assert len(setup_this) == 2
+                            num_c = setup_this[0]
+                            num_l_ff = setup_this[1]
+                            num_l_r = (setup_this[1] - 1) // 2
+                            title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r} RC), n={num_variant}'
+                        elif isinstance(setup_this, int):
+                            num_l_ff = setup_this
+                            num_l_r = (setup_this - 1) // 2
+                            title = f'{num_l_ff}L FF vs. {num_l_r + 1}L R, n={num_variant}'
+                        else:
+                            raise RuntimeError
+
+                        if df_perf_deep_ff_2layer is not None:
+                            if data_name == 'num_layer' and setup_this == 3:
+                                df_deep_ff = df_perf_deep_ff_2layer_this
+                            elif data_name == 'model_size' and setup_this[1] == 3:
+                                df_deep_ff = df_perf_deep_ff_2layer_this.xs(setup_this[0], level='out_channel')
+                            else:
+                                df_deep_ff = None
+                        else:
+                            df_deep_ff = None
+
+                        ax = axes[idx]
+                        plot_one_ax(
+                            ax=ax,
+                            df_ff=data_values['df_ff'].xs(setup_this, level=None if isinstance(level, str) else level),
+                            df_r=data_values['df_r'].xs(setup_this, level=level),
+                            n=data_values['n'],
+                            df_deep_ff=df_deep_ff,
+                            y_col=y_col,
+                        )
+                        ax.set_title(title)
+                savefig(fig, join(save_dir, f'perf_vs_depth+{train_keep}+{data_name}+{y_col}.pdf'))
+                plt.show()
+
+
+def plot_one_ax(*,
+                ax,
+                df_ff,
+                df_r,
+                n,
+                df_deep_ff=None,
+                y_col,
+                xlabel=None,
+                ylabel=None,
+                ):
+    if isinstance(df_ff, pd.DataFrame):
+        assert df_ff.shape[0] == 1
+        df_ff = df_ff.iloc[0]
+    assert isinstance(df_ff, pd.Series)
+    # follow same read out type order in main results.
+
+    # copied from main_results.py
+    margin = (df_r[y_col + '_mean'].max() - df_r[y_col + '_mean'].min())*0.05
+
+
+
+
+    for readout_type in readout_type_order:
+        df_r_this = df_r.xs(readout_type, level='readout_type')
+        assert df_r_this.shape[0] == df_r_this.index.get_level_values('rcnn_bl_cls').unique().size
+        ax.plot(df_r_this['depth_mean'] + 1, df_r_this[y_col + '_mean'], label=readout_type)
+
+    if df_deep_ff is not None:
+        df_deep_ff = df_deep_ff.unstack('rcnn_bl_cls')
+        assert df_deep_ff.shape[0] == n
+        df_deep_ff = df_deep_ff.mean(axis=0)
+        #         print(df_deep_ff)
+        ax.scatter(df_deep_ff.index.values, df_deep_ff.values, label='deep_ff')
+
+    if y_col == 'perf':
+        # do not do this for entropy
+        ax.axhline(y=df_ff.loc['perf_mean'], linestyle='-', color='k')
+    # copied from main_results
+    ax.legend(
+        loc='upper left', ncol=4, bbox_to_anchor=(0.01, 0.99),
+        borderaxespad=0., fontsize='x-small', handletextpad=0,
+    )
+    ax.set_ylim(
+        df_r[y_col + '_mean'].min() - margin,
+        df_r[y_col + '_mean'].max() + 4 * margin,
+    )
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
