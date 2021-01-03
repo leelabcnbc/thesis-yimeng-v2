@@ -77,7 +77,7 @@ def submit(script_dict,
             # log_inner cannot be too long.
             # just to play safe. I know there is difference between byte and str.
             # but just some hack.
-            assert len(log_inner) < 240, f'length is {len(log_inner)}'
+            assert len(log_inner) < 250, f'length is {len(log_inner)}'
 
             script_for_this = f"""
 OUTPUT_THIS=$(python -s -c {quote(

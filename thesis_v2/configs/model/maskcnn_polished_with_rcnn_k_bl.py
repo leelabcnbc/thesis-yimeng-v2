@@ -3383,3 +3383,215 @@ def ablation_ff_models_ns2250_validate():
     # 1 layer
     # 3 training size
     assert len(key_all) == 16 * 1 * 6 * 3 * 1 * 3
+
+
+def ablation_7_models_8k_generator(with_source):
+    # 2L, 16/32 ch, 7 iteration models
+    # removing 1, 2, 3, 4, 5, 6, 7
+    # removing 1+2, 2+3, 3+4, 4+5, 5+6, 6+7
+    # removing 1+2+3, 2+3+4, 3+4+5, 4+5+6, 5+6+7
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_8k(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'train_keep',
+            (None,),
+            replace=True
+        )
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (16, 32,),
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            (7,),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'yuanyuan_8k_a_3day'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+        assert x['num_layer'] == 2
+        for prefix in ['rmD']:
+            for depth_range in range(1, 3 + 1):
+                assert depth_range <= x['rcnn_bl_cls']
+                for depth_start in range(1, x['rcnn_bl_cls'] - depth_range + 2):
+                    param_dict_ret = deepcopy(x)
+                    param_dict_ret['multi_path_hack'] = prefix + ','.join(
+                        [str(z) for z in range(depth_start, depth_start + depth_range)]
+                    )
+                    assert len(param_dict_ret) == 29
+                    if not with_source:
+                        yield param_dict_ret
+                    else:
+                        yield source, param_dict_ret
+
+
+def ablation_7_models_8k_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in ablation_7_models_8k_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 4 readout
+    # (5+6+7) per ablation
+    # 2 ch
+    # 1 layer
+    # 1 training size
+    # 1 ablation (rmD)
+    assert len(key_all) == 16 * 4 * (5 + 6 + 7) * 2 * 1 * 1 * 1
+
+
+def ablation_7_models_ns2250_generator(with_source):
+    # similar to ablation_7_models_8k_generator
+    def model_r():
+        """those in scripts/training/yuanyuan_8k_a_3day/maskcnn_polished_with_rcnn_k_bl/submit_20200430.py"""
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_ns2250(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'train_keep',
+            (1400,),
+            replace=True
+        )
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (16, 32,),
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            (7,),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'tang'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+        x['additional_key'] = '0,500'
+
+        for prefix in ['rmD']:
+            for depth_range in range(1, 3 + 1):
+                assert depth_range <= x['rcnn_bl_cls']
+                for depth_start in range(1, x['rcnn_bl_cls'] - depth_range + 2):
+                    param_dict_ret = deepcopy(x)
+                    param_dict_ret['multi_path_hack'] = prefix + ','.join(
+                        [str(z) for z in range(depth_start, depth_start + depth_range)]
+                    )
+                    assert len(param_dict_ret) == 30
+                    if not with_source:
+                        yield param_dict_ret
+                    else:
+                        yield source, param_dict_ret
+
+
+def ablation_7_models_ns2250_validate():
+    # check that the list of scripts
+    # in the README covers all main models.
+    key_all = set()
+    for x in ablation_7_models_ns2250_generator(with_source=False):
+        key = keygen(
+            # skip these two because they are of float
+            **{k: v for k, v in x.items() if k not in {'scale', 'smoothness'}}
+        )
+        assert key not in key_all
+        key_all.add(key)
+
+    # 16 variants per size.
+    # 4 readout
+    # (5+6+7) per ablation
+    # 2 ch
+    # 1 layer
+    # 1 training size
+    # 1 ablation (onlyD)
+    assert len(key_all) == 16 * 4 * (5 + 6 + 7) * 2 * 1 * 1 * 1

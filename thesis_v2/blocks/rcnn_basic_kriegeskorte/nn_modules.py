@@ -118,6 +118,11 @@ def update_allowed_depth(allowed_depth: set, spec):
     elif spec.startswith('onlyD'):
         ret = set([int(x) for x in spec[5:].split(',')])
         assert ret <= allowed_depth
+    elif spec.startswith('rmD'):
+        ret = set([int(x) for x in spec[3:].split(',')])
+        assert ret <= allowed_depth
+        ret = allowed_depth - ret
+        assert ret <= allowed_depth
     else:
         raise ValueError
 
