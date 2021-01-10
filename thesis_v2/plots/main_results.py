@@ -21,7 +21,16 @@ metric_dict = {
 }
 
 readout_type_order = ['inst-last', 'cm-last', 'inst-avg', 'cm-avg']
-
+# human readable readout type names in final figures.
+readout_type_mapping = {
+    'inst-last': 'no-avg',
+    'cm-last': 'early-avg',
+    'inst-avg': 'late-avg',
+    'cm-avg': '2-avg',
+}
+readout_type_order_mapped = [
+    readout_type_mapping[x] for x in readout_type_order
+]
 
 def get_r_vs_ff_scatter_inner(
         ax: Axes, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
@@ -131,12 +140,16 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
         assert len(other_level) == 1
         perf_r_main = perf_r.xs(key, level=level).unstack(other_level).max(axis=1).to_frame(name='perf_r')
         ax = axes[idx]
+        if level == 'readout_type':
+            key_to_disp = readout_type_mapping[key]
+        else:
+            key_to_disp = key
         get_r_vs_ff_scatter_inner(
             ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main,
             xlabel=None,
             ylabel=None,
             limit=limit,
-            prefix={'rcnn_bl_cls': '# of iterations', 'readout_type': 'readout'}[level] + f' = {key}' + '\n',
+            prefix={'rcnn_bl_cls': '# of iterations', 'readout_type': 'readout'}[level] + f' = {key_to_disp}' + '\n',
             # remove_x_axis_labels=not (idx >= 5),
             # remove_y_axis_labels=not (idx == 5),
             show_diff_hist=show_diff_hist,
@@ -175,7 +188,7 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
             xlabel=None,
             ylabel=None,
             limit=limit,
-            prefix=f'{key_this[0]},{key_this[1]}' + '\n',
+            prefix=f'{readout_type_mapping[key_this[0]]},{key_this[1]}' + '\n',
             show_diff_hist=show_diff_hist,
         )
 
@@ -864,7 +877,7 @@ def plot_one_case_inner(
     #     print(perf)
     # first one is ff.
     perf_df.iloc[1:].plot(
-        ax=ax, kind='line', yerr=perf_sem_df,
+        ax=ax, kind='line', yerr=perf_sem_df.iloc[1:],
         ylim=(perf_min - margin, perf_max + 4 * margin),
         xlim=(perf_df.iloc[1:].index.values.min()-0.1, perf_df.iloc[1:].index.values.max()+0.1),
         xticks=perf_df.iloc[1:].index.values,
@@ -872,6 +885,7 @@ def plot_one_case_inner(
     )
     ax.legend(loc='upper left', ncol=perf_df.shape[1], bbox_to_anchor=(0.01, 0.99),
               borderaxespad=0., fontsize='x-small', handletextpad=0,
+              labels=readout_type_order_mapped,
               #               title='readout type',
               )
     ax.axhline(y=perf_df.iloc[0, 0], linestyle='-', color='k')

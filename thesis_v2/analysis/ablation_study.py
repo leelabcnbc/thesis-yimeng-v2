@@ -32,6 +32,13 @@ def get_depth_entropy(df):
     return df['source_analysis_vec_entropy']
 
 
+def get_depth_distribution(df):
+    df = remove_high_cls(df).dropna().sort_index()
+    assert df.index.unique
+    df['source_analysis_vec'] = df['source_analysis'].map(lambda x: get_normalized_vec(x))
+    return df['source_analysis_vec']
+
+
 def remove_high_cls(df_this):
     df_this = df_this[df_this.index.get_level_values('rcnn_bl_cls') <= 7]
     return df_this.sort_index()
