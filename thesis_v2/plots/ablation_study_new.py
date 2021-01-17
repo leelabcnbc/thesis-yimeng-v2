@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
 
-from .main_results import metric_dict, readout_type_mapping
+from .main_results import metric_dict, readout_type_mapping, readout_type_order
 from .util import savefig
 
 
@@ -16,6 +16,7 @@ def do_one_readout_type(
         metric_name,
         figkey,
         readout_mode,
+        color_to_use,
 ):
     num_case = df_ablated.index.get_level_values('range_size').unique().size
     assert num_case == 3
@@ -34,6 +35,7 @@ def do_one_readout_type(
                 f'{range_size_this} path, ' if range_size_this == 1 else
                 f'{range_size_this} paths, '
             ),
+            color_to_use=color_to_use,
             range_size=range_size_this,
         )
     fig.text(0.0, 1.0, readout_mode, ha='left', va='top')
@@ -52,6 +54,7 @@ def plot_one_ax(
         perf_ablated: pd.Series,
         title_prefix,
         range_size,
+        color_to_use
 ):
     data_collect = []
     perf_original = perf_original.dropna()
@@ -65,7 +68,17 @@ def plot_one_ax(
         assert np.all(np.isfinite(perf_ablated_this.values))
         assert np.all(np.isfinite(perf_original.values))
         data_collect.append(perf_ablated_this.mean())
-    ax.plot(range(1, len(data_collect) + 1), data_collect, marker='x')
+    ax.plot(range(1, len(data_collect) + 1), data_collect, marker='x', c=color_to_use)
+    if range_size == 3:
+        # hack to highlight worse performing models.
+        idx_min = np.argmin(data_collect)
+        ax.plot(idx_min+1, data_collect[idx_min],
+                'o', ms=8,
+                mec='k',  # edge color
+                mfc='none',  # face color
+                mew=1,
+                )
+
     ax.set_xticks(range(1, len(data_collect) + 1))
     ax.set_xticklabels(
         [
@@ -85,12 +98,17 @@ def do_all_readout_type(
         plot_dir,
 ):
     makedirs(plot_dir, exist_ok=True)
+    # https://stackoverflow.com/a/42091037
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
     for readout_type in df_ablated.index.get_level_values('readout_type').unique():
         print(readout_type)
+        color_to_use = colors[readout_type_order.index(readout_type)]
         do_one_readout_type(
             df_original=df_original.xs(readout_type, level='readout_type'),
             df_ablated=df_ablated.xs(readout_type, level='readout_type'),
             metric_name=metric_name,
             figkey = join(plot_dir, f'ablation_7_{readout_type}'),
-            readout_mode=readout_type_mapping[readout_type]
+            readout_mode=readout_type_mapping[readout_type],
+            color_to_use=color_to_use,
         )

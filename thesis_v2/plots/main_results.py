@@ -646,7 +646,7 @@ def plot_one_case(
         data_ff=data_ff_overall,
         data_r_list=data_r_list_overall,
         setup=None,
-        title_override=f'FF vs. recurrent models, n={num_variant_overall}',
+        title_override=f'All, n={num_variant_overall}',
         max_cls=max_cls,
         r_name_list=r_name_list,
         num_variant=num_variant_overall,
@@ -897,11 +897,11 @@ def plot_one_case_inner(
             num_c = setup[0]
             num_l_ff = setup[1]
             num_l_r = (setup[1] - 1) // 2
-            title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r} RC), n={num_variant}'
+            title = f'{num_c} ch, 1 C + {num_l_r} RC, n={num_variant}'
         elif len(setup) == 1:
             num_l_ff = setup[0]
             num_l_r = (setup[0] - 1) // 2
-            title = f'{num_l_ff}L FF vs. {num_l_r+1}L R, n={num_variant}'
+            title = f'{num_l_r+1}L, n={num_variant}'
         else:
             raise RuntimeError
     else:

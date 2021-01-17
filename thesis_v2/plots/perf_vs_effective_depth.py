@@ -3,16 +3,20 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 
 from ..analysis.ablation_study import (
     get_depth,
     get_perf,
     get_depth_entropy,
     get_depth_distribution,
+    get_weighted_avg,
 )
 
 from .main_results_tables import preprocess
-from .main_results import readout_type_order, metric_dict, readout_type_order_mapped
+from .main_results import (
+    readout_type_order, metric_dict, readout_type_order_mapped, readout_type_mapping
+)
 from .util import savefig
 
 from os.path import join
@@ -85,6 +89,7 @@ def get_cls_pick_dict(
         y_col,
         data_name,
         setup,
+        df_r=None,
 ):
     if y_col == 'depth_distribution_7':
         return defaultdict(lambda: 7)
@@ -92,6 +97,14 @@ def get_cls_pick_dict(
         return additional_data.get(
             data_name, dict()
         ).get(setup, None)
+    elif y_col == 'depth_distribution_max':
+        assert df_r is not None
+        ret = {}
+        for readout_type in readout_type_order:
+            perf_this = df_r.xs(readout_type, level='readout_type')['perf_mean']
+            # get the one with max perf
+            ret[readout_type] = perf_this.idxmax()
+        return ret
     else:
         raise ValueError
 
@@ -123,22 +136,27 @@ def plot_perf_vs_effective_depth(
 
         if df_perf_deep_ff_2layer is not None:
             df_perf_deep_ff_2layer_this = df_perf_deep_ff_2layer.xs(train_keep, level='train_keep')
-        xlabel = 'average path length'
+
+
         for data_name, data_values in data.items():
             for y_col in [
                 'perf', 'entropy',
                 'depth_distribution_7',
-                'depth_distribution_example'
+                'depth_distribution_example',
+                'depth_distribution_max',
             ]:
-
+                xlabel = 'average path length'
                 if y_col == 'perf':
                     ylabel = metric_dict[perf_col]
                 elif y_col == 'entropy':
                     ylabel = 'path diversity'
                 elif y_col.startswith('depth_distribution'):
                     ylabel = 'normalized strength'
+                    xlabel = 'path length'
                 else:
                     raise ValueError
+
+
 
                 plt.close('all')
                 if data_name == 'all':
@@ -170,9 +188,10 @@ def plot_perf_vs_effective_depth(
                                 y_col=y_col,
                                 data_name=data_name,
                                 setup=None,
+                                df_r=data_values['df_r'],
                             )
                         )
-                    ax.set_title('All FF vs. R, n={}'.format(data_values['n']))
+                    ax.set_title('All, n={}'.format(data_values['n']))
                 else:
                     #                 return data_values
                     if data_name == 'num_layer':
@@ -225,11 +244,11 @@ def plot_perf_vs_effective_depth(
                             num_c = setup_this[0]
                             num_l_ff = setup_this[1]
                             num_l_r = (setup_this[1] - 1) // 2
-                            title = f'{num_c} ch, {num_l_ff} C vs. (1 C + {num_l_r} RC), n={num_variant}'
+                            title = f'{num_c} ch, 1 C + {num_l_r} RC, n={num_variant}'
                         elif isinstance(setup_this, int):
                             num_l_ff = setup_this
                             num_l_r = (setup_this - 1) // 2
-                            title = f'{num_l_ff}L FF vs. {num_l_r + 1}L R, n={num_variant}'
+                            title = f'{num_l_r + 1}L, n={num_variant}'
                         else:
                             raise RuntimeError
 
@@ -272,7 +291,9 @@ def plot_perf_vs_effective_depth(
                                     y_col=y_col,
                                     data_name=data_name,
                                     setup=setup_this,
-                                )
+                                    df_r=data_values['df_r'].xs(setup_this, level=level),
+                                ),
+                                num_l_r=num_l_r,
                             )
 
                         ax.set_title(title)
@@ -306,9 +327,10 @@ def plot_one_ax(*,
     for readout_type in readout_type_order:
         df_r_this = df_r.xs(readout_type, level='readout_type')
         assert df_r_this.shape[0] == df_r_this.index.get_level_values('rcnn_bl_cls').unique().size
-        ax.plot(
+        ax.errorbar(
             df_r_this['depth_mean'] + 1, df_r_this[y_col + '_mean'], label=readout_type,
             marker='x',
+            # yerr=df_r_this[y_col + '_sem']
         )
 
         # use cls_to_pick_dict to highlight certain points.
@@ -320,6 +342,13 @@ def plot_one_ax(*,
                     df_r_this[y_col + '_mean'].loc[dot_to_plot],
                 )
             )
+    # copied from main_results
+    ax.legend(
+            loc='upper left', ncol=4, bbox_to_anchor=(0.01, 0.99),
+            borderaxespad=0., fontsize='x-small', handletextpad=0,
+            labels=readout_type_order_mapped,
+        )
+
     # by putting this outside, we do not change the color assignment of main plot
     for dot in dots_to_plot:
         ax.plot(*dot,
@@ -339,12 +368,7 @@ def plot_one_ax(*,
     if y_col == 'perf':
         # do not do this for entropy
         ax.axhline(y=df_ff.loc['perf_mean'], linestyle='-', color='k')
-    # copied from main_results
-    ax.legend(
-        loc='upper left', ncol=4, bbox_to_anchor=(0.01, 0.99),
-        borderaxespad=0., fontsize='x-small', handletextpad=0,
-        labels=readout_type_order_mapped,
-    )
+
     ax.set_ylim(
         df_r[y_col + '_mean'].min() - margin,
         df_r[y_col + '_mean'].max() + 4 * margin,
@@ -365,6 +389,7 @@ def plot_one_ax_bar(
         xlabel=None,
         ylabel=None,
         cls_to_pick_dict,
+        num_l_r=None,
 ):
     if cls_to_pick_dict is None:
         return
@@ -377,13 +402,16 @@ def plot_one_ax_bar(
     # these data frames should be constructed
     # by having readout type as rows,
     # and path depth as columns.
-    df_mean = []
-    df_sem = []
+    # df_mean = []
+    # df_sem = []
 
     min_val = 0.0
     max_val = 0.0
 
-    for readout_type in readout_type_order:
+    # https://stackoverflow.com/a/42091037
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    axis_to_draw_list = []
+    for idx, readout_type in enumerate(readout_type_order):
         # drop=False so that my next .xs will work. it's a pandas issue.
         df_r_this = df_r.xs(readout_type, level='readout_type', drop_level=False)
         assert df_r_this.shape[0] == df_r_this.index.get_level_values('rcnn_bl_cls').unique().size
@@ -396,54 +424,72 @@ def plot_one_ax_bar(
         sem_this = sem_this.iat[0]
         # length 1 through 8
         assert mean_this.shape == sem_this.shape == (8,)
-
+        avg_length = get_weighted_avg(mean_this)
         max_val = max(max_val, mean_this.max())
 
-        df_mean.append(
-            # a new data frame.
-            pd.DataFrame(
-                [
-                    {
-                        'readout_type': readout_type,
-                        'path_length': k + 1,
-                        'value': v
-                    }
-                    for k, v in enumerate(mean_this)
-                ],
-                columns=['readout_type', 'path_length', 'value']
-            ).set_index(
-                ['readout_type', 'path_length'], verify_integrity=True
-            ).sort_index()['value'].unstack('path_length')
+        if num_l_r is None:
+            # no treatment
+            # this is probably for the case `all`
+            trim_start = 0
+            trim_end = 8
+        else:
+            # trim this particular one.
+            trim_start = {
+                1: 0,
+                2: 1
+            }[num_l_r]
+            trim_end = trim_start + cls_to_pick_dict[readout_type]
+        if trim_start > 0:
+            assert (mean_this[:trim_start] == 0).all()
+        if trim_end < 8:
+            assert (mean_this[trim_end:] == 0).all()
+        mean_this = mean_this[trim_start:trim_end]
+        sem_this = sem_this[trim_start:trim_end]
+
+        # add a custom axis.
+        axis_to_draw: Axes = ax.inset_axes(
+            [
+                *{
+                    0: (0.0, 0.5),
+                    1: (0.5, 0.5),
+                    2: (0.0, 0.0),
+                    3: (0.5, 0.0),
+                }[idx],
+                0.5, 0.35
+            ]
         )
-
-        df_sem.append(
-            # a new data frame.
-            pd.DataFrame(
-                [
-                    {
-                        'readout_type': readout_type,
-                        'path_length': k + 1,
-                        'value': v
-                    }
-                    for k, v in enumerate(sem_this)
-                ],
-                columns=['readout_type', 'path_length', 'value']
-            ).set_index(
-                ['readout_type', 'path_length'], verify_integrity=True
-            ).sort_index()['value'].unstack('path_length')
+        xticks_this = range(1+trim_start, 1+trim_start+mean_this.size)
+        axis_to_draw.bar(
+            xticks_this,
+            mean_this,
+            yerr=sem_this,
+            color=colors[idx],
         )
+        axis_to_draw.set_title(
+            readout_type_mapping[readout_type] + ', {}, {:.2f}'.format(cls_to_pick_dict[readout_type], avg_length)
+        )
+        axis_to_draw_list.append(axis_to_draw)
+        if idx in {1,3}:
+            # remove y label
+            axis_to_draw.get_yaxis().set_visible(False)
+        axis_to_draw.set_xticks(xticks_this)
+        axis_to_draw.set_xticklabels([str(x) for x in xticks_this])
 
-    df_mean = pd.concat(df_mean, axis=0).T
-    df_sem = pd.concat(df_sem, axis=0).T
+    for ax_this in axis_to_draw_list:
+        ax_this.set_ylim(min_val, max_val*1.25)
+    ax.axis('off')
 
-    df_mean.plot(
-        ax=ax, kind='bar', yerr=df_sem, rot=0,
-        ylim=(min_val, max_val * 1.25),
-    )
+    # df_mean = pd.concat(df_mean, axis=0).T
+    # df_sem = pd.concat(df_sem, axis=0).T
 
-    ax.legend(
-        loc='upper left', ncol=df_mean.shape[1], bbox_to_anchor=(0.01, 0.99),
-        borderaxespad=0., fontsize='x-small', handletextpad=0,
-        #               title='readout type',
-        labels=readout_type_order_mapped,
-    )
+    # df_mean.plot(
+    #     ax=ax, kind='bar', yerr=df_sem, rot=0,
+    #     ylim=(min_val, max_val * 1.25),
+    # )
+
+    # ax.legend(
+    #     loc='upper left', ncol=df_mean.shape[1], bbox_to_anchor=(0.01, 0.99),
+    #     borderaxespad=0., fontsize='x-small', handletextpad=0,
+    #     #               title='readout type',
+    #     labels=readout_type_order_mapped,
+    # )
