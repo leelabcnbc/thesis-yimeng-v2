@@ -368,6 +368,14 @@ def plot_one_ax(*,
     if y_col == 'perf':
         # do not do this for entropy
         ax.axhline(y=df_ff.loc['perf_mean'], linestyle='-', color='k')
+        # denote the depth of ff models
+        ax.axvline(x=df_ff.loc['depth_mean']+1, linestyle='--', color='k')
+        # ax.plot(
+        #     df_ff.loc['depth_mean']+1, df_ff.loc['perf_mean'],
+        #     '*', ms=8, mec='k',  # edge color
+        #         mfc='none',  # face color
+        #         mew=1,
+        #         )
 
     ax.set_ylim(
         df_r[y_col + '_mean'].min() - margin,
