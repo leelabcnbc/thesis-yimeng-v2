@@ -50,6 +50,7 @@ def collect_rcnn_k_bl_main_result(*,
                                   skip_eval_json=False,
                                   no_missing_data=True,
                                   key_override=None,
+                                  save_avg=True,
                                   ):
     rows_all = []
     rows_all_param_overwrite = []
@@ -167,10 +168,16 @@ def collect_rcnn_k_bl_main_result(*,
             k: v for k, v in param.items() if k not in fixed_keys
         }
         row_this['num_param'] = num_param
-        row_this['cc_raw_avg'] = cc_native.mean()
-        row_this['cc2_raw_avg'] = (cc_native ** 2).mean()
-        if cc_max_all_neurons is not None:
-            row_this['cc2_normed_avg'] = ((cc_native / cc_max_all_neurons) ** 2).mean()
+        if save_avg:
+            row_this['cc_raw_avg'] = cc_native.mean()
+            row_this['cc2_raw_avg'] = (cc_native ** 2).mean()
+            if cc_max_all_neurons is not None:
+                row_this['cc2_normed_avg'] = ((cc_native / cc_max_all_neurons) ** 2).mean()
+        else:
+            row_this['cc_raw'] = cc_native.tolist()
+            row_this['cc2_raw'] = (cc_native ** 2).tolist()
+            if cc_max_all_neurons is not None:
+                row_this['cc2_normed'] = ((cc_native / cc_max_all_neurons) ** 2).tolist()
 
         if not skip_this_for_internal:
             rows_all.append(row_this)

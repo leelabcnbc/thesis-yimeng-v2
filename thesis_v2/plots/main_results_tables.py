@@ -82,15 +82,19 @@ def mean_generalized(x: pd.Series, *, drop_na=False):
         x = x.dropna()
     if x.size == 0:
         return None
-    data = np.asarray([x for x in x.values])
+    data = np.asarray([v for v in x.values])
+    # data = np.asarray([z['data'] for z in x.values])
     assert data.ndim in {1, 2}
     return data.mean(axis=0)
+    # return {'data': data.mean(axis=0)}
 
 
 def sem_generalized(x: pd.Series):
-    data = np.asarray([x for x in x.values])
+    data = np.asarray([v for v in x.values])
+    # data = np.asarray([z['data'] for z in x.values])
     assert data.ndim in {1, 2}
     return sem(data, axis=0, ddof=0)
+    # return {'data': sem(data, axis=0, ddof=0)}
 
 
 def preprocess(df_in, *,
