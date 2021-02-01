@@ -370,12 +370,12 @@ def plot_one_ax(*,
         ax.axhline(y=df_ff.loc['perf_mean'], linestyle='-', color='k')
         # denote the depth of ff models
         ax.axvline(x=df_ff.loc['depth_mean']+1, linestyle='--', color='k')
-        # ax.plot(
-        #     df_ff.loc['depth_mean']+1, df_ff.loc['perf_mean'],
-        #     '*', ms=8, mec='k',  # edge color
-        #         mfc='none',  # face color
-        #         mew=1,
-        #         )
+        ax.plot(
+            df_ff.loc['depth_mean']+1, df_ff.loc['perf_mean'],
+            '*', ms=16, mec='k',  # edge color
+            mfc='none',  # face color
+            mew=2,
+        )
 
     ax.set_ylim(
         df_r[y_col + '_mean'].min() - margin,
