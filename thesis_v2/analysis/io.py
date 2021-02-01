@@ -51,11 +51,15 @@ def collect_rcnn_k_bl_main_result(*,
                                   no_missing_data=True,
                                   key_override=None,
                                   save_avg=True,
+                                  mask=None,
                                   ):
     rows_all = []
     rows_all_param_overwrite = []
 
     param_set = None
+
+    if cc_max_all_neurons is not None:
+        cc_max_all_neurons = cc_max_all_neurons[mask]
 
     if key_override is None:
         key_override = dict()
@@ -92,6 +96,8 @@ def collect_rcnn_k_bl_main_result(*,
             result = load_training_results(key, return_model=True, model=build_net(result['config_extra']['model']))
             num_param = count_params(result['model'])
             cc_native = np.asarray(result['stats_best']['stats']['test']['corr'])
+            if mask is not None:
+                cc_native = cc_native[mask]
         except FileNotFoundError as e:
             num_param = -1
             cc_native = np.full((num_neuron,), np.nan, dtype=np.float32)
