@@ -2370,6 +2370,25 @@ def main_models_8k_generator(with_source):
             yield x
 
 
+def main_models_8k_generator_with_another_split(*, with_source, split_seed_to_use=0, train_keep_to_use=(None,)):
+    # using another split seed on 8k data, to make sure the results are stable across splits.
+    for x in main_models_8k_generator(with_source):
+        if with_source:
+            source, params = x
+        else:
+            params = x
+            source = None
+        if params['train_keep'] not in train_keep_to_use:
+            continue
+        assert params['split_seed'] == 'legacy'
+        params['split_seed'] = split_seed_to_use
+        assert len(x) == 26
+        if with_source:
+            yield source, params
+        else:
+            yield params
+
+
 def main_models_8k_validate():
     # check that the list of scripts
     # in the README covers all main models.
