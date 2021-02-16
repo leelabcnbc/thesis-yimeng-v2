@@ -17,12 +17,17 @@ def scatter(
         set_axis_equal=True,
         remove_x_axis_labels=False,
         remove_y_axis_labels=False,
+        plot_equal_line=True,
+        label=None
 ):
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
     assert x.ndim == y.ndim == 1
     assert x.shape == y.shape
-    ax.scatter(x, y, s=scatter_s)
+    if label is None:
+        ax.scatter(x, y, s=scatter_s)
+    else:
+        ax.scatter(x, y, s=scatter_s, label=label)
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
@@ -37,7 +42,8 @@ def scatter(
     if remove_y_axis_labels:
         ax.axes.yaxis.set_ticklabels([])
 
-    ax.plot([0, 1], [0, 1], linestyle='--')
+    if plot_equal_line:
+        ax.plot([0, 1], [0, 1], linestyle='--')
 
 
 def labeled_line(

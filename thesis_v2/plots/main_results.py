@@ -1,7 +1,7 @@
 from os.path import join, dirname
 from os import makedirs
 from typing import List
-from itertools import zip_longest, chain
+from itertools import zip_longest, chain, product
 
 from scipy.stats import pearsonr
 import numpy as np
@@ -32,6 +32,7 @@ readout_type_order_mapped = [
     readout_type_mapping[x] for x in readout_type_order
 ]
 
+
 def get_r_vs_ff_scatter_inner(
         ax: Axes, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
         remove_x_axis_labels=False, remove_y_axis_labels=False,
@@ -39,19 +40,39 @@ def get_r_vs_ff_scatter_inner(
 ):
     if prefix is None:
         prefix = ''
-    merged_main = merge_thin_and_wide(df_fewer_columns=perf_r_main, df_more_columns=perf_ff, fewer_suffix='')
+    merged_main = merge_thin_and_wide(
+        df_fewer_columns=perf_r_main, df_more_columns=perf_ff, fewer_suffix=''
+    ).sort_index()
     if not show_diff_hist:
-        scatter(
-            ax=ax,
-            x=merged_main['perf_ff'].values, y=merged_main['perf_r'].values,
-            xlabel=xlabel, ylabel=ylabel,
-            xlim=limit,
-            ylim=limit,
-            remove_x_axis_labels=remove_x_axis_labels,
-            remove_y_axis_labels=remove_y_axis_labels,
-            set_axis_equal=False,
-            scatter_s=0.5,
-        )
+
+        # sep by train_keep and num_layer
+        train_keep_all = merged_main.index.get_level_values('train_keep').unique()
+        # num_layer_all = merged_main.index.get_level_values('num_layer').unique()
+
+        for (
+                train_keep,
+                # num_layer,
+        ) in product(
+            train_keep_all,
+            # num_layer_all
+        ):
+            # merged_main_this = merged_main.xs((train_keep, num_layer), level=('train_keep', 'num_layer'))
+            merged_main_this = merged_main.xs(train_keep, level='train_keep')
+            scatter(
+                ax=ax,
+                x=merged_main_this['perf_ff'].values, y=merged_main_this['perf_r'].values,
+                xlabel=xlabel, ylabel=ylabel,
+                xlim=limit,
+                ylim=limit,
+                remove_x_axis_labels=remove_x_axis_labels,
+                remove_y_axis_labels=remove_y_axis_labels,
+                set_axis_equal=False,
+                scatter_s=0.5,
+                label=f'{train_keep}',
+                plot_equal_line=False
+            )
+        ax.plot([0, 1], [0, 1], linestyle='--')
+        ax.legend()
     else:
         ax.hist(merged_main['perf_r'].values - merged_main['perf_ff'].values,
                 bins=20)
@@ -201,6 +222,133 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
     plt.show()
 
 
+def get_hyperparameter_effect_result(
+        *, df_in, metric_list, max_cls,
+        num_channels_to_iterate_allowlist,
+        num_layers_to_iterate_allowlist,
+):
+    ret = dict()
+    for metric in metric_list:
+        print(metric)
+        assert metric in df_in.columns
+        df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
+        columns, df_ff, df_r = preprocess(
+            df_this, max_cls=max_cls,
+            axes_to_reduce=['model_seed']
+        )
+        # filter out results.
+        df_ff = df_ff[df_ff.index.get_level_values('out_channel').isin(num_channels_to_iterate_allowlist)]
+        df_ff = df_ff[df_ff.index.get_level_values('num_layer').isin(num_layers_to_iterate_allowlist)]
+
+        df_r = df_r[df_r.index.get_level_values('out_channel').isin(num_channels_to_iterate_allowlist)]
+        df_r = df_r[df_r.index.get_level_values('num_layer').isin(num_layers_to_iterate_allowlist)]
+        ret[metric] = {
+            'df_ff': df_ff.sort_index(),
+            'df_r': df_r.sort_index(),
+        }
+
+    return ret
+
+
+def get_perf_vs_param_result(
+        *, df_in, metric_list, max_cls,
+        num_channels_to_iterate_allowlist,
+        num_layers_to_iterate_allowlist
+):
+    tbl_data = dict()
+    for metric in metric_list:
+        print(metric)
+        df_this_metric = []
+        assert metric in df_in.columns
+        df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
+        columns, df_ff, df_r = preprocess(
+            df_this, max_cls=max_cls,
+            axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed']
+        )
+        # by earlier eyeballing, I find that
+        # models with more channel most of the time always have bigger size than models with fewer channels
+        # regardless of number of layers.
+        # therefore, it's good to iterate over channels after iterating over layers.
+        train_keep_to_check = df_ff.index.get_level_values('train_keep').unique()
+        num_ch_to_check = df_ff.index.get_level_values('out_channel').unique()
+        num_layer_to_check = df_ff.index.get_level_values('num_layer').unique()
+
+        for (train_keep, num_ch, num_layer) in product(
+                train_keep_to_check, num_ch_to_check, num_layer_to_check
+        ):
+            if num_ch not in num_channels_to_iterate_allowlist or num_layer not in num_layers_to_iterate_allowlist:
+                continue
+            # get data
+            df_ff_this = df_ff.xs((train_keep, num_ch, num_layer), level=('train_keep', 'out_channel', 'num_layer'))
+            df_r_this = df_r.xs((train_keep, num_ch, num_layer), level=('train_keep', 'out_channel', 'num_layer'))
+            # print((train_keep, num_ch, num_layer))
+            # print(df_ff_this.shape, df_r_this.shape)
+            assert df_ff_this.shape == (1, 4)
+            assert df_r_this.shape == (24, 4)
+            readout_type_to_use = df_r_this.index.get_level_values('readout_type').unique()
+            assert set(readout_type_to_use) == set(readout_type_order)
+            series_ff = df_ff_this.iloc[0]
+            for readout_type_idx, readout_type in enumerate(readout_type_order):
+                df_r_this_readout = df_r_this.xs(readout_type, level='readout_type')
+                perf_max = df_r_this_readout['perf_mean'].max()
+                df_this_metric.append(
+                    {
+                        'train_keep': train_keep,
+                        'out_channel': num_ch,
+                        'num_layer': num_layer,
+                        'num_param_in_k': round(series_ff['num_param_mean'] / 1000),
+                        'model_size_name': '{}ch,{}Rl'.format(num_ch, (num_layer - 1) // 2),
+                        'perf_ff': series_ff['perf_mean'],
+                        # hack to preserve order
+                        'readout_type': str(readout_type_idx) + '.' + readout_type_mapping[readout_type],
+                        'perf_r': perf_max,
+                        'improvement_perc': (perf_max / series_ff['perf_mean'] - 1) * 100
+                    }
+                )
+                df_this_metric[-1]['col_name'] = '{} ({}K)'.format(
+                    df_this_metric[-1]['model_size_name'],
+                    df_this_metric[-1]['num_param_in_k']
+                )
+        df_this_metric = pd.DataFrame(
+            df_this_metric, columns=[
+                'train_keep', 'out_channel', 'num_layer', 'num_param_in_k',
+                'perf_ff', 'readout_type', 'perf_r', 'improvement_perc', 'model_size_name', 'col_name'
+            ]
+        ).set_index(keys=['readout_type', 'train_keep', 'out_channel', 'num_layer'], verify_integrity=True)
+        tbl_data[metric] = df_this_metric
+    return tbl_data
+
+
+def main_loop_for_additional_tables(
+        *, df_in, dir_key, metric_list=None, display=None, max_cls=7,
+        num_channels_to_iterate_allowlist=(8, 16, 32, 48, 64),
+        num_layers_to_iterate_allowlist=(3, 5),
+):
+    if display is None:
+        def display(_):
+            pass
+    if metric_list is None:
+        metric_list = [x for x in ['cc2_normed_avg', 'cc2_raw_avg', 'cc_raw_avg'] if x in df_in.columns]
+    # perf vs param
+    perf_vs_param_data = get_perf_vs_param_result(
+        df_in=df_in, metric_list=metric_list, max_cls=max_cls,
+        num_channels_to_iterate_allowlist=num_channels_to_iterate_allowlist,
+        num_layers_to_iterate_allowlist=num_layers_to_iterate_allowlist,
+    )
+
+    # another thing, is the use of individual hyperparameters
+    hyperameter_data = get_hyperparameter_effect_result(
+        df_in=df_in, metric_list=metric_list, max_cls=max_cls,
+        num_channels_to_iterate_allowlist=num_channels_to_iterate_allowlist,
+        num_layers_to_iterate_allowlist=num_layers_to_iterate_allowlist,
+    )
+
+    return {
+        'hyperameter_data': hyperameter_data,
+        'perf_vs_param_data': perf_vs_param_data,
+    }
+
+
 def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
               check_no_missing_data=True):
     if display is None:
@@ -229,23 +377,24 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
             show_diff_hist=True,
         )
 
-        for deep_l in [[4], [5], [6], [4, 5, 6]]:
-            get_r_vs_ff_scatter(
-                df_this, max_cls=max_cls,
-                axes_to_reduce=['model_seed'],
-                metric=metric,
-                dir_plot=dir_key,
-                deeper_ff=deep_l,
-            )
-
-            get_r_vs_ff_scatter(
-                df_this, max_cls=max_cls,
-                axes_to_reduce=['model_seed'],
-                metric=metric,
-                dir_plot=dir_key,
-                deeper_ff=deep_l,
-                show_diff_hist=True,
-            )
+        # not very useful.
+        # for deep_l in [[4], [5], [6], [4, 5, 6]]:
+        #     get_r_vs_ff_scatter(
+        #         df_this, max_cls=max_cls,
+        #         axes_to_reduce=['model_seed'],
+        #         metric=metric,
+        #         dir_plot=dir_key,
+        #         deeper_ff=deep_l,
+        #     )
+        #
+        #     get_r_vs_ff_scatter(
+        #         df_this, max_cls=max_cls,
+        #         axes_to_reduce=['model_seed'],
+        #         metric=metric,
+        #         dir_plot=dir_key,
+        #         deeper_ff=deep_l,
+        #         show_diff_hist=True,
+        #     )
 
         get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
                                axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'])
@@ -496,13 +645,23 @@ def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display):
     #     print(num_param)
     #     print(perf)
 
-    perf_mean.plot(ax=ax, kind='bar', yerr=perf_sem, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0)
+    # not good for my usage
+    # perf_mean.plot(ax=ax, kind='bar', yerr=perf_sem, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0)
+    # ax.set_title('FF models')
+    # ax.set_ylabel(ylabel)
+    # ax.set_xlabel('# of channels')
+    #
+    # ax.legend(loc='upper left', ncol=perf_mean.shape[1], bbox_to_anchor=(0.01, 0.99),
+    #           borderaxespad=0., fontsize='x-small', handletextpad=0, title='# of layers',
+    #           )
+
+    perf_mean.T.plot(ax=ax, kind='bar', yerr=perf_sem.T, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0)
     ax.set_title('FF models')
     ax.set_ylabel(ylabel)
-    ax.set_xlabel('# of channels')
+    ax.set_xlabel('# of layers')
 
-    ax.legend(loc='upper left', ncol=perf_mean.shape[1], bbox_to_anchor=(0.01, 0.99),
-              borderaxespad=0., fontsize='x-small', handletextpad=0, title='# of layers',
+    ax.legend(loc='upper left', ncol=perf_mean.T.shape[1], bbox_to_anchor=(0.01, 0.99),
+              borderaxespad=0., fontsize='x-small', handletextpad=0, title='# of channels',
               )
 
     #     print(dir(legend))
@@ -879,7 +1038,7 @@ def plot_one_case_inner(
     perf_df.iloc[1:].plot(
         ax=ax, kind='line', yerr=perf_sem_df.iloc[1:],
         ylim=(perf_min - margin, perf_max + 4 * margin),
-        xlim=(perf_df.iloc[1:].index.values.min()-0.1, perf_df.iloc[1:].index.values.max()+0.1),
+        xlim=(perf_df.iloc[1:].index.values.min() - 0.1, perf_df.iloc[1:].index.values.max() + 0.1),
         xticks=perf_df.iloc[1:].index.values,
         rot=0
     )
@@ -901,7 +1060,7 @@ def plot_one_case_inner(
         elif len(setup) == 1:
             num_l_ff = setup[0]
             num_l_r = (setup[0] - 1) // 2
-            title = f'{num_l_r+1}L, n={num_variant}'
+            title = f'{num_l_r + 1}L, n={num_variant}'
         else:
             raise RuntimeError
     else:
