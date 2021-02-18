@@ -37,6 +37,9 @@ def get_r_vs_ff_scatter_inner(
         ax: Axes, perf_ff, perf_r_main, xlabel, ylabel, limit, prefix=None,
         remove_x_axis_labels=False, remove_y_axis_labels=False,
         show_diff_hist=False,
+        title=None,
+        legend=True,
+        show_text=True,
 ):
     if prefix is None:
         prefix = ''
@@ -48,6 +51,8 @@ def get_r_vs_ff_scatter_inner(
         # sep by train_keep and num_layer
         train_keep_all = merged_main.index.get_level_values('train_keep').unique()
         # num_layer_all = merged_main.index.get_level_values('num_layer').unique()
+        train_keep_max = train_keep_all.max()
+        assert set(train_keep_all) == {train_keep_max, train_keep_max // 2, train_keep_max // 4}
 
         for (
                 train_keep,
@@ -68,19 +73,32 @@ def get_r_vs_ff_scatter_inner(
                 remove_y_axis_labels=remove_y_axis_labels,
                 set_axis_equal=False,
                 scatter_s=0.5,
-                label=f'{train_keep}',
+                label=str(100 * train_keep // train_keep_max) + '%',
                 plot_equal_line=False
             )
         ax.plot([0, 1], [0, 1], linestyle='--')
-        ax.legend()
+        if legend:
+            ax.legend(loc='lower right', ncol=1,
+                      # borderaxespad=0.,
+                      fontsize='small',
+                      # handletextpad=0
+                      )
     else:
         ax.hist(merged_main['perf_r'].values - merged_main['perf_ff'].values,
                 bins=20)
         ax.axvline(x=0, linestyle='--', color='r')
-    ax.text(
-        0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
-        transform=ax.transAxes,
-    )
+        if xlabel is not None:
+            ax.set_xlabel(xlabel)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel)
+    if show_text:
+        ax.text(
+            0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
+            transform=ax.transAxes,
+        )
+
+    if title is not None:
+        ax.set_title(title)
 
 
 def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric,
@@ -197,20 +215,28 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
         [index_readout_type, index_num_cls]
     ).T.tolist()
     index_readout_cls = [tuple(x) for x in index_readout_cls]
+    index_readout_cls_good_order = list(product(readout_type_order, range(2, 7 + 1)))
     index_readout_cls = sorted(set(index_readout_cls))
+    assert set(index_readout_cls_good_order) == set(index_readout_cls)
     assert len(index_readout_cls) <= 24
-    for idx, key_this in enumerate(index_readout_cls):
+    for idx, key_this in enumerate(index_readout_cls_good_order):
         perf_r_main = perf_r.xs(
             key_this, level=('readout_type', 'rcnn_bl_cls')
         ).to_frame(name='perf_r')
         ax = axes[idx]
+
+        idx_row, idx_col = idx // 6, idx % 6
+
         get_r_vs_ff_scatter_inner(
             ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main,
             xlabel=None,
-            ylabel=None,
+            ylabel=None if idx_col != 0 else readout_type_mapping[key_this[0]],
             limit=limit,
-            prefix=f'{readout_type_mapping[key_this[0]]},{key_this[1]}' + '\n',
+            prefix='',
             show_diff_hist=show_diff_hist,
+            title=None if idx_row != 0 else f'{key_this[1]} iterations',
+            legend=(idx == 0),
+            show_text=(idx == 0),
         )
 
     suptitle = f'scatter_r_vs_ff_{metric}_3rd' + suptitle_suffix
@@ -614,7 +640,7 @@ def process_one_case(df_in, *, metric, train_keep,
     )
 
 
-def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display):
+def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display, num_variant, data_ff_per_layer_original):
     # only show data with >=8 channels. if needed by reviewers, will do a separate plot.
     # >=8 channel data is enough to illustrate my point, and data for <8 channels are not complete.
     data = data.iloc[data.index.get_level_values('out_channel') >= 8, :].sort_index()
@@ -656,13 +682,35 @@ def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display):
     #           )
 
     perf_mean.T.plot(ax=ax, kind='bar', yerr=perf_sem.T, ylim=(perf_min - margin, perf_max + 4 * margin), rot=0)
-    ax.set_title('FF models')
+    ax.set_title(f'FF models, n={num_variant} per bar')
     ax.set_ylabel(ylabel)
     ax.set_xlabel('# of layers')
+
+    # plot extra bars using data_ff_per_layer_original
+    perf_mean_per_layer = data_ff_per_layer_original['perf_mean']
+    assert perf_mean_per_layer.equals(perf_mean_per_layer.sort_index())
+
+    # ax.errorbar(...
+    ax.plot(
+        np.arange(perf_mean_per_layer.size),
+        perf_mean_per_layer,
+        # yerr=data_ff_per_layer_original['perf_sem'],
+        color='k',
+        marker='x',
+    )
 
     ax.legend(loc='upper left', ncol=perf_mean.T.shape[1], bbox_to_anchor=(0.01, 0.99),
               borderaxespad=0., fontsize='x-small', handletextpad=0, title='# of channels',
               )
+    # hack for my final plot
+    assert perf_mean_per_layer.index.values.tolist() == [2,3,4,5,6]
+    ax.set_xticklabels(
+        ['2', '3 (=1R)', '4', '5 (=2R)', 6]
+    )
+
+    # plot extra data
+
+    # perf_mean_per_layer.plot(ax=ax, kind='line')
 
     #     print(dir(legend))
     #     print(legend, 'aaaa')
@@ -747,6 +795,7 @@ def plot_one_case(
         axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type',
                         'model_seed', 'out_channel']
     )
+    data_ff_per_layer_original = data_ff_per_layer
     data_ff_per_layer = data_ff_per_layer.loc[index_reference_per_layer].sort_index()
 
     index_out_channel = index_reference.get_level_values('out_channel').values
@@ -829,9 +878,11 @@ def plot_one_case(
         ax=axes_ff[0],
         # do not filter.
         data=data_ff,
-        ylabel=None,
+        ylabel=ylabel,
         check_no_missing_data=check_no_missing_data,
         display=display,
+        num_variant=num_variant,
+        data_ff_per_layer_original=data_ff_per_layer_original,
     )
     # not to be used.
     savefig(fig_ff, join(dir_plot, suptitle.replace(' ', '+') + 'ff.pdf'))
@@ -859,7 +910,7 @@ def plot_one_case(
     fig_per_layer, axes_per_layer = plt.subplots(
         nrows=1, ncols=2, figsize=(8, 3.5), squeeze=True,
     )
-    fig_per_layer.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.2, hspace=0.2)
+    fig_per_layer.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.3, hspace=0.2)
     for idx_per_layer, num_layer in enumerate(index_reference_per_layer.get_level_values('num_layer').unique()):
         plot_one_case_inner(
             ax=axes_per_layer[idx_per_layer],
@@ -875,14 +926,14 @@ def plot_one_case(
             r_name_list=r_name_list,
             num_variant=num_variant_per_layer,
             title_override=None,
-            ylabel=None,
-            xlabel=None,
+            ylabel=ylabel,
+            xlabel='# of iterations',
             check_no_missing_data=check_no_missing_data,
             xticklabels_off=False,
             display=display,
         )
-    fig_per_layer.text(0.5, 0.0, '# of iterations', ha='center', va='bottom')
-    fig_per_layer.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+    # fig_per_layer.text(0.5, 0.0, '# of iterations', ha='center', va='bottom')
+    # fig_per_layer.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
     savefig(fig_per_layer, join(dir_plot, suptitle.replace(' ', '+') + '_per_layer.pdf'))
 
     return {
@@ -1052,15 +1103,18 @@ def plot_one_case_inner(
     ax.axhline(y=perf_df.iloc[0, 0] - perf_sem_df.iloc[0, 0], linestyle='--', color='k')
     if setup is not None:
         assert title_override is None
+
         if len(setup) == 2:
             num_c = setup[0]
             num_l_ff = setup[1]
             num_l_r = (setup[1] - 1) // 2
-            title = f'{num_c} ch, 1 C + {num_l_r} RC, n={num_variant}'
+            layer_text = 'layer' if num_l_r == 1 else 'layers'
+            title = f'{num_c} ch, {num_l_r} R {layer_text}, n={num_variant}'
         elif len(setup) == 1:
             num_l_ff = setup[0]
             num_l_r = (setup[0] - 1) // 2
-            title = f'{num_l_r + 1}L, n={num_variant}'
+            layer_text = 'layer' if num_l_r == 1 else 'layers'
+            title = f'{num_l_r} R {layer_text}, n={num_variant}'
         else:
             raise RuntimeError
     else:
