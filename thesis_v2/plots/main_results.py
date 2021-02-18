@@ -243,7 +243,7 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
     # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
     fig.text(0.5, 0.0, xlabel, ha='center', va='bottom')
     fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
-    fig.subplots_adjust(left=0.1, right=0.99, bottom=0.1, top=0.99, wspace=0.1, hspace=0.1)
+    fig.subplots_adjust(left=0.1, right=0.95, bottom=0.1, top=0.95, wspace=0.1, hspace=0.1)
     savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
     plt.show()
 
@@ -705,7 +705,7 @@ def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display, num_varian
     # hack for my final plot
     assert perf_mean_per_layer.index.values.tolist() == [2,3,4,5,6]
     ax.set_xticklabels(
-        ['2', '3 (=1R)', '4', '5 (=2R)', 6]
+        ['2', '3 (=1R)', '4', '5 (=2R)', '6']
     )
 
     # plot extra data
