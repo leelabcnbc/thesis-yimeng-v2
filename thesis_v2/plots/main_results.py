@@ -52,7 +52,7 @@ def get_r_vs_ff_scatter_inner(
         train_keep_all = merged_main.index.get_level_values('train_keep').unique()
         # num_layer_all = merged_main.index.get_level_values('num_layer').unique()
         train_keep_max = train_keep_all.max()
-        assert set(train_keep_all) == {train_keep_max, train_keep_max // 2, train_keep_max // 4}
+        assert set(train_keep_all) <= {train_keep_max, train_keep_max // 2, train_keep_max // 4}
 
         for (
                 train_keep,
@@ -328,7 +328,7 @@ def get_perf_vs_param_result(
                         # hack to preserve order
                         'readout_type': str(readout_type_idx) + '.' + readout_type_mapping[readout_type],
                         'perf_r': perf_max,
-                        'improvement_perc': (perf_max / series_ff['perf_mean'] - 1) * 100
+                        'improvement_perc': (perf_max - series_ff['perf_mean'])/series_ff['perf_mean'] * 100
                     }
                 )
                 df_this_metric[-1]['col_name'] = '{} ({}K)'.format(

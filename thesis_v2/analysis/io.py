@@ -57,6 +57,8 @@ def collect_rcnn_k_bl_main_result(*,
     rows_all_param_overwrite = []
 
     param_set = None
+    if mask is None:
+        mask = slice(None)
 
     if cc_max_all_neurons is not None:
         cc_max_all_neurons = cc_max_all_neurons[mask]

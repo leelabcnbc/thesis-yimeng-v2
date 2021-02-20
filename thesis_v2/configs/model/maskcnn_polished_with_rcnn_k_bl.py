@@ -2382,7 +2382,7 @@ def main_models_8k_generator_with_another_split(*, with_source, split_seed_to_us
             continue
         assert params['split_seed'] == 'legacy'
         params['split_seed'] = split_seed_to_use
-        assert len(x) == 26
+        assert len(params) == 26
         if with_source:
             yield source, params
         else:
