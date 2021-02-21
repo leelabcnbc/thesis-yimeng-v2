@@ -279,7 +279,7 @@ def get_hyperparameter_effect_result(
             fewer_suffix=''
         )
         total_merged['improvement_rel'] = (total_merged['perf_r'] - total_merged['perf_ff']) / total_merged[
-            'perf_ff']
+            'perf_ff']*100
         total_merged['improvement_abs'] = total_merged['perf_r'] - total_merged['perf_ff']
         ret[metric] = {
             'df_ff': df_ff.sort_index(),
