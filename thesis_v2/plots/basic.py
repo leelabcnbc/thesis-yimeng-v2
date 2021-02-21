@@ -43,7 +43,7 @@ def scatter(
         ax.axes.yaxis.set_ticklabels([])
 
     if plot_equal_line:
-        ax.plot([0, 1], [0, 1], linestyle='--')
+        ax.plot([0, 1], [0, 1], linestyle='--', color='k')
 
 
 def labeled_line(

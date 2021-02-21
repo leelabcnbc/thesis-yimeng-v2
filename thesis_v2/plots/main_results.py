@@ -73,14 +73,14 @@ def get_r_vs_ff_scatter_inner(
                 remove_y_axis_labels=remove_y_axis_labels,
                 set_axis_equal=False,
                 scatter_s=0.5,
-                label=str(100 * train_keep // train_keep_max) + '%',
+                label=str(100 * train_keep // train_keep_max) + '%' + ', n={}'.format(merged_main_this.shape[0]),
                 plot_equal_line=False
             )
-        ax.plot([0, 1], [0, 1], linestyle='--')
+        ax.plot([0, 1], [0, 1], linestyle='--', color='k')
         if legend:
             ax.legend(loc='lower right', ncol=1,
                       # borderaxespad=0.,
-                      fontsize='small',
+                      fontsize='x-small',
                       # handletextpad=0
                       )
     else:
@@ -91,11 +91,11 @@ def get_r_vs_ff_scatter_inner(
             ax.set_xlabel(xlabel)
         if ylabel is not None:
             ax.set_ylabel(ylabel)
-    if show_text:
-        ax.text(
-            0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
-            transform=ax.transAxes,
-        )
+    # if show_text:
+    #     ax.text(
+    #         0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
+    #         transform=ax.transAxes,
+    #     )
 
     if title is not None:
         ax.set_title(title)
@@ -268,9 +268,23 @@ def get_hyperparameter_effect_result(
 
         df_r = df_r[df_r.index.get_level_values('out_channel').isin(num_channels_to_iterate_allowlist)]
         df_r = df_r[df_r.index.get_level_values('num_layer').isin(num_layers_to_iterate_allowlist)]
+
+        # merge the two
+        perf_data_r = df_r['perf_mean'].unstack('rcnn_bl_cls').max(axis=1).to_frame('perf_r')
+        perf_data = df_ff['perf_mean'].to_frame('perf_ff')
+
+        total_merged = merge_thin_and_wide(
+            df_more_columns=perf_data_r,
+            df_fewer_columns=perf_data,
+            fewer_suffix=''
+        )
+        total_merged['improvement_rel'] = (total_merged['perf_r'] - total_merged['perf_ff']) / total_merged[
+            'perf_ff']
+        total_merged['improvement_abs'] = total_merged['perf_r'] - total_merged['perf_ff']
         ret[metric] = {
             'df_ff': df_ff.sort_index(),
             'df_r': df_r.sort_index(),
+            'total_merged': total_merged.sort_index(),
         }
 
     return ret
@@ -346,13 +360,10 @@ def get_perf_vs_param_result(
 
 
 def main_loop_for_additional_tables(
-        *, df_in, dir_key, metric_list=None, display=None, max_cls=7,
+        *, df_in, metric_list=None, max_cls=7,
         num_channels_to_iterate_allowlist=(8, 16, 32, 48, 64),
         num_layers_to_iterate_allowlist=(3, 5),
 ):
-    if display is None:
-        def display(_):
-            pass
     if metric_list is None:
         metric_list = [x for x in ['cc2_normed_avg', 'cc2_raw_avg', 'cc_raw_avg'] if x in df_in.columns]
     # perf vs param
