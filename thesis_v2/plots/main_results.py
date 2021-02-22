@@ -258,10 +258,12 @@ def get_hyperparameter_effect_result(
         print(metric)
         assert metric in df_in.columns
         df_this = df_in.loc[:, [metric, 'num_param']].rename(columns={metric: 'perf'})
-        columns, df_ff, df_r = preprocess(
+        columns, df_ff, df_r, n_seed = preprocess(
             df_this, max_cls=max_cls,
-            axes_to_reduce=['model_seed']
+            axes_to_reduce=['model_seed'],
+            return_n=True
         )
+        assert n_seed == 2
         # filter out results.
         df_ff = df_ff[df_ff.index.get_level_values('out_channel').isin(num_channels_to_iterate_allowlist)]
         df_ff = df_ff[df_ff.index.get_level_values('num_layer').isin(num_layers_to_iterate_allowlist)]
@@ -271,7 +273,9 @@ def get_hyperparameter_effect_result(
 
         # merge the two
         perf_data_r = df_r['perf_mean'].unstack('rcnn_bl_cls').max(axis=1).to_frame('perf_r')
-        perf_data = df_ff['perf_mean'].to_frame('perf_ff')
+        perf_data = df_ff[['perf_mean', 'num_param_mean']].rename(columns={'perf_mean': 'perf_ff'})
+
+        # perf_data['num_param_mean_in_k'] = round(perf_data['num_param_mean'process_r] / 1000)
 
         total_merged = merge_thin_and_wide(
             df_more_columns=perf_data_r,
@@ -279,12 +283,13 @@ def get_hyperparameter_effect_result(
             fewer_suffix=''
         )
         total_merged['improvement_rel'] = (total_merged['perf_r'] - total_merged['perf_ff']) / total_merged[
-            'perf_ff']*100
+            'perf_ff'] * 100
         total_merged['improvement_abs'] = total_merged['perf_r'] - total_merged['perf_ff']
         ret[metric] = {
             'df_ff': df_ff.sort_index(),
             'df_r': df_r.sort_index(),
             'total_merged': total_merged.sort_index(),
+            'n_seed': n_seed,
         }
 
     return ret
@@ -342,7 +347,7 @@ def get_perf_vs_param_result(
                         # hack to preserve order
                         'readout_type': str(readout_type_idx) + '.' + readout_type_mapping[readout_type],
                         'perf_r': perf_max,
-                        'improvement_perc': (perf_max - series_ff['perf_mean'])/series_ff['perf_mean'] * 100
+                        'improvement_perc': (perf_max - series_ff['perf_mean']) / series_ff['perf_mean'] * 100
                     }
                 )
                 df_this_metric[-1]['col_name'] = '{} ({}K)'.format(
@@ -714,7 +719,7 @@ def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display, num_varian
               borderaxespad=0., fontsize='x-small', handletextpad=0, title='# of channels',
               )
     # hack for my final plot
-    assert perf_mean_per_layer.index.values.tolist() == [2,3,4,5,6]
+    assert perf_mean_per_layer.index.values.tolist() == [2, 3, 4, 5, 6]
     ax.set_xticklabels(
         ['2', '3 (=1R)', '4', '5 (=2R)', '6']
     )

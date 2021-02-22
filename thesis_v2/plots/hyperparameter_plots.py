@@ -1,11 +1,13 @@
 from os.path import join
 from os import makedirs
+from functools import reduce
 
 from matplotlib import pyplot as plt
 from scipy.stats import ttest_rel
 
 from .util import savefig
 from .main_results import metric_dict, readout_type_mapping, main_loop_for_additional_tables
+from .main_results_tables import process_r, avg_inner
 
 
 def compare_one_hyperpameter_over_readout_types(
@@ -14,8 +16,8 @@ def compare_one_hyperpameter_over_readout_types(
         hy_value_mapping=None,
 ):
     title = {
-        'improvement_abs': '$\Delta$ of ' + metric_dict[metric],
-        'improvement_rel': '%$\Delta$ of ' + metric_dict[metric]
+        'improvement_abs': '$\\Delta$ of ' + metric_dict[metric],
+        'improvement_rel': '%$\\Delta$ of ' + metric_dict[metric]
     }[column]
 
     for readout_type in df_merged.index.get_level_values('readout_type').unique():
@@ -117,6 +119,20 @@ def compare_one_hyperpameter(
     plt.show()
 
 
+def reduce_stuffs(df_to_process):
+    axes_to_reduce = ['act_fn', 'ff_1st_bn_before_act', 'loss_type']
+    key_and_possible_values = {
+        k: df_to_process.index.get_level_values(k).unique().values.tolist() for k in axes_to_reduce
+    }
+    return process_r(
+        df_to_process, key_and_possible_values, avg_inner, True
+    ), reduce(
+            lambda x, y: x* y,
+            (len(x) for x in key_and_possible_values.values()),
+            1
+    )
+
+
 def plot_additional_plots(
         *, df_in, plot_dir, metric_list, max_cls=None
 ):
@@ -131,10 +147,65 @@ def plot_additional_plots(
     ]
     data_to_use = all_add_data['hyperameter_data']
     assert data_to_use.keys() == set(metric_list)
-
     for metric in metric_list:
         print(metric)
         data_to_use_this_metric = data_to_use[metric]
+
+        # plot bars
+        # n_per_bar is n models aggregated over seeds.
+        merged_reduced, n_per_bar = reduce_stuffs(data_to_use_this_metric['total_merged'])
+
+        for readout_mode in merged_reduced.index.get_level_values('readout_type').unique():
+            merged_reduced_this = merged_reduced.xs(readout_mode, level='readout_type').copy(deep=True)
+
+            train_keep_all = merged_reduced_this.index.get_level_values('train_keep').unique()
+            # num_layer_all = merged_main.index.get_level_values('num_layer').unique()
+            train_keep_max = train_keep_all.max()
+            assert set(train_keep_all) <= {train_keep_max, train_keep_max // 2, train_keep_max // 4}
+
+            unique_num_param = sorted(merged_reduced_this['num_param_mean_mean'].unique())
+            # make sure that we can indeed sort models by model size
+            assert (
+                    len(unique_num_param) * merged_reduced_this.index.get_level_values(
+                'train_keep'
+            ).unique().size == merged_reduced_this.shape[0]
+            )
+            gen = ('{:02d},{}ch,{}Rl {}K'.format(unique_num_param.index(param_num), num_ch, (num_layer - 1) // 2,
+                                                 int(round(param_num / 1000))) for num_ch, num_layer, param_num in
+                   zip(merged_reduced_this.index.get_level_values('out_channel'),
+                       merged_reduced_this.index.get_level_values('num_layer'),
+                       merged_reduced_this['num_param_mean_mean']))
+            merged_reduced_this['model_name'] = list(gen)
+
+            merged_reduced_this = merged_reduced_this.reset_index(
+                ['out_channel', 'num_layer'], drop=True
+            ).set_index('model_name', append=True, verify_integrity=True)
+
+            ccc = merged_reduced_this[['improvement_rel_mean', 'improvement_rel_sem']].unstack('model_name')
+            plt.close('all')
+            fig, ax = plt.subplots(1, 1, squeeze=True, figsize=(4, 3))
+            fig.subplots_adjust(left=0.2, right=0.99, bottom=0.2, top=0.9)
+            series_mean = ccc['improvement_rel_mean']
+            series_sem = ccc['improvement_rel_sem']
+            series_mean.plot(ax=ax, kind='bar', yerr=series_sem)
+            labels = ax.get_legend_handles_labels()[1]
+            ax.legend(loc='upper right', ncol=2, bbox_to_anchor=(0.99, 0.99),
+                      borderaxespad=0., fontsize='x-small', handletextpad=0,
+                      labels=[x[3:] for x in labels]
+                      )
+            assert series_mean.index.values.tolist() == series_sem.index.values.tolist() == sorted(train_keep_all)
+            ax.set_title(readout_type_mapping[readout_mode] + f', n={n_per_bar} per bar')
+            ax.set_xticklabels(
+                [
+                    str(100 * x // train_keep_max) + '%' for x in series_mean.index.values.tolist()
+                ], rotation = 0
+            )
+            ax.set_ylabel('%$\\Delta$ of ' + metric_dict[metric])
+            ax.set_xlabel('amount of training data')
+            plt.show()
+            if plot_dir is not None:
+                savefig(fig, join(plot_dir, f'{metric}_by_size_{readout_mode}.pdf'))
+
         for hy in hyperparameter_to_check:
             hy_name_friendly = {
                 'loss_type': 'loss type',

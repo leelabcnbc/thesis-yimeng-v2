@@ -14,9 +14,10 @@ def avg_inner(df, *, key_and_possible_values, strict):
     # should cover everything.
     if strict:
         keys = sorted(key_and_possible_values)
-        values = zip(*[df.index.get_level_values(k) for k in keys])
+        values = list(zip(*[df.index.get_level_values(k) for k in keys]))
         values_ref = product(*[key_and_possible_values[k] for k in keys])
         assert set(values) == set(values_ref)
+        assert len(values) == len(set(values))
 
     # then compute mean
     # then compute sem.
