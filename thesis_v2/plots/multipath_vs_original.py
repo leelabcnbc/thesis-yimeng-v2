@@ -22,13 +22,18 @@ def plot_scatter_multi_path_characteristics(
     ), min(
         aaaa['depth_multi'].quantile(0.025), aaaa['depth_main'].quantile(0.025)
     )
+
+    # https://stackoverflow.com/a/42091037
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
     assert limit_max > limit_min
     limit_diff = limit_max - limit_min
     limit_max = limit_max + 0.1 * limit_diff
     limit_min = limit_min - 0.1 * limit_diff
     limit = (limit_min, limit_max)
 
-    for train_keep in aaaa.index.get_level_values('train_keep').unique():
+    for idx, train_keep in enumerate(aaaa.index.get_level_values('train_keep').unique()):
+        print(idx)
         plt.close('all')
         fig, ax = plt.subplots(squeeze=True, figsize=(4, 4))
         b = aaaa.xs(train_keep, level='train_keep')
@@ -36,8 +41,9 @@ def plot_scatter_multi_path_characteristics(
         r = pearsonr(b['depth_main'].values, b['depth_multi'].values)[0]
         ax.scatter(b['depth_main'].values, b['depth_multi'].values, s=1,
                    label='training data {}, n={}, r={:.2f}'.format(
-                       training_data_mapping[train_keep], n, r
-                   )
+                       training_data_mapping[train_keep], n, r,
+                   ),
+                   c=colors[idx]
                    )
 
         # compute pearson
