@@ -208,7 +208,7 @@ def plot_additional_plots(
 
         for hy in hyperparameter_to_check:
             hy_name_friendly = {
-                'loss_type': 'loss type',
+                'loss_type': 'loss fn',
                 'act_fn': 'act layer',
                 'num_layer': '# of layers',
                 'ff_1st_bn_before_act': 'BN before act in 1st layer'

@@ -244,11 +244,15 @@ def plot_perf_vs_effective_depth(
                             num_c = setup_this[0]
                             num_l_ff = setup_this[1]
                             num_l_r = (setup_this[1] - 1) // 2
-                            title = f'{num_c} ch, 1 C + {num_l_r} RC, n={num_variant}'
+                            layer_text = 'layer' if num_l_r == 1 else 'layers'
+                            title = f'{num_c} ch, {num_l_r} R {layer_text}, n={num_variant}'
+                            # title = f'{num_c} ch, 1 C + {num_l_r} RC, n={num_variant}'
                         elif isinstance(setup_this, int):
                             num_l_ff = setup_this
                             num_l_r = (setup_this - 1) // 2
-                            title = f'{num_l_r + 1}L, n={num_variant}'
+                            layer_text = 'layer' if num_l_r == 1 else 'layers'
+                            title = f'{num_l_r} R {layer_text}, n={num_variant}'
+                            # title = f'{num_l_r + 1}L, n={num_variant}'
                         else:
                             raise RuntimeError
 
