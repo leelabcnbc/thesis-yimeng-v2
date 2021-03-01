@@ -721,10 +721,10 @@ def plot_only_ff(*, ax, data, ylabel, check_no_missing_data, display, num_varian
     # hack for my final plot
     assert perf_mean_per_layer.index.values.tolist() == [2, 3, 4, 5, 6]
     ax.set_xticklabels(
-        ['2/1', '3/2/(1R)', '4/3', '5/4/(2R)', '6/5']
+        ['1', '2 (1R)', '3', '4 (2R)', '5']
     )
     ax.set_xlabel(
-        '# of layers/avg path len/(same sized R models)'
+        'avg path length'
     )
 
     # plot extra data
