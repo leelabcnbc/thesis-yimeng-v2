@@ -478,7 +478,8 @@ def plot_one_ax_bar(
             color=colors[idx],
         )
         axis_to_draw.set_title(
-            readout_type_mapping[readout_type] + ', {}, {:.2f}'.format(cls_to_pick_dict[readout_type], avg_length)
+            # avg_length + 1 is what we really want. the shortest length as a path length of 1, not 0, for humans.
+            readout_type_mapping[readout_type] + ', {}, {:.2f}'.format(cls_to_pick_dict[readout_type], avg_length+1)
         )
         axis_to_draw_list.append(axis_to_draw)
         if idx in {1,3}:
