@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from scipy.stats import ttest_rel
 
 from .util import savefig
 from .basic import scatter
@@ -87,10 +88,22 @@ def get_r_vs_ff_scatter_inner(
         ax.hist(merged_main['perf_r'].values - merged_main['perf_ff'].values,
                 bins=20)
         ax.axvline(x=0, linestyle='--', color='r')
+
+        # perform a 2-tailed t test
+        t_test = ttest_rel(
+            merged_main['perf_r'].values,  merged_main['perf_ff'].values,
+        )
+        mean = (merged_main['perf_r'].values - merged_main['perf_ff'].values).mean()
+
         if xlabel is not None:
             ax.set_xlabel(xlabel)
         if ylabel is not None:
             ax.set_ylabel(ylabel)
+        ax.text(
+            0, 1, s='mean={:.2f},p={:.2f}'.format(mean, t_test.pvalue), horizontalalignment='left', verticalalignment='top',
+            transform=ax.transAxes,
+        )
+
     # if show_text:
     #     ax.text(
     #         0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
