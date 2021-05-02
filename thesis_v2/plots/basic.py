@@ -18,7 +18,11 @@ def scatter(
         remove_x_axis_labels=False,
         remove_y_axis_labels=False,
         plot_equal_line=True,
-        label=None
+        label=None,
+        ticks=None,
+        ticklabels=None,
+        ylabel_pad = None,
+        ylabel_fontdict=None,
 ):
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
@@ -31,11 +35,23 @@ def scatter(
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if ylabel is not None:
-        ax.set_ylabel(ylabel)
+        # ylabel_pad is for nips hacking
+        ax.set_ylabel(ylabel, labelpad=ylabel_pad, fontdict=ylabel_fontdict)
     if set_axis_equal:
         ax.axis('equal')
     ax.set_xlim(*xlim)
     ax.set_ylim(*ylim)
+
+    if ticks is None:
+        assert ticklabels is None
+    else:
+        assert ticklabels is not None
+        # set ticks and labels
+        # this is actually just for the NIPS hack. so I also customized font size. here
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+        ax.set_xticklabels(ticklabels, fontdict={'fontsize': 'xx-large'})
+        ax.set_yticklabels(ticklabels, fontdict={'fontsize': 'xx-large'}, rotation=90)
 
     if remove_x_axis_labels:
         ax.axes.xaxis.set_ticklabels([])

@@ -41,6 +41,11 @@ def get_r_vs_ff_scatter_inner(
         title=None,
         legend=True,
         show_text=True,
+        ticks=None,
+        ticklabels=None,
+        title_fontdict=None,
+        ylabel_pad=None,
+        ylabel_fontdict=None,
 ):
     if prefix is None:
         prefix = ''
@@ -70,12 +75,16 @@ def get_r_vs_ff_scatter_inner(
                 xlabel=xlabel, ylabel=ylabel,
                 xlim=limit,
                 ylim=limit,
+                ylabel_pad=ylabel_pad,
                 remove_x_axis_labels=remove_x_axis_labels,
                 remove_y_axis_labels=remove_y_axis_labels,
                 set_axis_equal=False,
                 scatter_s=0.5,
                 label=str(100 * train_keep // train_keep_max) + '%' + ', n={}'.format(merged_main_this.shape[0]),
-                plot_equal_line=False
+                plot_equal_line=False,
+                ticks=ticks,
+                ticklabels=ticklabels,
+                ylabel_fontdict=ylabel_fontdict,
             )
         ax.plot([0, 1], [0, 1], linestyle='--', color='k')
         if legend:
@@ -91,7 +100,7 @@ def get_r_vs_ff_scatter_inner(
 
         # perform a 2-tailed t test
         t_test = ttest_rel(
-            merged_main['perf_r'].values,  merged_main['perf_ff'].values,
+            merged_main['perf_r'].values, merged_main['perf_ff'].values,
         )
         mean = (merged_main['perf_r'].values - merged_main['perf_ff'].values).mean()
 
@@ -100,7 +109,8 @@ def get_r_vs_ff_scatter_inner(
         if ylabel is not None:
             ax.set_ylabel(ylabel)
         ax.text(
-            0, 1, s='mean={:.2f},p={:.2f}'.format(mean, t_test.pvalue), horizontalalignment='left', verticalalignment='top',
+            0, 1, s='mean={:.2f},p={:.2f}'.format(mean, t_test.pvalue), horizontalalignment='left',
+            verticalalignment='top',
             transform=ax.transAxes,
         )
 
@@ -109,13 +119,13 @@ def get_r_vs_ff_scatter_inner(
     #         0, 1, s='{}n={}'.format(prefix, merged_main.shape[0]), horizontalalignment='left', verticalalignment='top',
     #         transform=ax.transAxes,
     #     )
-
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontdict=title_fontdict)
 
 
 def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric,
-                        limit=None, deeper_ff=None, show_diff_hist=False
+                        limit=None, deeper_ff=None, show_diff_hist=False,
+                        hack_for_nips=False,
                         ):
     xlabel = metric_dict[metric] + (
         ', FF' if deeper_ff is None else ', deeper FF {}'.format(
@@ -228,10 +238,12 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
         [index_readout_type, index_num_cls]
     ).T.tolist()
     index_readout_cls = [tuple(x) for x in index_readout_cls]
+
     index_readout_cls_good_order = list(product(readout_type_order, range(2, 7 + 1)))
     index_readout_cls = sorted(set(index_readout_cls))
     assert set(index_readout_cls_good_order) == set(index_readout_cls)
     assert len(index_readout_cls) <= 24
+
     for idx, key_this in enumerate(index_readout_cls_good_order):
         perf_r_main = perf_r.xs(
             key_this, level=('readout_type', 'rcnn_bl_cls')
@@ -248,14 +260,24 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
             prefix='',
             show_diff_hist=show_diff_hist,
             title=None if idx_row != 0 else f'{key_this[1]} iterations',
-            legend=(idx == 0),
+            legend=(idx == 0) if (not hack_for_nips) else False,
             show_text=(idx == 0),
+            ticks=None if (not hack_for_nips) else [0.25, 0.45],
+            ticklabels=None if (not hack_for_nips) else ['0.25', '0.45'],
+            title_fontdict={'fontsize': 'x-large'} if hack_for_nips else None,
+            ylabel_pad=5 if hack_for_nips else None,
+            ylabel_fontdict={'fontsize': 'x-large'} if hack_for_nips else None,
         )
 
     suptitle = f'scatter_r_vs_ff_{metric}_3rd' + suptitle_suffix
     # fig.text(0, 1, s=suptitle, horizontalalignment='left', verticalalignment='top')
-    fig.text(0.5, 0.0, xlabel, ha='center', va='bottom')
-    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
+
+    fig_text_add_hacks = {
+        'fontsize': 'xx-large',
+    } if hack_for_nips else {}
+
+    fig.text(0.5, 0.0, xlabel, ha='center', va='bottom', **fig_text_add_hacks)
+    fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left', **fig_text_add_hacks)
     fig.subplots_adjust(left=0.1, right=0.95, bottom=0.1, top=0.95, wspace=0.1, hspace=0.1)
     savefig(fig, key=join(dir_plot, suptitle + '.pdf'))
     plt.show()
@@ -405,7 +427,7 @@ def main_loop_for_additional_tables(
 
 
 def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
-              check_no_missing_data=True):
+              check_no_missing_data=True, hack_for_nips=False):
     if display is None:
         def display(_):
             pass
@@ -422,55 +444,60 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
             axes_to_reduce=['model_seed'],
             metric=metric,
             dir_plot=dir_key,
+            hack_for_nips=hack_for_nips,
         )
 
-        get_r_vs_ff_scatter(
-            df_this, max_cls=max_cls,
-            axes_to_reduce=['model_seed'],
-            metric=metric,
-            dir_plot=dir_key,
-            show_diff_hist=True,
-        )
+        if not hack_for_nips:
 
-        # not very useful.
-        # for deep_l in [[4], [5], [6], [4, 5, 6]]:
-        #     get_r_vs_ff_scatter(
-        #         df_this, max_cls=max_cls,
-        #         axes_to_reduce=['model_seed'],
-        #         metric=metric,
-        #         dir_plot=dir_key,
-        #         deeper_ff=deep_l,
-        #     )
-        #
-        #     get_r_vs_ff_scatter(
-        #         df_this, max_cls=max_cls,
-        #         axes_to_reduce=['model_seed'],
-        #         metric=metric,
-        #         dir_plot=dir_key,
-        #         deeper_ff=deep_l,
-        #         show_diff_hist=True,
-        #     )
+            get_r_vs_ff_scatter(
+                df_this, max_cls=max_cls,
+                axes_to_reduce=['model_seed'],
+                metric=metric,
+                dir_plot=dir_key,
+                show_diff_hist=True,
+            )
 
-        get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
-                               axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'])
+            # not very useful.
+            # for deep_l in [[4], [5], [6], [4, 5, 6]]:
+            #     get_r_vs_ff_scatter(
+            #         df_this, max_cls=max_cls,
+            #         axes_to_reduce=['model_seed'],
+            #         metric=metric,
+            #         dir_plot=dir_key,
+            #         deeper_ff=deep_l,
+            #     )
+            #
+            #     get_r_vs_ff_scatter(
+            #         df_this, max_cls=max_cls,
+            #         axes_to_reduce=['model_seed'],
+            #         metric=metric,
+            #         dir_plot=dir_key,
+            #         deeper_ff=deep_l,
+            #         show_diff_hist=True,
+            #     )
 
-        get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
-                               axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed',
-                                               'num_layer', 'out_channel']
-                               )
+            get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
+                                   axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'])
 
-        get_ff_vs_best_r_data(
-            df_this,
-            axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'],
-            max_cls=max_cls, display=display,
-            reference_num_layer_ff=3,
-            override_ff_num_layer=[2, 3, 4, 5, 6]
-        )
+            get_perf_over_cls_data(df_this, max_cls=max_cls, display=display,
+                                   axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed',
+                                                   'num_layer', 'out_channel']
+                                   )
+
+            get_ff_vs_best_r_data(
+                df_this,
+                axes_to_reduce=['act_fn', 'ff_1st_bn_before_act', 'loss_type', 'model_seed'],
+                max_cls=max_cls, display=display,
+                reference_num_layer_ff=3,
+                override_ff_num_layer=[2, 3, 4, 5, 6]
+            )
 
         tbl_data[metric] = loop_over_train_size(df_this, metric=metric, dir_plot=dir_key,
                                                 display=display, max_cls=max_cls,
-                                                check_no_missing_data=check_no_missing_data)
-
+                                                check_no_missing_data=check_no_missing_data,
+                                                hack_for_nips=hack_for_nips)
+    if hack_for_nips:
+        return
     # TODO: collect FF data as well
     # combine ALL tbl_data, and then save a huge csv.
 
@@ -564,10 +591,20 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
     )
 
 
-def loop_over_train_size(df_in, *, metric, dir_plot, display, max_cls, check_no_missing_data):
+def loop_over_train_size(df_in, *, metric, dir_plot, display, max_cls, check_no_missing_data, hack_for_nips):
     tbl_data = dict()
     for train_keep in df_in.index.get_level_values('train_keep').unique():
         print(train_keep)
+
+        training_data_perc = {
+            5120: '100%',
+            2560: '50%',
+            1280: '25%',
+            1400: '100%',
+            700: '50%',
+            350: '25%',
+        }[train_keep]
+
         readout_types_to_handle = sorted(
             list(set(df_in.index.get_level_values('readout_type').unique()) - {'legacy'}),
             # simpler models (inst-, -last) first,
@@ -587,6 +624,8 @@ def loop_over_train_size(df_in, *, metric, dir_plot, display, max_cls, check_no_
             check_no_missing_data=check_no_missing_data,
             dir_plot=dir_plot,
             display=display,
+            training_data_perc=training_data_perc,
+            hack_for_nips=hack_for_nips,
         )
         plt.show()
         tbl_data[train_keep] = tbl_data_this
@@ -629,7 +668,9 @@ def process_one_case(df_in, *, metric, train_keep,
                      max_cls=None,
                      check_no_missing_data,
                      dir_plot,
-                     display
+                     display,
+                     training_data_perc,
+                     hack_for_nips
                      ):
     print(df_in.shape)
     # for each metric.
@@ -666,6 +707,8 @@ def process_one_case(df_in, *, metric, train_keep,
         check_no_missing_data=check_no_missing_data,
         dir_plot=dir_plot,
         display=display,
+        training_data_perc=training_data_perc,
+        hack_for_nips=hack_for_nips,
     )
 
 
@@ -808,6 +851,8 @@ def plot_one_case(
         check_no_missing_data,
         dir_plot,
         display,
+        training_data_perc,
+        hack_for_nips
 ):
     # get per num_layer, out_channel data
     data_ff, data_r_list, num_variant, index_reference = get_data_helper(
@@ -871,6 +916,7 @@ def plot_one_case(
             check_no_missing_data=check_no_missing_data,
             xticklabels_off=False if idx // 2 == nrows - 1 else True,
             display=display,
+            hack_for_nips=False,  # here I don't need hacking yet as this plot does not appear in main text.
         ))
     fig.text(0.5, 0.0, '# of iterations', ha='center', va='bottom')
     fig.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
@@ -886,7 +932,9 @@ def plot_one_case(
         data_ff=data_ff_overall,
         data_r_list=data_r_list_overall,
         setup=None,
-        title_override=f'All, n={num_variant_overall}',
+        title_override=f'All, n={num_variant_overall}' if (not hack_for_nips) else (
+            f'All models ({training_data_perc} training data), n={num_variant_overall}'
+        ),
         max_cls=max_cls,
         r_name_list=r_name_list,
         num_variant=num_variant_overall,
@@ -895,6 +943,7 @@ def plot_one_case(
         check_no_missing_data=check_no_missing_data,
         xticklabels_off=False,
         display=display,
+        hack_for_nips=hack_for_nips,
     ))
     savefig(fig_main, join(dir_plot, suptitle.replace(' ', '+') + 'main.pdf'))
 
@@ -944,6 +993,9 @@ def plot_one_case(
     )
     fig_per_layer.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.3, hspace=0.2)
     for idx_per_layer, num_layer in enumerate(index_reference_per_layer.get_level_values('num_layer').unique()):
+        num_l_r = (num_layer - 1) // 2
+        layer_text = 'layer'
+
         plot_one_case_inner(
             ax=axes_per_layer[idx_per_layer],
             data_ff=data_ff_per_layer.xs(
@@ -957,12 +1009,16 @@ def plot_one_case(
             max_cls=max_cls,
             r_name_list=r_name_list,
             num_variant=num_variant_per_layer,
-            title_override=None,
+            title_override=None if not hack_for_nips else (
+                # no space for `training`
+                f'{num_l_r} R {layer_text} models ({training_data_perc} data), n={num_variant_per_layer}'
+            ),
             ylabel=ylabel,
             xlabel='# of iterations',
             check_no_missing_data=check_no_missing_data,
             xticklabels_off=False,
             display=display,
+            hack_for_nips=hack_for_nips,
         )
     # fig_per_layer.text(0.5, 0.0, '# of iterations', ha='center', va='bottom')
     # fig_per_layer.text(0.0, 0.5, ylabel, va='center', rotation='vertical', ha='left')
@@ -1047,6 +1103,7 @@ def plot_one_case_inner(
         check_no_missing_data,
         xticklabels_off,
         display,
+        hack_for_nips
 ):
     # remap data_r_list's num layer to be compatible with ff
     # otherwise, when I do `.unstack('rcnn_bl_cls')` later,
@@ -1133,9 +1190,9 @@ def plot_one_case_inner(
     ax.axhline(y=perf_df.iloc[0, 0], linestyle='-', color='k')
     ax.axhline(y=perf_df.iloc[0, 0] + perf_sem_df.iloc[0, 0], linestyle='--', color='k')
     ax.axhline(y=perf_df.iloc[0, 0] - perf_sem_df.iloc[0, 0], linestyle='--', color='k')
-    if setup is not None:
-        assert title_override is None
 
+    if (setup is not None) and (title_override is None):
+        assert title_override is None
         if len(setup) == 2:
             num_c = setup[0]
             num_l_ff = setup[1]
@@ -1159,9 +1216,13 @@ def plot_one_case_inner(
     perf_df_diff = (perf_df / perf_df.loc[1] - 1)
     display(perf_df_diff.style.format("{:.3%}"))
 
+    fontdict = {
+        'fontsize': 'x-large'
+    } if hack_for_nips else {}
+
     ax.set_title(title)
-    ax.set_ylabel(ylabel)
-    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel, fontdict=fontdict)
+    ax.set_xlabel(xlabel, fontdict=fontdict)
 
     # xticklabels = ax.get_xticklabels()
     # # first one should be replaced from 1 to 1 (FF)

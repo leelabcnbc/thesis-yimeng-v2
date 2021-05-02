@@ -117,6 +117,7 @@ def plot_perf_vs_effective_depth(
         df_perf_deep_ff_2layer,
         save_dir,
         additional_data,
+        hack_for_nips=False,
 ):
     makedirs(save_dir, exist_ok=True)
     if df_perf_deep_ff_2layer is not None:
@@ -126,6 +127,16 @@ def plot_perf_vs_effective_depth(
     assert df_perf.index.equals(df_source_analysis.index)
     for train_keep in df_perf.index.get_level_values('train_keep').unique():
         print(train_keep)
+
+        training_data_perc = {
+            5120: '100%',
+            2560: '50%',
+            1280: '25%',
+            1400: '100%',
+            700: '50%',
+            350: '25%',
+        }[train_keep]
+
         additional_data_this = additional_data.get(train_keep, dict())
 
         data = get_perf_and_depth(
@@ -202,12 +213,20 @@ def plot_perf_vs_effective_depth(
                         #
                         level = 'num_layer'
                         assert len(cases) == 2
-                        fig, axes = plt.subplots(
-                            nrows=1, ncols=2, figsize=(8, 3.5), squeeze=True,
-                            sharex=False, sharey=False
-                        )
-                        fig.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.2,
-                                            hspace=0.2)
+                        if not (hack_for_nips and y_col.startswith('depth_distribution')):
+                            fig, axes = plt.subplots(
+                                nrows=1, ncols=2, figsize=(8, 3.5), squeeze=True,
+                                sharex=False, sharey=False
+                            )
+                            fig.subplots_adjust(left=0.125, right=0.975, bottom=0.125, top=0.9, wspace=0.2,
+                                                hspace=0.2)
+                        else:
+                            fig, axes = plt.subplots(
+                                nrows=1, ncols=2, figsize=(16, 2), squeeze=True,
+                                sharex=False, sharey=False
+                            )
+                            fig.subplots_adjust(left=0.05, right=0.975, bottom=0.125, top=0.9, wspace=0.2,
+                                                hspace=0.2)
                     elif data_name == 'model_size':
                         cases = sorted(
                             set(
@@ -250,9 +269,13 @@ def plot_perf_vs_effective_depth(
                         elif isinstance(setup_this, int):
                             num_l_ff = setup_this
                             num_l_r = (setup_this - 1) // 2
-                            layer_text = 'layer' if num_l_r == 1 else 'layers'
-                            title = f'{num_l_r} R {layer_text}, n={num_variant}'
+                            if not hack_for_nips:
+                                layer_text = 'layer' if num_l_r == 1 else 'layers'
+                                title = f'{num_l_r} R {layer_text}, n={num_variant}'
                             # title = f'{num_l_r + 1}L, n={num_variant}'
+                            else:
+                                layer_text = 'layer'
+                                title = f'{num_l_r} R {layer_text} models ({training_data_perc} data), n={num_variant}'
                         else:
                             raise RuntimeError
 
@@ -298,9 +321,18 @@ def plot_perf_vs_effective_depth(
                                     df_r=data_values['df_r'].xs(setup_this, level=level),
                                 ),
                                 num_l_r=num_l_r,
+                                hack_for_nips = (
+                                    hack_for_nips and level == 'num_layer' and y_col.startswith('depth_distribution')
+                                )
                             )
 
-                        ax.set_title(title)
+                        if not (
+                                    hack_for_nips and level == 'num_layer' and y_col.startswith('depth_distribution')
+                                ):
+
+                            ax.set_title(title)
+                        else:
+                            ax.set_title(title, pad=-10)
                 savefig(fig, join(save_dir, f'perf_vs_depth+{train_keep}+{data_name}+{y_col}.pdf'))
                 plt.show()
 
@@ -402,6 +434,7 @@ def plot_one_ax_bar(
         ylabel=None,
         cls_to_pick_dict,
         num_l_r=None,
+        hack_for_nips=False,
 ):
     if cls_to_pick_dict is None:
         return
@@ -459,17 +492,30 @@ def plot_one_ax_bar(
         sem_this = sem_this[trim_start:trim_end]
 
         # add a custom axis.
-        axis_to_draw: Axes = ax.inset_axes(
-            [
-                *{
-                    0: (0.0, 0.5),
-                    1: (0.5, 0.5),
-                    2: (0.0, 0.0),
-                    3: (0.5, 0.0),
-                }[idx],
-                0.5, 0.35
-            ]
-        )
+        if not hack_for_nips:
+            axis_to_draw: Axes = ax.inset_axes(
+                [
+                    *{
+                        0: (0.0, 0.5),
+                        1: (0.5, 0.5),
+                        2: (0.0, 0.0),
+                        3: (0.5, 0.0),
+                    }[idx],
+                    0.5, 0.35
+                ]
+            )
+        else:
+            axis_to_draw: Axes = ax.inset_axes(
+                [
+                    *{
+                        0: (0.0, 0.0),
+                        1: (0.25, 0.0),
+                        2: (0.5, 0.0),
+                        3: (0.75, 0.0),
+                    }[idx],
+                    0.25, 0.8
+                ]
+            )
         xticks_this = range(1+trim_start, 1+trim_start+mean_this.size)
         axis_to_draw.bar(
             xticks_this,
@@ -482,9 +528,15 @@ def plot_one_ax_bar(
             readout_type_mapping[readout_type] + ', {}, {:.2f}'.format(cls_to_pick_dict[readout_type], avg_length+1)
         )
         axis_to_draw_list.append(axis_to_draw)
-        if idx in {1,3}:
-            # remove y label
-            axis_to_draw.get_yaxis().set_visible(False)
+
+        if not hack_for_nips:
+            if idx in {1,3}:
+                # remove y label
+                axis_to_draw.get_yaxis().set_visible(False)
+        else:
+            if idx in {1,2,3}:
+                # remove y label
+                axis_to_draw.get_yaxis().set_visible(False)
         axis_to_draw.set_xticks(xticks_this)
         axis_to_draw.set_xticklabels([str(x) for x in xticks_this])
 
