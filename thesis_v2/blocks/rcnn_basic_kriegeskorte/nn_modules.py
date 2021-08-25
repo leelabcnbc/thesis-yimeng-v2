@@ -152,12 +152,15 @@ class BLConvLayerStack(nn.Module):
                  # otherwise, they share some BNs.
                  multi_path_separate_bn: Optional[bool] = None,
                  multi_path_hack: Optional[str] = None,
+                 # hack for a control experiment.
+                 no_lateral: bool = False,
                  ):
         # channel_list should be of length 1+number of layers.
         # channel_list[0] being the number of channels for input
         super().__init__()
         assert not bias
         self.n_timesteps = n_timesteps
+        self.no_lateral = no_lateral
 
         n_layer = len(ksize_list)
         assert n_layer >= 1 and len(channel_list) == 1 + n_layer
@@ -168,7 +171,8 @@ class BLConvLayerStack(nn.Module):
                          outchan=channel_list[i + 1],
                          ksize=ksize_list[i],
                          bias=bias,
-                         generate_lateral=(n_timesteps > 1)) for i in range(n_layer)]
+                         generate_lateral=((n_timesteps > 1) and (not self.no_lateral))
+                         ) for i in range(n_layer)]
         )
 
         self.multi_path = multi_path
@@ -378,10 +382,14 @@ class BLConvLayerStack(nn.Module):
                             first_layer_first_time_output = layer_this(b_input, None)
                             last_out[layer_idx] = first_layer_first_time_output
                         else:
-                            last_out[layer_idx] = layer_this(None, last_out[layer_idx], first_layer_first_time_output)
+                            if not self.no_lateral:
+                                last_out[layer_idx] = layer_this(None, last_out[layer_idx], first_layer_first_time_output)
                     else:
                         pooled_input: torch.Tensor = self.pool(last_out[layer_idx - 1])
-                        last_out[layer_idx] = layer_this(pooled_input, last_out[layer_idx])
+                        last_out[layer_idx] = layer_this(
+                            pooled_input,
+                            last_out[layer_idx] if (not self.no_lateral) else None
+                        )
 
                     # do batch norm
                     last_out[layer_idx] = bn_this(last_out[layer_idx])
@@ -443,17 +451,18 @@ class RecurrentAccumulator(nn.Module):
 def blconvlayerstack_init(mod: BLConvLayerStack, init: dict) -> None:
     n_time = mod.n_timesteps
     n_layer = mod.n_layer
+    no_lateral = mod.no_lateral
 
     attrs_to_init = [
                         f'layer_list.{x}.b_conv.weight' for x in range(n_layer)
                     ] + ([
                              f'layer_list.{x}.l_conv.weight' for x in range(n_layer)
-                         ] if n_time > 1 else [])
+                         ] if (n_time > 1 and (not no_lateral)) else [])
     attrs_to_init_zero_optional = [
                                       f'layer_list.{x}.b_conv.bias' for x in range(n_layer)
                                   ] + ([
                                            f'layer_list.{x}.l_conv.bias' for x in range(n_layer)
-                                       ] if n_time > 1 else [])
+                                       ] if (n_time > 1 and (not no_lateral)) else [])
     left_out_attrs = [
                          f'bn_layer_list.{x}.weight' for x in range(n_time * n_layer)
                      ] + [

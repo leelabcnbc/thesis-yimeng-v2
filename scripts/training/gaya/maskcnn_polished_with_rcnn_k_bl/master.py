@@ -55,6 +55,7 @@ def master(*,
            multi_path=False,
            multi_path_separate_bn=None,
            multi_path_hack=None,
+           no_lateral=False
            ):
     key = keygen(
         split_seed=split_seed,
@@ -86,6 +87,7 @@ def master(*,
         multi_path=multi_path,
         multi_path_separate_bn=multi_path_separate_bn,
         multi_path_hack=multi_path_hack,
+        no_lateral=no_lateral,
     )
 
 
@@ -156,6 +158,7 @@ def master(*,
             multi_path=multi_path,
             multi_path_separate_bn=multi_path_separate_bn,
             multi_path_hack=multi_path_hack,
+            no_lateral=no_lateral,
         )
 
     opt_config_partial = partial(

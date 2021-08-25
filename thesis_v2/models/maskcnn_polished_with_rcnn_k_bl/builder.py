@@ -50,6 +50,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
         # otherwise, they share some BNs.
         multi_path_separate_bn: Optional[bool] = None,
         multi_path_hack: Optional[str] = None,
+        no_lateral: bool = False,
 ):
     assert num_layer >= 1
     assert kernel_size_l1 % 2 == 1
@@ -93,6 +94,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      multi_path=multi_path,
                                      multi_path_separate_bn=multi_path_separate_bn,
                                      multi_path_hack=multi_path_hack,
+                                     no_lateral=no_lateral,
                                  )
                                  )
     else:
@@ -124,6 +126,7 @@ def gen_maskcnn_polished_with_rcnn_k_bl(
                                      multi_path=multi_path,
                                      multi_path_separate_bn=multi_path_separate_bn,
                                      multi_path_hack=multi_path_hack,
+                                     no_lateral=no_lateral,
                                  )
                                  )
 

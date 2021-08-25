@@ -1980,6 +1980,7 @@ def keygen(*,
            multi_path=False,
            multi_path_separate_bn=None,
            multi_path_hack: Optional[str] = None,
+           no_lateral: bool = False,
            ):
     if ff_1st_block:
         # then add another two blocks
@@ -2039,6 +2040,11 @@ def keygen(*,
         additional_list += []
     else:
         additional_list += [f'mph_{multi_path_hack}']
+
+    if not no_lateral:
+        additional_list += []
+    else:
+        additional_list += [f'nolat_{no_lateral}']
 
     if additional_key is None:
         additional_list += []
@@ -2125,6 +2131,11 @@ def keygen(*,
         added_param_size += 1
 
     if multi_path_hack is None:
+        added_param_size += 0
+    else:
+        added_param_size += 1
+
+    if not no_lateral:
         added_param_size += 0
     else:
         added_param_size += 1
@@ -2781,6 +2792,17 @@ def main_models_ns2250_generator(with_source):
             yield source, x
         else:
             yield x
+
+
+def ns2250_control_with_no_lateral_20210824(with_source=False):
+    for source, x in main_models_ns2250_generator(True):
+        if source == 'inst-avg' and x['train_keep'] == 1400 and x['rcnn_bl_cls'] > 1:
+            x['no_lateral'] = True
+            if with_source:
+                yield source, x
+            else:
+                yield x
+
 
 
 def main_models_ns2250_validate():
