@@ -1,7 +1,7 @@
 # How to run Yimeng's project
 
 This documentation guides you through some of the basic setups for training neural prediction models on mind cluster using Yimeng's framework.
-> You should also read the original v2 doc to get a general idea of what you need to do. 
+> You should also read the [original v2 doc](https://github.com/leelabcnbc/thesis-yimeng-v2/blob/master/README.md) to get a general idea of what you need to do. 
 
 ## Environment setup
 ### Dependencies
