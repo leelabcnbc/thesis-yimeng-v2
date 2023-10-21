@@ -159,7 +159,13 @@ class ParamIterator:
         if not replace:
             assert key not in self.data
         else:
-            assert key in self.data
+            # assert key in self.data
+            try:
+                assert key in self.data
+            except:
+                print(key)
+                print(self.data)
+                raise AssertionError
         if type(key) is str:
             pass
         elif type(key) is tuple:

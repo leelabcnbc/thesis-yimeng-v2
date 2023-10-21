@@ -5,6 +5,8 @@ I create this module because this set of hyper parameters need to be accessed fr
 from copy import deepcopy
 from typing import Union, Optional
 from itertools import chain, zip_longest
+
+from scripts.training.crcns_pvc8_large.transfer_learning_factorized_vgg.submit import param_iterator
 from ...submission import utils
 from ... import dir_dict
 from os.path import join
@@ -689,6 +691,294 @@ def explored_models_20200515_cb19():
 
     return param_iterator_obj
 
+def explored_models_cb19_sicheng():
+    param_iterator_obj = utils.ParamIterator()
+
+    param_iterator_obj.add_pair(
+        'dataset_prefix', (
+            'cb19',
+        )
+    )
+
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1160, 2320, 4640),
+    )
+
+    param_iterator_obj.add_pair(
+        'split_seed',
+        # also try some other splits, with each class represented equally.
+        range(1, )
+    )
+
+    param_iterator_obj.add_pair(
+        'model_seed',
+        # range(5),
+        range(2),  # otherwise too long.
+    )
+
+    param_iterator_obj.add_pair(
+        'act_fn',
+        # should try relu later
+        ('relu', 'softplus'),
+    )
+
+    param_iterator_obj.add_pair(
+        'loss_type',
+        ('mse', 'poisson')  # should try mse later
+    )
+
+    param_iterator_obj.add_pair(
+        'input_size',
+        (50,
+         # 100,  # should also try 100 later
+         )
+    )
+    
+    param_iterator_obj.add_pair(
+        'px_kept',
+        (100, ),
+    )
+
+    param_iterator_obj.add_pair(
+        'out_channel',
+        (8, 16, 32, 48, 64)
+    )
+
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (2, 3)
+    )
+
+    # inherited from _with_local_pcn
+    param_iterator_obj.add_pair(
+        'kernel_size_l1',
+        (9,)
+    )
+
+    # try different kernel sizes.
+    param_iterator_obj.add_pair(
+        'kernel_size_l23',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_ksize',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_type',
+        ('avg',)
+    )
+
+    param_iterator_obj.add_pair(
+        'bn_after_fc',
+        (False,)  # should try True later
+    )
+
+    param_iterator_obj.add_pair(
+        ('scale_name', 'scale'),
+        lambda: {
+            # key is the name, value is the actual value to be passed in as is.
+            '0.01': '0.01',
+            # '0.001': '0.001',
+            # '0.1': '0.1',
+        }.items(),
+        late_call=True,
+    )
+
+    param_iterator_obj.add_pair(
+        ('smoothness_name', 'smoothness'),
+        lambda: {
+            '0.000005': '0.000005',
+            # '0.00005': '0.00005',
+            # '0.0005': '0.0005',
+            # '0.005': '0.005',
+        }.items(),
+        late_call=True,
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        range(1, 8),
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_psize',
+        (1,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_ptype',
+        (None,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('cummean_last', 'cummean', 'last', 'instant',)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_block',
+        (True,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_bn_before_act',
+        (True, False)
+    )
+
+    return param_iterator_obj
+
+def explored_models_20220107():
+    param_iterator_obj = explored_models_cb19_sicheng()
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('cummean', 'instant',),
+        replace=True,
+    )
+    
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
+    )
+    
+    return param_iterator_obj
+
+def explored_models_20220118():
+    param_iterator_obj = explored_models_cb19_sicheng()
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (4, 5, 6),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        range(1, 2),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('cummean',),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        (-1,),
+    )
+    return param_iterator_obj
+
+def explored_models_20220124():
+    param_iterator_obj = explored_models_cb19_sicheng()
+    param_iterator_obj.add_pair(
+        'px_kept',
+        (80, ),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('cummean', 'instant',),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
+    )
+    return param_iterator_obj
+
+def explored_models_20220201():
+    param_iterator_obj = explored_models_cb19_sicheng()
+    param_iterator_obj.add_pair(
+        'px_kept',
+        (80, ),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'input_size',
+        (40, ),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'rcnn_acc_type',
+        ('cummean', 'instant',),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'yhat_reduce_pick',
+        ('none',),
+    )
+    return param_iterator_obj
+
+def explored_multipath_models_20220210():
+    param_iterator_obj = explored_models_cb19_sicheng()
+    param_iterator_obj.add_pair(
+        'out_channel',
+        (8, 16, 32,),
+        replace=True
+    )
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        range(2, 8),
+        replace=True
+    )
+    param_iterator_obj.add_pair(
+        ('rcnn_acc_type', 'yhat_reduce_pick',),
+        [
+            ('cummean_last', -1),
+            # cm-avg
+            ('cummean', 'none'),
+            # inst-last
+            ('last', -1),
+            # inst-avg
+            ('instant', 'none'),
+        ],
+    )
+    param_iterator_obj.add_pair(
+        'multi_path',
+        (True,),
+    )
+    param_iterator_obj.add_pair(
+        'multi_path_separate_bn',
+        (True,),
+    )
+    return param_iterator_obj
+
+def explored_ablation_cb19_models_20220228():
+    param_iterator_obj = explored_models_cb19_sicheng()
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (None,),
+        replace=True
+    )
+    param_iterator_obj.add_pair(
+        'out_channel',
+        (16, 32,),
+        replace=True
+    )
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (2,),
+        replace=True
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (7,),
+        replace=True
+    )
+    param_iterator_obj.add_pair(
+        ('rcnn_acc_type', 'yhat_reduce_pick',),
+        [
+            ('cummean_last', -1),
+            # cm-avg
+            ('cummean', 'none'),
+            # inst-last
+            ('last', -1),
+            # inst-avg
+            ('instant', 'none'),
+        ],
+    )
 
 def explored_models_20200515():
     param_iterator_obj = explored_models_20200430()
@@ -1247,7 +1537,20 @@ def explored_models_20201215_tang_generator(with_source=False, separate_bn_list=
                 yield param_dict_ret
             else:
                 yield src, param_dict_ret
-
+                
+def explored_models_20220728_2_tang_generator(with_source=False, separate_bn_list=None):
+    if separate_bn_list is None:
+        separate_bn_list = (True,)
+    for src, param_dict in explored_models_20201215_tang_generator(
+        with_source=True, separate_bn_list=separate_bn_list
+    ):
+        if param_dict['train_keep'] != 1400:
+            continue
+        param_dict_ret = deepcopy(param_dict)
+        if not with_source:
+            yield param_dict_ret
+        else:
+            yield src, param_dict_ret
 
 # 16/32 ch, 2 layer ablation models.
 def explored_models_20201218_tang_generator(with_source=False):
@@ -1275,6 +1578,19 @@ def explored_models_20201218_tang_generator(with_source=False):
                     yield param_dict_ret
                 else:
                     yield src, param_dict_ret
+                    
+def explored_models_20220729_tang_generator(with_source=False):
+    for src, param_dict in explored_models_20201218_tang_generator(
+            with_source=True
+    ):
+        if param_dict['rcnn_bl_cls'] != 7:
+            continue
+        
+        param_dict_ret = deepcopy(param_dict)
+        if not with_source:
+            yield param_dict_ret
+        else:
+            yield src, param_dict_ret
 
 
 # 16/32 ch, 2 layer ablation models, only certain length
@@ -1551,6 +1867,103 @@ def explored_models_20200706():
 
     return param_iterator_obj
 
+def explored_models_20220730_generator(with_source=False):
+    for src, param_dict in main_models_8k_generator(True):
+        if param_dict['train_keep'] != None:
+            continue
+        param_dict_ret = deepcopy(param_dict)
+        if not with_source:
+            yield param_dict_ret
+        else:
+            yield src, param_dict_ret
+            
+def explored_models_20221117_generator(with_source=False):
+    for src, param_dict in main_models_8k_generator(True):
+        # only 7 iterations
+        if param_dict['rcnn_bl_cls'] != 7:
+            continue
+        # only late-avg
+        if param_dict['rcnn_acc_type']!= 'instant' or \
+        param_dict['yhat_reduce_pick'] != 'none':
+            continue
+        param_dict_ret = deepcopy(param_dict)
+        if not with_source:
+            yield param_dict_ret
+        else:
+            yield src, param_dict_ret
+
+def explored_models_20221120_generator(with_source=False):
+    for src, param_dict in main_models_8k_generator(True):
+        # only ff
+        if param_dict['rcnn_bl_cls'] != 1:
+            continue
+        # only 3 and 5 layers
+        if param_dict['num_layer']!= 3 and \
+        param_dict['num_layer'] != '5':
+            continue
+        param_dict_ret = deepcopy(param_dict)
+        if not with_source:
+            yield param_dict_ret
+        else:
+            yield src, param_dict_ret
+            
+def explored_models_20230214():
+    param_iterator_obj = utils.ParamIterator()
+    add_common_part_8k(param_iterator_obj)
+    
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (640, 320),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (7, ),
+    )
+    param_iterator_obj.add_pair(
+        ('rcnn_acc_type', 'yhat_reduce_pick',),
+        [
+            # inst-avg
+            ('instant', 'none'),
+        ],
+    )
+    param_iterator_obj.add_pair(
+        'out_channel',
+        (8, 16, 32, 48, 64)
+    )
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (2, 3)
+    )
+    return param_iterator_obj
+
+def explored_models_20230215():
+    param_iterator_obj = explored_models_20230214()
+    
+    param_iterator_obj.add_pair(
+        'rcnn_bl_cls',
+        (1, ),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        'num_layer',
+        (3, 5),
+        replace=True,
+    )
+    param_iterator_obj.add_pair(
+        ('rcnn_acc_type', 'yhat_reduce_pick',),
+        [
+            ('cummean_last', -1),
+            # cm-avg
+            ('cummean', 'none'),
+            # inst-last
+            ('last', -1),
+            # inst-avg
+            ('instant', 'none'),
+        ],
+        replace=True
+    )
+    return param_iterator_obj
 
 def explored_models_20200516_gaya():
     param_iterator_obj = explored_models_20200430()
@@ -1755,6 +2168,48 @@ def explored_models_20201002_tang_generator(with_source=False, additional_keys=(
             src = None
         else:
             src, param_dict = x
+
+        for key in additional_keys:
+            # default (0,100)
+            param_dict['additional_key'] = key
+            assert len(param_dict) == 27
+            if not with_source:
+                yield deepcopy(param_dict)
+            else:
+                yield src, deepcopy(param_dict)
+                
+def explored_models_20220727_tang_generator(with_source=False, additional_keys=('0,500', '400,500')):
+    for x in explored_models_20200930_tang_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+            
+        if param_dict['train_keep'] != 1400:
+            continue
+
+        for key in additional_keys:
+            # default (0,100)
+            param_dict['additional_key'] = key
+            assert len(param_dict) == 27
+            if not with_source:
+                yield deepcopy(param_dict)
+            else:
+                yield src, deepcopy(param_dict)
+
+def explored_models_20220728_tang_generator(with_source=False, additional_keys=('0,500',)):
+    for x in explored_models_20200914_tang_generator(with_source=with_source):
+        if not with_source:
+            param_dict = x
+            src = None
+        else:
+            src, param_dict = x
+        param_dict = deepcopy(param_dict)
+        param_dict['input_size'] = 37
+        
+        if param_dict['train_keep'] != 1400:
+            continue
 
         for key in additional_keys:
             # default (0,100)
@@ -2279,7 +2734,127 @@ def add_common_part_8k(param_iterator_obj):
         'ff_1st_bn_before_act',
         (True, False)
     )
+    
+def add_common_part_cb19(param_iterator_obj):
+    param_iterator_obj.add_pair(
+        'train_keep',
+        (1160, 2320, 4640),
+        # (2320, 4640),
+    )
 
+    param_iterator_obj.add_pair(
+        'split_seed',
+        # also try some other splits, with each class represented equally.
+        range(1),
+    )
+
+    param_iterator_obj.add_pair(
+        'model_seed',
+        # range(5),
+        range(2),  # otherwise too long.
+    )
+
+    param_iterator_obj.add_pair(
+        'act_fn',
+        # should try relu later
+        ('relu', 'softplus'),
+    )
+
+    param_iterator_obj.add_pair(
+        'loss_type',
+        ('mse', 'poisson')  # should try mse later
+    )
+
+    param_iterator_obj.add_pair(
+        'input_size',
+        (50,
+        # 100,  # should also try 100 later
+        )
+    )
+    
+    param_iterator_obj.add_pair(
+        'px_kept',
+        (100, ),
+    )
+
+    # inherited from _with_local_pcn
+    param_iterator_obj.add_pair(
+        'kernel_size_l1',
+        (9,)
+    )
+
+    # try different kernel sizes.
+    param_iterator_obj.add_pair(
+        'kernel_size_l23',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_ksize',
+        (3,)
+    )
+
+    param_iterator_obj.add_pair(
+        'pooling_type',
+        ('avg',)
+    )
+
+    param_iterator_obj.add_pair(
+        'bn_after_fc',
+        (False,)  # should try True later
+    )
+
+    param_iterator_obj.add_pair(
+        ('scale_name', 'scale'),
+        [('0.01', '0.01')],
+    )
+
+    param_iterator_obj.add_pair(
+        ('smoothness_name', 'smoothness'),
+        [('0.000005', '0.000005')],
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_psize',
+        (1,)
+    )
+
+    param_iterator_obj.add_pair(
+        'rcnn_bl_ptype',
+        (None,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_block',
+        (True,)
+    )
+
+    param_iterator_obj.add_pair(
+        'ff_1st_bn_before_act',
+        (True, False)
+    )
+
+def low_models_8k_generator(with_source):
+    for x in chain(
+        explored_models_20230214().generate(),
+        explored_models_20230215().generate(),
+    ):
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+            (-1, 'cummean'): 'deep-ff',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'yuanyuan_8k_a_3day'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+
+        assert len(x) == 26
+        if with_source:
+            yield source, x
+        else:
+            yield x
 
 def main_models_8k_generator(with_source):
     # this only contains models
@@ -2375,6 +2950,104 @@ def main_models_8k_generator(with_source):
         x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
 
         assert len(x) == 26
+        if with_source:
+            yield source, x
+        else:
+            yield x
+            
+def main_models_cb19_generator(with_source):
+    # this only contains models
+    # presented in the thesis paper.
+
+    def model_r():
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_cb19(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32, 48, 64)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, 3)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(1, 8),
+        )
+        
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    def model_additional_ff():
+        param_iterator_obj = utils.ParamIterator()
+        add_common_part_cb19(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32, 48, 64)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (4, 5, 6)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(1, 2),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                ('cummean', -1),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in chain(
+            model_r().generate(),
+            model_additional_ff().generate(),
+    ):
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+            (-1, 'cummean'): 'deep-ff',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'cb19'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+
+        assert len(x) == 27
         if with_source:
             yield source, x
         else:
@@ -2536,6 +3209,82 @@ def multipath_models_8k_generator(with_source):
         x['multi_path_separate_bn'] = True
 
         assert len(x) == 28
+        if with_source:
+            yield source, x
+        else:
+            yield x
+
+def multipath_models_8k_v1_generator(with_source):
+    for source, x in multipath_models_8k_generator(True):
+        if x['train_keep'] != None:
+            continue
+        if with_source:
+            yield source, x
+        else:
+            yield x
+            
+def multipath_models_cb19_generator(with_source):
+    # 2L, 16/32 ch models,
+    # cls 2 through 7
+    def model_r():
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_cb19(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (8, 16, 32,)
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2, 3,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            range(2, 8),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                # cm-last
+                # this is different from (`cummean`, -1).
+                # for loss calculation.
+                # for (`cummean`, -1),
+                # loss used all iterations during training, due to broadcasting.
+                # but early stopping only used the last.
+                #
+                # by definition, we should NOT use all iterations,
+                # but only the last.
+
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'cb19'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+
+        assert len(x) == 29
         if with_source:
             yield source, x
         else:
@@ -2792,7 +3541,14 @@ def main_models_ns2250_generator(with_source):
             yield source, x
         else:
             yield x
-
+            
+def main_models_ns2250_v1_generator(with_source):
+    for source, x in main_models_ns2250_generator(True):
+        if x['train_keep'] == 1400:
+            if with_source:
+                yield source, x
+            else:
+                yield x
 
 def ns2250_control_with_no_lateral_20210824(with_source=False):
     for source, x in main_models_ns2250_generator(True):
@@ -2937,6 +3693,14 @@ def multipath_models_ns2250_generator(with_source):
             yield source, x
         else:
             yield x
+            
+def multipath_models_ns2250_v1_generator(with_source):
+    for source, x in multipath_models_ns2250_generator(True):
+        if x['train_keep'] == 1400:
+            if with_source:
+                yield source, x
+            else:
+                yield x
 
 
 def multipath_models_ns2250_validate():
@@ -3505,6 +4269,79 @@ def ablation_7_models_8k_generator(with_source):
                         [str(z) for z in range(depth_start, depth_start + depth_range)]
                     )
                     assert len(param_dict_ret) == 29
+                    if not with_source:
+                        yield param_dict_ret
+                    else:
+                        yield source, param_dict_ret
+
+def ablation_7_models_cb19_generator(with_source):
+    # 2L, 16/32 ch, 7 iteration models
+    # removing 1, 2, 3, 4, 5, 6, 7
+    # removing 1+2, 2+3, 3+4, 4+5, 5+6, 6+7
+    # removing 1+2+3, 2+3+4, 3+4+5, 4+5+6, 5+6+7
+    def model_r():
+        param_iterator_obj = utils.ParamIterator()
+
+        add_common_part_cb19(param_iterator_obj)
+
+        param_iterator_obj.add_pair(
+            'train_keep',
+            (None,),
+            replace=True
+        )
+
+        param_iterator_obj.add_pair(
+            'out_channel',
+            (16, 32,),
+        )
+
+        param_iterator_obj.add_pair(
+            'num_layer',
+            (2,)
+        )
+
+        param_iterator_obj.add_pair(
+            'rcnn_bl_cls',
+            (7,),
+        )
+
+        param_iterator_obj.add_pair(
+            ('rcnn_acc_type', 'yhat_reduce_pick',),
+            [
+                ('cummean_last', -1),
+                # cm-avg
+                ('cummean', 'none'),
+                # inst-last
+                ('last', -1),
+                # inst-avg
+                ('instant', 'none'),
+            ],
+        )
+
+        return param_iterator_obj
+
+    for x in model_r().generate():
+        source = {
+            ('none', 'cummean'): 'cm-avg',
+            (-1, 'cummean_last'): 'cm-last',
+            ('none', 'instant'): 'inst-avg',
+            (-1, 'last'): 'inst-last',
+        }[x['yhat_reduce_pick'], x['rcnn_acc_type']]
+
+        x['dataset_prefix'] = 'cb19'
+        x['model_prefix'] = 'maskcnn_polished_with_rcnn_k_bl'
+        x['multi_path'] = True
+        x['multi_path_separate_bn'] = True
+        assert x['num_layer'] == 2
+        for prefix in ['rmD']:
+            for depth_range in range(1, 3 + 1):
+                assert depth_range <= x['rcnn_bl_cls']
+                for depth_start in range(1, x['rcnn_bl_cls'] - depth_range + 2):
+                    param_dict_ret = deepcopy(x)
+                    param_dict_ret['multi_path_hack'] = prefix + ','.join(
+                        [str(z) for z in range(depth_start, depth_start + depth_range)]
+                    )
+                    assert len(param_dict_ret) == 30
                     if not with_source:
                         yield param_dict_ret
                     else:

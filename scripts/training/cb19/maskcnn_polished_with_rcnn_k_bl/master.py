@@ -51,7 +51,14 @@ def master(*,
            val_test_every: Optional[int] = None,
            show_every: int = 100,
            px_kept: Optional[int] = None,
+           yhat_reduce_pick: int = -1,
+           blstack_norm_type: str = 'batchnorm',
+           act_fn_inner: str = 'same',
+           multi_path=False,
+           multi_path_separate_bn=None,
+           multi_path_hack=None,
            ):
+    assert yhat_reduce_pick in {-1, 'avg', 'none'}
 
     key = keygen(
         split_seed=split_seed,
@@ -79,6 +86,12 @@ def master(*,
         dataset_prefix=dataset_prefix,
         seq_length=seq_length,
         px_kept=px_kept,
+        yhat_reduce_pick=yhat_reduce_pick,
+        blstack_norm_type=blstack_norm_type,
+        act_fn_inner=act_fn_inner,
+        multi_path=multi_path,
+        multi_path_separate_bn=multi_path_separate_bn,
+        multi_path_hack=multi_path_hack,
     )
 
     print('key', key)
@@ -130,7 +143,12 @@ def master(*,
             factored_constraint=None,
             ff_1st_block=ff_1st_block,
             ff_1st_bn_before_act=ff_1st_bn_before_act,
-            num_input_channel=(1 if seq_length is None else seq_length)
+            num_input_channel=(1 if seq_length is None else seq_length),
+            blstack_norm_type=blstack_norm_type,
+            act_fn_inner=act_fn_inner,
+            multi_path=multi_path,
+            multi_path_separate_bn=multi_path_separate_bn,
+            multi_path_hack=multi_path_hack,
         )
 
     opt_config_partial = partial(
@@ -159,7 +177,10 @@ def master(*,
         return_model=False,
         extra_params={
             # reduce on batch axis
-            'eval_fn': {'yhat_reduce_axis': 1}
+            'eval_fn': {
+                'yhat_reduce_axis': 1,
+                'yhat_reduce_pick': yhat_reduce_pick,
+            }
         },
         **added_kw,
     )

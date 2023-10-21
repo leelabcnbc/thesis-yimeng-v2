@@ -135,7 +135,13 @@ def plot_perf_vs_effective_depth(
             1400: '100%',
             700: '50%',
             350: '25%',
+            4640: '100%',
+            2320: '50%',
+            1160: '25%',
         }[train_keep]
+        
+        if training_data_perc != '100%':
+            continue
 
         additional_data_this = additional_data.get(train_keep, dict())
 

@@ -25,6 +25,8 @@ global_dict = {
     # neurons with responses to
     'num_neurons_with_response_to_all_images': 115,
     'num_trial': 4,
+    'num_img_sec': 6250,
+    'num_neurons_sec': 51,
 }
 
 
@@ -33,7 +35,7 @@ def get_raw_pkl():
         return pickle.load(f)
 
 
-def images(px_kept=80, final_size=40, force_resize=False):
+def images(px_kept=80, final_size=40, force_resize=False, sec=False):
     x_all = get_raw_pkl()['images']
     assert x_all.shape == (global_dict['num_img'], 140, 140)
     # assert px_kept == 80
@@ -50,12 +52,17 @@ def images(px_kept=80, final_size=40, force_resize=False):
         print('use resize; not optimal for image quality')
         # force resize.
         x_all = np.asarray(
-            [resize(x, (final_size, final_size), mode='edge', anti_aliasing=True) for x in x_all]
+            [resize(x, (final_size, final_size), mode='edge',
+                    anti_aliasing=True) for x in x_all]
         )[:, np.newaxis]
 
     assert x_all.shape == (global_dict['num_img'], 1, final_size, final_size)
     assert x_all.min() >= 0
     assert x_all.max() <= 255
+
+    if sec:
+        x_all = x_all[global_dict['img_index_sec'], :, :, :]
+
     return x_all
 
 
@@ -63,18 +70,37 @@ def get_neural_data(
         *,
         unit_mean_per_neuron=True,
         post_scale=None,
+        sec=False,
 ):
-    y = get_neural_data_per_trial(transpose_idx=(0, 1, 2))
-    assert y.shape == (
-        global_dict['num_trial'],
-        global_dict['num_img'],
-        global_dict['num_neurons_with_response_to_all_images']
-    )
+    if sec:
+        y = get_neural_data_per_trial(transpose_idx=(0, 1, 2),
+                                      remove_neurons_with_any_nan_mean_resp=False,
+                                      sec=True)
+    else:
+        y = get_neural_data_per_trial(transpose_idx=(0, 1, 2))
+    if sec:
+        assert y.shape == (
+            global_dict['num_trial'],
+            global_dict['num_img_sec'],
+            global_dict['num_neurons_sec']
+        )
+    else:
+        assert y.shape == (
+            global_dict['num_trial'],
+            global_dict['num_img'],
+            global_dict['num_neurons_with_response_to_all_images']
+        )
     y = np.nanmean(y, axis=0)
-    assert y.shape == (
-        global_dict['num_img'],
-        global_dict['num_neurons_with_response_to_all_images']
-    )
+    if sec:
+        assert y.shape == (
+            global_dict['num_img_sec'],
+            global_dict['num_neurons_sec']
+        )
+    else:
+        assert y.shape == (
+            global_dict['num_img'],
+            global_dict['num_neurons_with_response_to_all_images']
+        )
     assert np.all(np.isfinite(y))
 
     if unit_mean_per_neuron:
@@ -92,15 +118,29 @@ def get_neural_data(
 def get_neural_data_per_trial(
         fill_value=None,
         remove_neurons_with_any_nan_mean_resp=True,
-        transpose_idx=(2, 0, 1)):
+        transpose_idx=(2, 0, 1),
+        sec=False,
+):
     response_all = get_raw_pkl()['responses']
-    assert response_all.shape == (global_dict['num_trial'], global_dict['num_img'], global_dict['num_neurons_total'])
-    assert remove_neurons_with_any_nan_mean_resp
+    assert response_all.shape == (
+        global_dict['num_trial'], global_dict['num_img'], global_dict['num_neurons_total'])
+    # assert remove_neurons_with_any_nan_mean_resp
 
     if remove_neurons_with_any_nan_mean_resp:
-        good_index = np.logical_not(np.any(np.all(np.isnan(response_all), axis=0), axis=0))
-        assert good_index.sum() == global_dict['num_neurons_with_response_to_all_images']
+        good_index = np.logical_not(
+            np.any(np.all(np.isnan(response_all), axis=0), axis=0))
+        assert good_index.sum(
+        ) == global_dict['num_neurons_with_response_to_all_images']
         response_all = response_all[:, :, good_index]
+    elif sec:
+        bad_index = np.any(np.all(np.isnan(response_all), axis=0), axis=0)
+        assert bad_index.sum() == global_dict['num_neurons_sec']
+        response_all = response_all[:, :, bad_index]
+        img_index = np.all(np.any(np.logical_not(
+            np.isnan(response_all)), axis=0), axis=1)
+        assert img_index.sum() == global_dict['num_img_sec']
+        response_all = response_all[:, img_index, :]
+        global_dict['img_index_sec'] = img_index
 
     # fill in
     if fill_value is None:
@@ -114,7 +154,8 @@ def get_neural_data_per_trial(
         avg_over_trials = np.nanmean(response_all, axis=0, keepdims=True)
         assert avg_over_trials.shape == (
             1, global_dict['num_img'], global_dict['num_neurons_with_response_to_all_images'])
-        response_all = np.where(np.isnan(response_all), avg_over_trials, response_all)
+        response_all = np.where(np.isnan(response_all),
+                                avg_over_trials, response_all)
     else:
         raise NotImplementedError
 
@@ -133,6 +174,7 @@ def get_indices(*,
                 seed,
                 group_by='image_numbers',
                 return_dict=True,
+                sec=False,
                 ):
     map_dict = {
         'original': 0,
@@ -142,14 +184,22 @@ def get_indices(*,
         'conv4': 4,
     }
     # original, conv1, conv2, conv3, conv4
-    labels = [x.tolist()[0] for x in get_raw_pkl()['image_types'].ravel()]
+    image_types = get_raw_pkl()[
+        'image_types'][global_dict['img_index_sec']] if sec else get_raw_pkl()['image_types']
+    labels = [x.tolist()[0] for x in image_types.ravel()]
     labels = np.array([map_dict[x] for x in labels])
+    
+    num_img = global_dict['num_img_sec'] if sec else global_dict['num_img']
     assert np.array_equal(np.bincount(labels),
-                          np.full((5,), fill_value=global_dict['num_img'] // 5, dtype=np.int64))
+                          np.full((5,), fill_value=num_img // 5, dtype=np.int64))
 
     if group_by == 'image_numbers':
-        groups = get_raw_pkl()['image_numbers'].ravel()
-        assert np.array_equal(groups, np.repeat(np.arange(1, global_dict['num_img'] // 5 + 1), 5))
+        image_numbers = get_raw_pkl()[
+            'image_numbers'][global_dict['img_index_sec']] if sec else get_raw_pkl()['image_numbers']
+        groups = image_numbers.ravel()
+        if not sec:
+            assert np.array_equal(groups, np.repeat(
+                np.arange(1, num_img // 5 + 1), 5))
         train_val_idx, test_idx = one_shuffle_general(
             labels=groups,
             test_size=0.2,
@@ -171,11 +221,11 @@ def get_indices(*,
 
     np.array_equal(
         np.sort(np.concatenate((train_idx, val_idx, test_idx))),
-        np.arange(global_dict['num_img']))
+        np.arange(num_img))
 
-    assert train_idx.size == global_dict['num_img'] // 5 * 4 // 5 * 4
-    assert test_idx.size == global_dict['num_img'] // 5
-    assert val_idx.size == global_dict['num_img'] // 5 * 4 // 5
+    assert train_idx.size == num_img // 5 * 4 // 5 * 4
+    assert test_idx.size == num_img // 5
+    assert val_idx.size == num_img // 5 * 4 // 5
 
     assert np.array_equal(
         np.bincount(labels[train_idx]),
@@ -209,13 +259,18 @@ def get_data(*, px_kept, final_size,
              seed,
              scale=None,
              force_resize=False,
+             sec=False
              ):
-    x_all = images(px_kept, final_size, force_resize=force_resize)
-    assert x_all.shape == (global_dict['num_img'], 1, final_size, final_size)
+    y = get_neural_data(post_scale=scale, sec=sec)
+    x_all = images(px_kept, final_size, force_resize=force_resize, sec=sec)
+    if sec:
+        assert x_all.shape == (
+            global_dict['num_img_sec'], 1, final_size, final_size)
+    else:
+        assert x_all.shape == (
+            global_dict['num_img'], 1, final_size, final_size)
 
-    y = get_neural_data(post_scale=scale)
-
-    indices = get_indices(seed=seed, return_dict=False)
+    indices = get_indices(seed=seed, return_dict=False, sec=sec)
 
     result = []
     for idx in indices:

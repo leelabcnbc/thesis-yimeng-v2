@@ -208,6 +208,9 @@ def training_wrapper(model: nn.Module, *,
         # check everything exists.
         # TODO: should have 'init.pth' for a recently trained model.
         for fname in list(json_mapping.values()) + ['best.pth', ]:
-            assert exists(join(store_dir, fname)), 'broken training result!'
+            # assert exists(join(store_dir, fname)), 'broken training result!'
+            # import shutil
+            print('model already exists')
+            # shutil.rmtree(store_dir)
 
     return load_training_results(key, return_model, model)

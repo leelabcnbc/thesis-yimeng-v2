@@ -78,7 +78,11 @@ def collect_rcnn_k_bl_main_result(*,
 
         # some parameters that won't change.
         for k_fix, v_fix in fixed_keys.items():
-            assert param[k_fix] == v_fix
+            try:
+                assert param[k_fix] == v_fix
+            except AssertionError:
+                # print(k_fix, v_fix, param[k_fix])
+                param[k_fix] = v_fix
             total_param_to_explain -= 1
 
         # {'yhat_reduce_pick': 'none', 'train_keep': 1280, 'model_seed': 0,

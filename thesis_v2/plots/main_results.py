@@ -103,13 +103,23 @@ def get_r_vs_ff_scatter_inner(
             merged_main['perf_r'].values, merged_main['perf_ff'].values,
         )
         mean = (merged_main['perf_r'].values - merged_main['perf_ff'].values).mean()
+        
+        ### temp
+        # return (merged_main['perf_r'].values, 
+        #         merged_main['perf_ff'].values, 
+        #         merged_main['perf_r'].values - merged_main['perf_ff'].values)
 
         if xlabel is not None:
             ax.set_xlabel(xlabel)
         if ylabel is not None:
             ax.set_ylabel(ylabel)
         ax.text(
-            0, 1, s='mean={:.2f},p={:.2f}'.format(mean, t_test.pvalue), horizontalalignment='left',
+            0, 1, s='mean={:.3f},p={:.5f}'.format(mean, t_test.pvalue), horizontalalignment='left',
+            verticalalignment='top',
+            transform=ax.transAxes,
+        )
+        ax.text(
+            0, 1, s='', horizontalalignment='left',
             verticalalignment='top',
             transform=ax.transAxes,
         )
@@ -155,6 +165,7 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
     perf_r = df_r['perf_mean']
     # main plot, best R vs FF
     total_levels = ('readout_type', 'rcnn_bl_cls')
+    # max over all readout modes and iterations
     perf_r_main = perf_r.unstack(total_levels).max(axis=1).to_frame(name='perf_r')
 
     if limit is None:
@@ -171,10 +182,12 @@ def get_r_vs_ff_scatter(df_in, *, max_cls=None, axes_to_reduce, dir_plot, metric
 
     plt.close('all')
     fig, ax = plt.subplots(1, 1, squeeze=True, figsize=(4, 4))
-    get_r_vs_ff_scatter_inner(
-        ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main, xlabel=None, ylabel=None, limit=limit,
-        prefix='all # of iterations and readout\n', show_diff_hist=show_diff_hist,
-    )
+    
+    ### temp
+    # return get_r_vs_ff_scatter_inner(
+    #     ax=ax, perf_ff=perf_ff, perf_r_main=perf_r_main, xlabel=None, ylabel=None, limit=limit,
+    #     prefix='all # of iterations and readout\n', show_diff_hist=show_diff_hist,
+    # )
     fig.subplots_adjust(left=0.125, right=0.99, bottom=0.125, top=0.99)
     # https://stackoverflow.com/a/26892326
 
@@ -434,6 +447,8 @@ def main_loop(df_in, dir_key, metric_list=None, display=None, max_cls=7,
     if metric_list is None:
         metric_list = [x for x in ['cc2_normed_avg', 'cc2_raw_avg', 'cc_raw_avg'] if x in df_in.columns]
     tbl_data = dict()
+    if 'px_kept' in df_in.index.names:
+        df_in.index = df_in.index.droplevel('px_kept')
     for metric in metric_list:
         print(metric)
         assert metric in df_in.columns
@@ -603,6 +618,12 @@ def loop_over_train_size(df_in, *, metric, dir_plot, display, max_cls, check_no_
             1400: '100%',
             700: '50%',
             350: '25%',
+            4640: '100%',
+            2320: '50%',
+            1160: '25%',
+            34900: '100%',
+            17450: '50%',
+            8725: '25%',
         }[train_keep]
 
         readout_types_to_handle = sorted(

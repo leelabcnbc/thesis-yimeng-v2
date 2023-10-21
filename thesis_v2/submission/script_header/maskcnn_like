@@ -2,8 +2,8 @@
 #SBATCH --comment="typical slurm header for maskcnn-like archs with multiple jobs on one card"
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=6
-#SBATCH --time=12:00:00
+#SBATCH --time=10:00:00
 #SBATCH --mem=30G
 #SBATCH --gres=gpu:1
 #SBATCH --partition=gpu
-#SBATCH --exclude=mind-1-28,mind-1-23,mind-1-26
+#SBATCH --exclude=mind-1-30,mind-1-32,mind-1-34

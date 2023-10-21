@@ -207,6 +207,8 @@ def get_perf_over_cls_data(df_in: pd.DataFrame, *,
             # https://stackoverflow.com/questions/29765548/remove-index-name-in-pandas
             final_this = final_this.rename_axis(None, axis=1)
             # order columns
+            print([x for x in good_order if x in final_this.index.names])
+            print(final_this.index.names)
             final_this = final_this.reorder_levels(
                 order=[x for x in good_order if x in final_this.index.names],
                 axis=0

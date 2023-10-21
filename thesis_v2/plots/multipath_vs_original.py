@@ -106,10 +106,10 @@ def plot_scatter(
 
     for train_keep in aaaa.index.get_level_values('train_keep').unique():
 
-        if nips_hacking:
-            # designed for NS 2250 data set.
-            if train_keep != 1400:
-                continue
+        # if nips_hacking:
+        #     # designed for NS 2250 data set.
+        #     if train_keep != 1400:
+        #         continue
 
         b = aaaa.xs(train_keep, level='train_keep')
         n = b.shape[0]

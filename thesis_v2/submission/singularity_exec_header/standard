@@ -1,8 +1,8 @@
-mkdir -p /my_data_2/yimengzh_joblib_tmp
-export JOBLIB_TEMP_FOLDER=/my_data_2/yimengzh_joblib_tmp
+mkdir -p /my_data_2/sichengd_joblib_tmp
+export JOBLIB_TEMP_FOLDER=/my_data_2/sichengd_joblib_tmp
 
-mkdir -p /my_data_2/yimengzh_thesis_tmp
-export THESIS_TEMP_FOLDER=/my_data_2/yimengzh_thesis_tmp
+mkdir -p /my_data_2/sichengd_thesis_tmp
+export THESIS_TEMP_FOLDER=/my_data_2/sichengd_thesis_tmp
 
 # for everyone.
 cd /my_data/thesis-yimeng-v2/ && . ./setup_env_variables.sh

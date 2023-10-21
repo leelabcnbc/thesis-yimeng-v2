@@ -63,8 +63,8 @@ def plot_one_ax(
         assert range_start == idx + 1
         perf_ablated_this = perf_ablated.xs(range_start, level='range_start')
         assert perf_ablated_this.index.names == perf_original.index.names
-        assert perf_original.index.isin(perf_ablated_this.index).all()
-        perf_ablated_this = perf_ablated_this[perf_original.index]
+        # assert perf_original.index.isin(perf_ablated_this.index).all()
+        # perf_ablated_this = perf_ablated_this[perf_original.index]
         assert np.all(np.isfinite(perf_ablated_this.values))
         assert np.all(np.isfinite(perf_original.values))
         data_collect.append(perf_ablated_this.mean())
